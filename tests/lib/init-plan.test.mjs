@@ -4,7 +4,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from '../helpers/tmp.mjs';
 import { planInit } from '../../scripts/lib/init-plan.mjs';
-import { BEGIN, END } from '../../scripts/lib/markers.mjs';
+import { BEGIN, END, isFullyManaged } from '../../scripts/lib/markers.mjs';
 
 const byPath = (actions, p) => actions.find((a) => a.path === p);
 
@@ -48,6 +48,34 @@ test('a fully managed file may be updated without consent', async () => {
     const { actions } = await planInit(dir);
     const a = byPath(actions, 'CLAUDE.md');
     assert.equal(a.needsConsent, false, 'we wrote all of it, so we may rewrite it');
+  });
+});
+
+test('a freshly created markdown file is born fully managed', async () => {
+  await withTmpDir(async (dir) => {
+    const { actions } = await planInit(dir);
+    const a = byPath(actions, 'AGENTS.md');
+    assert.equal(a.kind, 'create');
+    // Regression: create() used to hand back a raw, unwrapped body. That left
+    // the file un-"fully managed" from birth, so a second :init would forever
+    // (spuriously) re-propose consent for a file the plugin wrote entirely.
+    assert.ok(isFullyManaged(a.body),
+      'create body must already be wrapped in BEGIN/END markers');
+  });
+});
+
+test('create then re-plan needs no consent the second time', async () => {
+  await withTmpDir(async (dir) => {
+    const first = await planInit(dir);
+    const created = byPath(first.actions, 'AGENTS.md');
+    // Simulate the applier writing exactly what create() proposed.
+    await writeFile(path.join(dir, 'AGENTS.md'), created.body);
+
+    const second = await planInit(dir);
+    const a = byPath(second.actions, 'AGENTS.md');
+    assert.equal(a.kind, 'update-block');
+    assert.equal(a.needsConsent, false,
+      'a file we created ourselves must not trigger a spurious second consent prompt');
   });
 });
 
