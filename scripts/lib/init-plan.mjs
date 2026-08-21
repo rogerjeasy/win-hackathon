@@ -1,7 +1,7 @@
 import { readFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { detectEnvironment } from './detect-env.mjs';
-import { isFullyManaged } from './markers.mjs';
+import { isFullyManaged, upsertBlock } from './markers.mjs';
 import { HACKATHON_DIR } from './paths.mjs';
 
 async function exists(p) {
@@ -15,7 +15,10 @@ async function exists(p) {
 async function planMarkdownBlock(root, rel, body, reason) {
   const abs = path.join(root, rel);
   if (!(await exists(abs))) {
-    return { kind: 'create', path: rel, reason, needsConsent: false, body };
+    // Wrap in markers on creation too: an unwrapped create would leave the
+    // file un-"fully managed" from birth, so a second :init would forever
+    // (spuriously) ask for consent to touch a file we wrote entirely.
+    return { kind: 'create', path: rel, reason, needsConsent: false, body: upsertBlock('', body) };
   }
   const content = await readFile(abs, 'utf8');
   return {
