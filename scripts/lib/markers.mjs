@@ -17,6 +17,9 @@ export function readBlock(content) {
 }
 
 export function upsertBlock(content, body) {
+  if (body.includes(BEGIN) || body.includes(END)) {
+    throw new Error(`body must not contain marker strings BEGIN or END (${BEGIN}, ${END})`);
+  }
   const block = `${BEGIN}\n${body}\n${END}`;
   if (hasBlock(content)) {
     return content.replace(BLOCK_RE, () => block);
