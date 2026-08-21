@@ -1,0 +1,9 @@
+{
+  "name": "win-hackathon",
+  "version": "0.1.0",
+  "description": "End-to-end hackathon workflow: recon, ideation scored against real judging criteria, architecture, spec-driven build, deploy, and a judge-ready submission package.",
+  "author": { "name": "Roger Jeasy Bavibidila" },
+  "homepage": "https://github.com/rogerjeasy/win-hackathon",
+  "license": "MIT",
+  "keywords": ["hackathon", "devpost", "scaffolding", "spec-driven", "deployment"]
+}
