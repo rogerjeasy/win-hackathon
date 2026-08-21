@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "win-hackathon",
+  "description": "Roger Jeasy Bavibidila's hackathon workflow plugin.",
+  "owner": { "name": "Roger Jeasy Bavibidila" },
+  "plugins": [
+    {
+      "name": "win-hackathon",
+      "description": "End-to-end hackathon workflow: recon, scored ideation, architecture, spec-driven build, deploy, and a judge-ready submission package.",
+      "source": "./"
+    }
+  ]
+}
