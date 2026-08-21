@@ -23,6 +23,18 @@ async function isDir(p) {
   try { return (await stat(p)).isDirectory(); } catch { return false; }
 }
 
+// `.git` is a directory in an ordinary clone but a plain `gitdir: ...` pointer
+// file inside a worktree checkout or a submodule, so a filesystem-shape check
+// on `.git` misses both. Ask git itself instead.
+async function checkIsGitRepo(root) {
+  try {
+    const { stdout } = await run('git', ['rev-parse', '--is-inside-work-tree'], { cwd: root });
+    return stdout.trim() === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export async function detectEnvironment(root) {
   const entries = await readdir(root).catch(() => []);
   const visible = entries.filter((e) => !e.startsWith('.'));
@@ -46,7 +58,7 @@ export async function detectEnvironment(root) {
   }
 
   const isEmpty = visible.length === 0;
-  const isGitRepo = await isDir(path.join(root, '.git'));
+  const isGitRepo = await checkIsGitRepo(root);
 
   let isDirty = false;
   if (isGitRepo) {
@@ -62,7 +74,7 @@ export async function detectEnvironment(root) {
   else mode = 'greenfield';
 
   const scenarios = [];
-  if (isEmpty) scenarios.push('A');
+  if (isEmpty && !hasOurState && !hasForeignAgentConfig) scenarios.push('A');
   if (hasForeignAgentConfig && !hasOurState) scenarios.push('B');
   if (hasOurState) scenarios.push('C');
   if (hasSourceFiles && !hasOurState && !hasForeignAgentConfig) scenarios.push('D');

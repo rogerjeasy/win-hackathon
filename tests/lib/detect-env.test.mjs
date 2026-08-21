@@ -118,3 +118,37 @@ test('dotfiles alone do not make a folder non-empty', async () => {
     assert.equal(env.mode, 'greenfield');
   });
 });
+
+test('a real git worktree checkout is detected as a git repo, including dirty state', async () => {
+  await withTmpDir(async (dir) => {
+    const main = path.join(dir, 'main');
+    const wt = path.join(dir, 'wt');
+    await mkdir(main, { recursive: true });
+    await initRepo(main);
+    await writeFile(path.join(main, 'README.md'), 'hello\n');
+    git(main, 'add', '-A');
+    git(main, 'commit', '-q', '-m', 'init');
+    git(main, 'branch', '-q', 'wtbranch');
+    git(main, 'worktree', 'add', '-q', wt, 'wtbranch');
+
+    const clean = await detectEnvironment(wt);
+    assert.equal(clean.isGitRepo, true, 'worktree checkout must be recognized as a git repo');
+    assert.ok(!clean.scenarios.includes('E'));
+
+    await writeFile(path.join(wt, 'README.md'), 'hello\nedited\n');
+    const dirty = await detectEnvironment(wt);
+    assert.equal(dirty.isDirty, true, 'an uncommitted edit inside a worktree must be seen as dirty');
+    assert.ok(dirty.scenarios.includes('F'));
+  });
+});
+
+test('a directory containing only our state file is resume, not also empty/greenfield', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await writeFile(path.join(dir, '.hackathon', 'state.json'), '{}');
+    const env = await detectEnvironment(dir);
+    assert.equal(env.mode, 'resume');
+    assert.ok(!env.scenarios.includes('A'), 'resume must not also claim the folder is empty/greenfield');
+    assert.ok(env.scenarios.includes('C'));
+  });
+});
