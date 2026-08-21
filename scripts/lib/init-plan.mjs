@@ -51,11 +51,21 @@ export async function planInit(root) {
       kind: 'create', path: `${HACKATHON_DIR}/state.json`, needsConsent: false,
       reason: 'phase state, re-injected each session so /clear is free',
     });
+  }
+  // challenges.md and decisions.md are gated on their own existence, not on
+  // hasOurState: hasOurState only reflects state.json, so a crashed-or-reset
+  // :init could otherwise leave these two behind and this planner would
+  // silently propose overwriting them. If either already exists, propose no
+  // action for it at all — we own the whole file, so there's nothing to
+  // merge, and "leave it alone" is the only non-destructive option.
+  if (!(await exists(path.join(root, `${HACKATHON_DIR}/challenges.md`)))) {
     actions.push({
       kind: 'create', path: `${HACKATHON_DIR}/challenges.md`, needsConsent: false,
       body: '# Challenges\n\nIssues hit during the build, newest last.\n',
       reason: 'running issues log, assembled into the Devpost submission',
     });
+  }
+  if (!(await exists(path.join(root, `${HACKATHON_DIR}/decisions.md`)))) {
     actions.push({
       kind: 'create', path: `${HACKATHON_DIR}/decisions.md`, needsConsent: false,
       body: '# Decisions\n\nWhat was chosen, what was rejected, and why.\n',

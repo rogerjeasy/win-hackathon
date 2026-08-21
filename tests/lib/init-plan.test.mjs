@@ -62,6 +62,29 @@ test('resume mode plans no destructive action on existing state', async () => {
   });
 });
 
+test('pre-existing challenges.md and decisions.md survive a crashed-or-reset init', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await writeFile(
+      path.join(dir, '.hackathon', 'challenges.md'),
+      '# Challenges\n\nirreplaceable notes from a previous run\n',
+    );
+    await writeFile(
+      path.join(dir, '.hackathon', 'decisions.md'),
+      '# Decisions\n\nirreplaceable notes from a previous run\n',
+    );
+    // state.json is deliberately absent: a crashed-or-reset :init can leave
+    // exactly this shape on disk, and hasOurState alone would not catch it.
+    const { actions } = await planInit(dir);
+    assert.equal(byPath(actions, '.hackathon/challenges.md'), undefined,
+      'must not plan to overwrite pre-existing challenges.md');
+    assert.equal(byPath(actions, '.hackathon/decisions.md'), undefined,
+      'must not plan to overwrite pre-existing decisions.md');
+    assert.ok(byPath(actions, '.hackathon/state.json'),
+      'state.json is genuinely missing, so it should still be proposed');
+  });
+});
+
 test('dirty worktree produces a warning, not a blocked plan', async () => {
   await withTmpDir(async (dir) => {
     const { warnings } = await planInit(dir);
