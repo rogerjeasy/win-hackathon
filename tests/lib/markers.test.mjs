@@ -60,3 +60,15 @@ test('isFullyManaged is true only when the file is nothing but our block', () =>
 test('readBlock returns null when unmanaged', () => {
   assert.equal(readBlock('nothing'), null);
 });
+
+test('upsertBlock throws if body contains BEGIN marker', () => {
+  assert.throws(() => {
+    upsertBlock('', `text with ${BEGIN} in it`);
+  }, Error);
+});
+
+test('upsertBlock throws if body contains END marker', () => {
+  assert.throws(() => {
+    upsertBlock('', `text with ${END} in it`);
+  }, Error);
+});
