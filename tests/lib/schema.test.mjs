@@ -124,6 +124,14 @@ test('validateState rejects a deliverable with an unknown status', () => {
   assert.ok(DELIVERABLE_STATUSES.includes('not_started'));
 });
 
+test('validateState returns a result rather than throwing on a non-array truthy deliverables field', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.deliverables.submission_requirements = {};
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => e === 'deliverables.submission_requirements must be an array'));
+});
+
 test('validateState accepts a null hackathon (nothing reconned yet)', () => {
   const s = createDefaultState({ pluginVersion: '0.1.0' });
   assert.equal(s.hackathon, null);

@@ -65,26 +65,18 @@ export function validateState(state) {
     errors.push('deliverables missing');
   } else {
     for (const key of ['submission_requirements', 'bonus_content']) {
-      if (!Array.isArray(state.deliverables[key])) {
+      const list = state.deliverables[key];
+      if (!Array.isArray(list)) {
         errors.push(`deliverables.${key} must be an array`);
+        continue; // not iterable in general — the array-type error above already covers it
       }
-    }
-    for (const item of state.deliverables.submission_requirements ?? []) {
-      if (typeof item?.id !== 'string' || item.id === '') {
-        errors.push('deliverables.submission_requirements[].id must be a non-empty string');
-      }
-      if (!DELIVERABLE_STATUSES.includes(item?.status)) {
-        errors.push(
-          `deliverables.submission_requirements[${item?.id}] has invalid status "${item?.status}"`,
-        );
-      }
-    }
-    for (const item of state.deliverables.bonus_content ?? []) {
-      if (typeof item?.id !== 'string' || item.id === '') {
-        errors.push('deliverables.bonus_content[].id must be a non-empty string');
-      }
-      if (!DELIVERABLE_STATUSES.includes(item?.status)) {
-        errors.push(`deliverables.bonus_content[${item?.id}] has invalid status "${item?.status}"`);
+      for (const item of list) {
+        if (typeof item?.id !== 'string' || item.id === '') {
+          errors.push(`deliverables.${key}[].id must be a non-empty string`);
+        }
+        if (!DELIVERABLE_STATUSES.includes(item?.status)) {
+          errors.push(`deliverables.${key}[${item?.id}] has invalid status "${item?.status}"`);
+        }
       }
     }
   }
