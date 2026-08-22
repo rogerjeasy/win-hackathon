@@ -98,3 +98,76 @@ test('project-description carries the heading-per-criterion rule', async () => {
   assert.match(content, /heading/i);
   assert.match(content, /criterion|criteria/i);
 });
+
+test('the evidence-bearing skills exist', async () => {
+  const names = await skillNames();
+  for (const n of ['winning-ideation', 'sponsor-tech-thesis']) {
+    assert.ok(names.includes(n), `missing skills/${n}`);
+  }
+});
+
+test('winning-ideation ships the winner corpus as a reference', async () => {
+  const p = path.join(skillsDir, 'winning-ideation/references/winner-corpus.md');
+  const corpus = await readFile(p, 'utf8');
+  assert.ok(corpus.length > 2000, 'the corpus should carry real evidence, not a stub');
+});
+
+test('the corpus names every project it claims to cover', async () => {
+  const corpus = await readFile(
+    path.join(skillsDir, 'winning-ideation/references/winner-corpus.md'), 'utf8',
+  );
+  for (const name of [
+    'Waylo', 'Sammy', 'Sonar', 'HYPE', 'Relay', 'Kintwadi',
+    'Cassandra', 'CrisisRoute', 'Karma',
+    'BackstageCommercials', 'Title AI', 'Project Memoria',
+  ]) {
+    assert.ok(corpus.includes(name), `corpus is missing ${name}`);
+  }
+});
+
+test('the corpus records the prize each project won', async () => {
+  const corpus = await readFile(
+    path.join(skillsDir, 'winning-ideation/references/winner-corpus.md'), 'utf8',
+  );
+  assert.match(corpus, /Best Design/);
+  assert.match(corpus, /Best Technical Implementation/);
+  assert.match(corpus, /First Place/i);
+});
+
+test('winning-ideation points at the corpus rather than restating it', async () => {
+  const content = await readSkill('winning-ideation');
+  assert.match(content, /winner-corpus\.md/);
+});
+
+test('winning-ideation carries the inversion test and the anti-patterns', async () => {
+  const content = await readSkill('winning-ideation');
+  assert.match(content, /inversion/i);
+  assert.match(content, /todo app/i);
+  assert.match(content, /wrapper/i);
+});
+
+test('winning-ideation carries the demoability and quantification tests', async () => {
+  const content = await readSkill('winning-ideation');
+  assert.match(content, /three minutes|3 minutes|demo moment/i);
+  assert.match(content, /number|quantif/i);
+});
+
+test('sponsor-tech-thesis states the placement rule with its evidence', async () => {
+  const content = await readSkill('sponsor-tech-thesis');
+  assert.match(content, /top-level heading/i);
+  // The finding this skill exists for: same argument, different placement, different prize.
+  assert.match(content, /Kintwadi/);
+  assert.match(content, /Relay|HYPE|Sonar/);
+});
+
+test('sponsor-tech-thesis names the four phases that load it', async () => {
+  const content = await readSkill('sponsor-tech-thesis');
+  for (const phase of ['brainstorm', 'describe', 'architect', 'submit']) {
+    assert.ok(content.includes(phase), `should say how :${phase} uses the thesis`);
+  }
+});
+
+test('sponsor-tech-thesis warns about a thesis the architecture cannot support', async () => {
+  const content = await readSkill('sponsor-tech-thesis');
+  assert.match(content, /cannot support|does not support|unsupported|cash the cheque|earn it/i);
+});
