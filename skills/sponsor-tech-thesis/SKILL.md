@@ -22,7 +22,8 @@ shape — an inversion that names the excluded alternative:
   leaves that private network boundary" — the model goes to the data, not the data to the model.
 - Sonar: "DynamoDB for speed, Aurora DSQL for record" — the database is chosen by the access
   pattern, not the data model.
-- Waylo: four cheaper detection layers first, so "Nova only fires as a genuine last resort."
+- Waylo: four progressively cheaper detection layers before vision ever runs, so "most steps
+  resolve in under 50ms at zero marginal cost" — vision is the last resort, not the first tool.
 - Relay: Aurora DSQL for multi-region active-active writes and strong consistency on
   irreversible actions.
 

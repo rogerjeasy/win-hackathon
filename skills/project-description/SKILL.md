@@ -36,9 +36,9 @@ product. Then reuse those exact names in every later phase.
 ## Quantify
 
 Every winning submission in the reference corpus puts a number in the pitch. Market size,
-latency, a count of the thing you built, a population figure. "2.1 billion people will be
-60+ by 2050." "74 RLS policies across 33 tables." "Under 50ms at zero marginal cost." A
-number is the cheapest credibility available.
+latency, a count of the thing you built, a population figure. "$3.6 trillion real estate
+industry." "74 RLS policies across 33 tables." "Under 50ms at zero marginal cost." A number
+is the cheapest credibility available.
 
 ## Limitations are the "What's next" section
 
