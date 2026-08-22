@@ -10,7 +10,7 @@ const root = args[0] && !args[0].startsWith('--') ? args[0] : process.cwd();
 
 const consentIdx = args.indexOf('--consent');
 const consented = new Set(
-  consentIdx === -1 ? [] : (args[consentIdx + 1] ?? '').split(',').filter(Boolean),
+  consentIdx === -1 ? [] : (args[consentIdx + 1] ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 );
 
 const manifest = JSON.parse(
@@ -33,6 +33,6 @@ console.log(`Applied ${result.applied.length} action(s).`);
 for (const a of result.applied) console.log(`  + ${a.path}`);
 if (result.skipped.length > 0) {
   console.log(`Skipped ${result.skipped.length} (no consent given):`);
-  for (const a of result.skipped) console.log(`  - ${a.path}`);
+  for (const a of result.skipped) console.log(`  - ${a.kind} ${a.path}`);
 }
 for (const b of result.backups) console.log(`  backup: ${b}`);

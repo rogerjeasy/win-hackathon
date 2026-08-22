@@ -33,7 +33,9 @@ one:
 **Initializing git** (only proposed when the project is not already a git repo). There
 is no file content to show here. Explain that the project isn't currently a git
 repository, and that phase state benefits from being versioned — so the user can switch
-devices mid-hackathon without losing progress — then ask whether to run `git init`.
+devices mid-hackathon without losing progress — then ask whether to run `git init`. This
+action's path — and therefore its consent token for Step 3's `--consent` list — is the
+literal character `.` (the repo root), not a filename.
 
 ## Step 3 — Apply
 
