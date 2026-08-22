@@ -117,6 +117,23 @@ test('applyIdeas cross-checks against recon.json when it is present', async () =
   });
 });
 
+test('applyIdeas rejects loudly when recon.json exists but is corrupt, and writes nothing', async () => {
+  await withTmpDir(async (dir) => {
+    await seed(dir);
+    await writeFile(path.join(dir, '.hackathon/recon.json'), '{ not valid json', 'utf8');
+    const doc = await goldenIdeas();
+
+    // Must be the loud parse failure, not an incidental TypeError from treating the
+    // corrupt recon as if it were merely absent.
+    await assert.rejects(
+      () => applyIdeas(dir, doc),
+      /recon\.json could not be parsed as JSON/,
+    );
+    assert.equal(await exists(path.join(dir, '.hackathon/ideas.json')), false);
+    assert.equal(await exists(path.join(dir, '.hackathon/ideas.md')), false);
+  });
+});
+
 test('applyIdeas requires state to exist', async () => {
   await withTmpDir(async (dir) => {
     const doc = await goldenIdeas();
