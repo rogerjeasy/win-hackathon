@@ -113,6 +113,26 @@ test('pre-existing challenges.md and decisions.md survive a crashed-or-reset ini
   });
 });
 
+test('retrofit warning tells the user to review state manually, not that it was backfilled', async () => {
+  await withTmpDir(async (dir) => {
+    await writeFile(path.join(dir, 'package.json'), '{"name":"app"}');
+    const { env, warnings } = await planInit(dir);
+    assert.equal(env.mode, 'retrofit');
+    assert.equal(warnings.length, 1, 'retrofit-only scenario should produce exactly one warning');
+    const [w] = warnings;
+    // Regression: this warning used to claim phase statuses "will be
+    // backfilled from what is on disk" — a feature that was never built.
+    // createDefaultState() unconditionally sets every phase to not_started;
+    // nothing in this codebase inspects on-disk artifacts to infer progress.
+    assert.doesNotMatch(w, /backfill/i,
+      'must not claim automatic backfilling, which does not exist');
+    assert.match(w, /not_started/,
+      'should honestly say phases start at not_started');
+    assert.match(w, /state\.json/,
+      'should direct the user to review .hackathon/state.json manually');
+  });
+});
+
 test('dirty worktree produces a warning, not a blocked plan', async () => {
   await withTmpDir(async (dir) => {
     const { warnings } = await planInit(dir);
