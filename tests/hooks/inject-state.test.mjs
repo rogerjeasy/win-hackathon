@@ -49,6 +49,18 @@ test('hook output never exceeds 40 lines', async () => {
   });
 });
 
+test('hook output never exceeds 40 lines even when resume_note has embedded newlines', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.phases.recon.status = 'in_progress';
+    s.phases.recon.resume_note = Array.from({ length: 500 }, (_, i) => `chunk-${i}`).join('\n');
+    await writeState(dir, s);
+
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.ok(stdout.split('\n').length <= 40, `got ${stdout.split('\n').length} lines`);
+  });
+});
+
 test('hook surfaces a resume note so a mid-phase /clear is recoverable', async () => {
   await withTmpDir(async (dir) => {
     const s = createDefaultState({ pluginVersion: '0.1.0' });
