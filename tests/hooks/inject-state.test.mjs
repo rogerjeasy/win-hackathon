@@ -210,7 +210,7 @@ test('the hook names the tiebreak-first criterion', async () => {
   });
 });
 
-test('the hook stays within the line cap with every M2 field populated', async () => {
+test('every M2 field survives into the hook output, tail included', async () => {
   await withTmpDir(async (dir) => {
     const s = createDefaultState({ pluginVersion: '0.1.0' });
     s.hackathon = {
@@ -230,7 +230,16 @@ test('the hook stays within the line cap with every M2 field populated', async (
     };
     await writeState(dir, s);
     const { stdout } = await run('node', [hook], { cwd: dir });
-    assert.ok(stdout.split('\n').length <= 40, `hook emitted ${stdout.split('\n').length} lines`);
+    const emitted = stdout.replace(/\n$/, '').split('\n');
+    // The <= 40 bound alone proves nothing here: the hook enforces it with
+    // lines.slice(0, MAX_LINES), and its worst case (drift on all 11 phases) is ~21
+    // lines, so no state can breach it. What can regress is the cap silently eating
+    // the tail. Assert the fields coexist AND the call-to-action is still last.
+    assert.ok(emitted.length <= 40, `hook emitted ${emitted.length} lines`);
+    for (const field of ['CareCircle', 'credit request form closes', 'technical-implementation', 'required-tech-0']) {
+      assert.ok(stdout.includes(field), `M2 field ${field} was crowded out of the hook output`);
+    }
+    assert.match(emitted.at(-1), /Run \/win-hackathon:next/, 'the call to action must survive the line cap');
   });
 });
 

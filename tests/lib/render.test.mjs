@@ -133,3 +133,29 @@ test('the board omits the deliverables section entirely before recon', () => {
   assert.doesNotMatch(out, /Deliverables/);
   assert.doesNotMatch(out, /undefined/);
 });
+
+test('the board counts a skipped requirement as neither done nor outstanding', () => {
+  const s = stateWithDeliverables();
+  s.deliverables.submission_requirements = [
+    { id: 'demo-video', status: 'done' },
+    { id: 'architecture-diagram', status: 'skipped' },
+    { id: 'public-repo', status: 'not_started' },
+  ];
+  const out = renderStatusBoard({ state: s, resolution, tools: [] });
+  // The bug this pins: counting "skipped" as "done" would print "2 of 3 done" and tell
+  // Roger a submission requirement was finished when he had merely skipped past it.
+  assert.match(out, /1 of 3 done/);
+  assert.doesNotMatch(out, /2 of 3 done/);
+  assert.match(out, /1 skipped/, 'a skipped requirement must stay visible, not vanish');
+});
+
+test('a skipped requirement is not listed among the outstanding items', () => {
+  const s = stateWithDeliverables();
+  s.deliverables.submission_requirements = [
+    { id: 'architecture-diagram', status: 'skipped' },
+    { id: 'public-repo', status: 'not_started' },
+  ];
+  const out = renderStatusBoard({ state: s, resolution, tools: [] });
+  assert.match(out, /\[ \] public-repo/);
+  assert.doesNotMatch(out, /\[ \] architecture-diagram/);
+});
