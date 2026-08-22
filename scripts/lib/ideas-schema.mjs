@@ -29,6 +29,12 @@ export function validateIdeas(doc, recon) {
   const rubricIds = (recon?.criteria?.items ?? []).map((i) => i.id);
   const maxScore = recon?.criteria?.max_base_score;
 
+  if (rubricIds.length === 0) {
+    warnings.push(
+      'no recon supplied — rubric-membership and score-ceiling checks were skipped',
+    );
+  }
+
   const seenIds = new Set();
   const claimId = (id, where) => {
     if (!isNonEmptyString(id)) { errors.push(`${where}.id must be a non-empty string`); return; }
