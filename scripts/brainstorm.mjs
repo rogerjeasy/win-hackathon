@@ -73,6 +73,12 @@ if (subcommand === 'validate') {
     console.log(`\nRubric: ${reconPath(root)}`);
     console.log('Phase "brainstorm" is now awaiting_approval. Present the shortlist and ask which idea to take.');
   } catch (err) {
+    // applyIdeas attaches any computed warnings to the thrown Error (see
+    // brainstorm-apply.mjs) precisely so a failed validation doesn't swallow the
+    // context that likely explains the failure (e.g. "no recon supplied"). Print
+    // them first, in the same order/stream applyIdeas used to print them in
+    // before this logic moved into the CLI, so this path's output is unchanged.
+    for (const w of err.warnings ?? []) console.warn(`warning: ${w}`);
     console.error(err.message);
     process.exit(1);
   }

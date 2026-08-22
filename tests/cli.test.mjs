@@ -10,6 +10,7 @@ import { withTmpDir } from './helpers/tmp.mjs';
 const run = promisify(execFile);
 const scripts = fileURLToPath(new URL('../scripts/', import.meta.url));
 const fixture = fileURLToPath(new URL('./fixtures/h0-recon.json', import.meta.url));
+const ideasFixture = fileURLToPath(new URL('./fixtures/h0-ideas.json', import.meta.url));
 
 test('init --dry-run writes nothing', async () => {
   await withTmpDir(async (dir) => {
@@ -161,6 +162,42 @@ test('recon.mjs apply refuses to run when there is no state', async () => {
       (err) => {
         assert.equal(err.code, 1);
         assert.match(err.stderr, /init/i);
+        return true;
+      },
+    );
+  });
+});
+
+// Regression: applyIdeas throws on an invalid payload before it can return its
+// { artifacts, warnings } value, so the library used to attach warnings to the
+// thrown Error and the CLI had to print them explicitly rather than relying on
+// the success path's printing. This asserts the full stderr of a failed
+// `apply`, not just the refusal message, because "no recon supplied" is often
+// the reason a payload failed validation and must not vanish on that path.
+test('brainstorm.mjs apply prints warnings AND the refusal message on an invalid payload with no recon.json', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    const bad = JSON.parse(await readFile(ideasFixture, 'utf8'));
+    bad.ideas[0].thesis = '';
+    const p = path.join(dir, 'bad-ideas.json');
+    await writeFile(p, JSON.stringify(bad), 'utf8');
+
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'brainstorm.mjs'), 'apply', dir, '--ideas', p]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /warning: no recon supplied — rubric-membership checks were skipped/);
+        assert.match(err.stderr, /warning: no recon supplied — score-ceiling checks were skipped/);
+        assert.match(err.stderr, /refusing to apply an invalid ideas payload/);
+        assert.match(err.stderr, /thesis/);
+        // Order matters: pre-fix, warnings were printed before the throw. The
+        // refusal message must still come after both warnings, not before.
+        const iWarn1 = err.stderr.indexOf('rubric-membership checks were skipped');
+        const iWarn2 = err.stderr.indexOf('score-ceiling checks were skipped');
+        const iRefuse = err.stderr.indexOf('refusing to apply an invalid ideas payload');
+        assert.ok(iWarn1 >= 0 && iWarn2 >= 0 && iRefuse >= 0);
+        assert.ok(iWarn1 < iRefuse && iWarn2 < iRefuse,
+          'both warnings must precede the refusal message, matching pre-fix output order');
         return true;
       },
     );
