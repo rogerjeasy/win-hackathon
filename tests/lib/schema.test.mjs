@@ -94,3 +94,88 @@ test('validateState accepts a phase with a proper artifacts array', () => {
   const { valid, errors } = validateState(s);
   assert.equal(valid, true, errors.join('; '));
 });
+
+import { DELIVERABLE_STATUSES } from '../../scripts/lib/schema.mjs';
+
+test('the current schema version is 2', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 2);
+});
+
+test('a default state carries an empty deliverables block', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  assert.deepEqual(s.deliverables, { submission_requirements: [], bonus_content: [] });
+  assert.equal(validateState(s).valid, true);
+});
+
+test('validateState rejects a missing deliverables block', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  delete s.deliverables;
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /deliverables/.test(e)));
+});
+
+test('validateState rejects a deliverable with an unknown status', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.deliverables.submission_requirements = [{ id: 'demo-video', status: 'nearly' }];
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /nearly/.test(e)));
+  assert.ok(DELIVERABLE_STATUSES.includes('not_started'));
+});
+
+test('validateState accepts a null hackathon (nothing reconned yet)', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  assert.equal(s.hackathon, null);
+  assert.equal(validateState(s).valid, true);
+});
+
+test('validateState accepts a partial hackathon block', () => {
+  // Controller ruling (pre-flight): the state layer validates only what is present.
+  // The binding offset guard lives in recon-schema.mjs, where agent-authored dates enter;
+  // state.hackathon.deadline is copied from an already-validated hard date. Enforcing it
+  // twice would make it impossible for the M1 hook tests to write the malformed states
+  // they exist to prove the hook survives.
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.hackathon = { name: 'Big Hack', deadline: null, tech: { required: ['Bedrock'] } };
+  const { valid, errors } = validateState(s);
+  assert.deepEqual(errors, []);
+  assert.equal(valid, true);
+});
+
+test('validateState still rejects a hackathon with no name', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.hackathon = { name: '', deadline: null };
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /name/.test(e)));
+});
+
+test('validateState rejects an unknown tiebreak when one is present', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.hackathon = {
+    name: 'H0', url: 'https://h01.devpost.com',
+    deadline: '2026-06-29T17:00:00-07:00',
+    criteria_ids: ['technical-implementation'], tiebreak: 'coin_flip',
+  };
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /tiebreak/.test(e)));
+});
+
+test('validateState accepts a fully populated hackathon digest', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.hackathon = {
+    name: 'H0: Hack the Zero Stack',
+    url: 'https://h01.devpost.com',
+    deadline: '2026-06-29T17:00:00-07:00',
+    next_action_deadline: { label: 'credit request form closes', at: '2026-06-26T12:00:00-07:00' },
+    tech: { required: ['AWS Database'], bonus: [], forbidden: [] },
+    criteria_ids: ['technical-implementation', 'design'],
+    tiebreak: 'listed_order',
+    bonus_points_available: 0.6,
+    selected_track: null,
+    recon_ref: '.hackathon/recon.json',
+  };
+  assert.equal(validateState(s).valid, true);
+});

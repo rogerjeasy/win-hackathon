@@ -6,6 +6,7 @@ import { withTmpDir } from '../helpers/tmp.mjs';
 import { statePath } from '../../scripts/lib/paths.mjs';
 import { createDefaultState, CURRENT_SCHEMA_VERSION } from '../../scripts/lib/schema.mjs';
 import { readState, writeState, updateState, migrateState } from '../../scripts/lib/state.mjs';
+import { readRawState, migrateStateFile } from '../../scripts/lib/state.mjs';
 
 test('readState returns null when there is no state file', async () => {
   await withTmpDir(async (dir) => {
@@ -108,4 +109,92 @@ test('migrateState refuses to downgrade a newer schema', () => {
   const s = createDefaultState({ pluginVersion: '0.1.0' });
   s.schema_version = CURRENT_SCHEMA_VERSION + 1;
   assert.throws(() => migrateState(s), /newer/i);
+});
+
+function v1State() {
+  return {
+    schema_version: 1,
+    plugin_version: '0.1.0',
+    hackathon: null,
+    project: null,
+    phases: Object.fromEntries(
+      ['recon', 'brainstorm', 'describe', 'stack', 'architect', 'requirements',
+       'spec', 'build', 'ship', 'review', 'submit'].map((p) => [p, { status: 'not_started' }]),
+    ),
+    mode: 'solo',
+    team: [],
+    compliance: { last_checked: null, required_tech_verified: {} },
+    budget: { total_hours: null, spent_hours: 0, phase_budget: {} },
+  };
+}
+
+test('migrateState upgrades a v1 state by adding deliverables', () => {
+  const { state, migrated, from } = migrateState(v1State());
+  assert.equal(migrated, true);
+  assert.equal(from, 1);
+  assert.equal(state.schema_version, 2);
+  assert.deepEqual(state.deliverables, { submission_requirements: [], bonus_content: [] });
+});
+
+test('migrateState preserves everything else in a v1 state', () => {
+  const before = v1State();
+  before.budget.total_hours = 48;
+  before.phases.recon = { status: 'approved', artifacts: ['.hackathon/brief.md'] };
+  const { state } = migrateState(before);
+  assert.equal(state.budget.total_hours, 48);
+  assert.deepEqual(state.phases.recon, { status: 'approved', artifacts: ['.hackathon/brief.md'] });
+});
+
+test('migrateState is idempotent on an already-migrated state', () => {
+  const once = migrateState(v1State()).state;
+  const { state, migrated } = migrateState(once);
+  assert.equal(migrated, false);
+  assert.deepEqual(state, once);
+});
+
+test('readRawState parses a v1 file that readState would reject', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await writeFile(path.join(dir, '.hackathon/state.json'), JSON.stringify(v1State()), 'utf8');
+    await assert.rejects(() => readState(dir), /schema_version/);
+    const raw = await readRawState(dir);
+    assert.equal(raw.schema_version, 1);
+  });
+});
+
+test('readRawState returns null when there is no state file', async () => {
+  await withTmpDir(async (dir) => {
+    assert.equal(await readRawState(dir), null);
+  });
+});
+
+test('migrateStateFile upgrades a v1 file on disk and reports it', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await writeFile(path.join(dir, '.hackathon/state.json'), JSON.stringify(v1State()), 'utf8');
+
+    const result = await migrateStateFile(dir);
+    assert.equal(result.migrated, true);
+    assert.equal(result.from, 1);
+
+    const after = await readState(dir);        // now passes validation
+    assert.equal(after.schema_version, 2);
+    assert.deepEqual(after.deliverables, { submission_requirements: [], bonus_content: [] });
+  });
+});
+
+test('migrateStateFile is a no-op on a current-version file', async () => {
+  await withTmpDir(async (dir) => {
+    await writeState(dir, createDefaultState({ pluginVersion: '0.1.0' }));
+    const before = await readFile(path.join(dir, '.hackathon/state.json'), 'utf8');
+    const result = await migrateStateFile(dir);
+    assert.equal(result.migrated, false);
+    assert.equal(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'), before);
+  });
+});
+
+test('migrateStateFile reports nothing to do when there is no state file', async () => {
+  await withTmpDir(async (dir) => {
+    assert.deepEqual(await migrateStateFile(dir), { migrated: false, from: null });
+  });
 });
