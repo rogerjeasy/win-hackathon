@@ -69,10 +69,15 @@ async function readReconIfPresent(root) {
   }
 }
 
+/**
+ * Apply a validated ideas payload: write ideas.json + ideas.md, advance the brainstorm
+ * phase to awaiting_approval. This function only performs I/O — it never prints. Any
+ * warnings validateIdeas produced (e.g. "no recon supplied") are returned, not logged;
+ * the CLI decides how and whether to surface them.
+ */
 export async function applyIdeas(root, doc) {
   const recon = await readReconIfPresent(root);
   const { valid, errors, warnings } = validateIdeas(doc, recon);
-  for (const w of warnings) console.warn(`warning: ${w}`);
   if (!valid) {
     throw new Error(`refusing to apply an invalid ideas payload:\n  ${errors.join('\n  ')}`);
   }
@@ -106,5 +111,5 @@ export async function applyIdeas(root, doc) {
     },
   });
 
-  return { artifacts };
+  return { artifacts, warnings };
 }

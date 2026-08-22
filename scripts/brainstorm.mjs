@@ -63,7 +63,11 @@ if (subcommand === 'validate') {
   const doc = await readJson(source);
 
   try {
-    const { artifacts } = await applyIdeas(root, doc);
+    const { artifacts, warnings } = await applyIdeas(root, doc);
+    // Same convention as `validate`: warnings surface why a narrowed validation
+    // happened (no recon, or a recon with an empty/malformed rubric) rather than
+    // being silently discarded. The library only computes them; only the CLI prints.
+    for (const w of warnings) console.warn(`warning: ${w}`);
     console.log(`Wrote ${artifacts.length} artifact(s):`);
     for (const a of artifacts) console.log(`  + ${a}`);
     console.log(`\nRubric: ${reconPath(root)}`);
