@@ -28,7 +28,7 @@ if (state.project?.name) lines.push(`Project: ${oneLine(state.project.name)}`);
 
 if (state.hackathon?.deadline) {
   const hoursLeft = Math.round((Date.parse(state.hackathon.deadline) - Date.now()) / 3_600_000);
-  lines.push(`Deadline: ${state.hackathon.deadline} (~${hoursLeft}h left)`);
+  lines.push(`Deadline: ${oneLine(state.hackathon.deadline)} (~${hoursLeft}h left)`);
 }
 
 const done = PHASES.filter((p) => state.phases[p]?.status === 'approved');
@@ -44,7 +44,7 @@ if (resolution.outcome === 'drift') {
 
 const required = state.hackathon?.tech?.required ?? [];
 if (required.length > 0) {
-  lines.push(`Required tech (non-negotiable): ${required.slice(0, 8).join(', ')}` +
+  lines.push(`Required tech (non-negotiable): ${oneLine(required.slice(0, 8).join(', '))}` +
     (required.length > 8 ? ` +${required.length - 8} more` : ''));
 }
 
