@@ -229,7 +229,7 @@ Approval is conversational — plain language, no ceremony command. On approval:
 | **A. Empty folder** | no source files | Greenfield scaffold. Offers `git init`. |
 | **B. Agentic setup, not ours** | `CLAUDE.md` / `AGENTS.md` / `.claude/` present, no `.hackathon/` | **Adopt.** Read existing conventions first, then present a per-file merge plan. Ask per file. Extend `CLAUDE.md` by `@import`, never replacement. |
 | **C. Our project already** | `.hackathon/state.json` present | **Resume.** Print status board, reconcile drift, migrate schema if needed. Upgrade plugin-managed files only after showing a diff. |
-| **D. Mid-hackathon codebase** | source present, no `.hackathon/` | **Retrofit.** Infer stack from manifests, infer which phases are effectively complete, backfill artifacts from what exists, mark the rest `not_started`. |
+| **D. Mid-hackathon codebase** | source present, no `.hackathon/` | **Retrofit.** Infer stack from manifests. Phase statuses are not backfilled — every phase starts at `not_started`, same as greenfield, and the user manually reviews and updates `.hackathon/state.json` to reflect what already exists before running `:next`. |
 | **E. Not a git repo** | no `.git` | Offer `git init` + `.gitignore`. Never force. |
 | **F. Dirty worktree** | uncommitted changes | Warn. Offer commit / stash / branch. |
 
