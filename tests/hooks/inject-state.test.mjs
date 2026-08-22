@@ -61,6 +61,36 @@ test('hook output never exceeds 40 lines even when resume_note has embedded newl
   });
 });
 
+test('hook output never exceeds 40 lines even when deadline has embedded newlines', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.hackathon = {
+      name: 'Deadline Hack',
+      deadline: Array.from({ length: 500 }, (_, i) => `d${i}`).join('\n'),
+      tech: { required: [] },
+    };
+    await writeState(dir, s);
+
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.ok(stdout.split('\n').length <= 40, `got ${stdout.split('\n').length} lines`);
+  });
+});
+
+test('hook output never exceeds 40 lines even when a required-tech entry has embedded newlines', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.hackathon = {
+      name: 'Tech Hack',
+      deadline: null,
+      tech: { required: [Array.from({ length: 500 }, (_, i) => `t${i}`).join('\n')] },
+    };
+    await writeState(dir, s);
+
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.ok(stdout.split('\n').length <= 40, `got ${stdout.split('\n').length} lines`);
+  });
+});
+
 test('hook surfaces a resume note so a mid-phase /clear is recoverable', async () => {
   await withTmpDir(async (dir) => {
     const s = createDefaultState({ pluginVersion: '0.1.0' });
