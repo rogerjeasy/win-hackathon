@@ -6,7 +6,10 @@ agents, skills, and hooks.
 
 ## Status
 
-**Design approved. Implementation not started.**
+**M1 (Spine) complete.** The manifest, state schema, environment detection, and the
+`/win-hackathon:init`, `/win-hackathon:next`, and `/win-hackathon:status` commands plus
+the SessionStart hook are implemented and working, verified via a real plugin install.
+Run `npm test` (`node --test`) to run the test suite.
 
 The full design lives in [`docs/design/win-hackathon-plugin.md`](docs/design/win-hackathon-plugin.md).
 [`docs/design/project-idea.md`](docs/design/project-idea.md) is the original sketch it supersedes,
@@ -17,7 +20,7 @@ M2 onward:
 
 | Milestone | Contents | Usable after? |
 |---|---|---|
-| M1 — Spine | manifest, state schema, environment detection, `:init`, `:next`, `:status`, SessionStart hook | Not yet — infrastructure only |
+| M1 — Spine | manifest, state schema, environment detection, `:init`, `:next`, `:status`, SessionStart hook | **Done** — infrastructure only, no phase commands yet |
 | M2 — Front half | `:recon`, `:brainstorm`, `:describe` + ideation and scoring skills | Yes |
 | M3 — Design | `:stack`, `:architect`, `:requirements`, `:spec` + design and engineering skills | Yes |
 | M4 — Build & ship | `:build`, `:ship`, `:check`, `:pivot` + deploy skills | Yes |
