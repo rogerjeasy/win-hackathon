@@ -32,8 +32,11 @@ Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/next.mjs "$PWD" --json`
 
 ## Step 3 — Deadline awareness
 
-If `budget.total_hours` is set and the remaining time is less than the resolved phase's
-budget, say so before starting and offer `/win-hackathon:pivot`.
+`:next --json` carries no budget data — it only ever returns `{outcome, phase, drift,
+reason}`. Budget lives in `.hackathon/state.json`; read that file directly with the
+Read tool. If its `budget.total_hours` is set and the remaining time is less than the
+resolved phase's entry in `budget.phase_budget`, say so before starting and offer
+`/win-hackathon:pivot`.
 
 ## The governing rule
 
