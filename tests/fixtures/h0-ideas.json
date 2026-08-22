@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "round": 1,
+  "generated_at": "2026-06-05T11:00:00Z",
+  "criteria_ref": ".hackathon/recon.json",
+  "ideas": [
+    {
+      "id": "idea-07",
+      "name": "CareCircle",
+      "pitch": "One shared record for everyone caring for someone.",
+      "angle": "social-impact",
+      "stage_one": {
+        "pass": true,
+        "reasons": [
+          "Aurora PostgreSQL is the primary back end, not an add-on",
+          "fits the Monetizable B2C track"
+        ]
+      },
+      "thesis": "Caregiving is relational, transactional and access-controlled, so authorization belongs in the database — a key-value store cannot enforce it.",
+      "inversion": "Permissions live in the database, not the UI.",
+      "track": { "id": "b2c", "ev_note": "Identical $10,000 first prize to B2B; crowding unknown because the gallery is empty pre-announcement." },
+      "demo_moment": "The hired aide's view blocked from a financial document — captioned 'blocked by the database, not the UI'.",
+      "scores": [
+        { "criterion_id": "technical-implementation", "score": 5, "rationale": "RLS-enforced multi-tenancy, ACID medication transactions, pgvector retrieval under the same policies." },
+        { "criterion_id": "design", "score": 5, "rationale": "Calm, accessible, role-scoped views purpose-built for stressed caregivers." },
+        { "criterion_id": "impact", "score": 5, "rationale": "2.1 billion people will be 60+ by 2050; dual B2C and B2B monetization." },
+        { "criterion_id": "originality", "score": 4, "rationale": "Fair-share visibility and the diaspora digest are fresh; family care records are not new." }
+      ],
+      "feasibility_hours": 90,
+      "total": 4.75,
+      "rank": 1
+    },
+    {
+      "id": "idea-09",
+      "name": "Daily",
+      "pitch": "The social daily-prediction game.",
+      "angle": "technical-wow",
+      "stage_one": {
+        "pass": true,
+        "reasons": ["DynamoDB is the primary store", "fits the Million-scale Global track"]
+      },
+      "thesis": "A once-a-day global write spike with hot-key reads is the access pattern DynamoDB was built for, and the wrong shape for a relational engine.",
+      "inversion": "The database is chosen by the access pattern, not the data model.",
+      "track": { "id": "million-scale", "ev_note": "Same $10,000 first prize; the architecture story is simpler to demo than to build." },
+      "demo_moment": "A live counter of global predictions resolving at the daily cutoff.",
+      "scores": [
+        { "criterion_id": "technical-implementation", "score": 4, "rationale": "Single-table design with a considered partition key; less depth than a full RLS story." },
+        { "criterion_id": "design", "score": 4, "rationale": "Playful and clear, but a narrower surface." },
+        { "criterion_id": "impact", "score": 3, "rationale": "Entertainment; real but shallow stakes." },
+        { "criterion_id": "originality", "score": 4, "rationale": "Prediction games exist; the daily-global framing is the twist." }
+      ],
+      "feasibility_hours": 60,
+      "total": 3.75,
+      "rank": 2
+    }
+  ],
+  "disqualified": [
+    {
+      "id": "idea-03",
+      "name": "PromptShelf",
+      "pitch": "A prompt library with semantic search.",
+      "stage_one": {
+        "pass": false,
+        "reasons": [
+          "no required AWS database in the design — it stores prompts in a managed vector service",
+          "thin wrapper over an existing product category"
+        ]
+      }
+    }
+  ]
+}
