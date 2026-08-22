@@ -26,12 +26,27 @@ export function validateIdeas(doc, recon) {
   if (rejected === null) errors.push('disqualified must be an array (empty is allowed)');
   if (scored === null || rejected === null) return { valid: false, errors, warnings };
 
+  const hasRecon = recon !== undefined && recon !== null;
   const rubricIds = (recon?.criteria?.items ?? []).map((i) => i.id);
   const maxScore = recon?.criteria?.max_base_score;
 
+  // Rubric-membership and score-ceiling checks have independent failure causes — an
+  // absent recon skips both, but a malformed recon can supply one without the other
+  // (e.g. `criteria.items` present, `max_base_score` missing). Warn on each separately,
+  // and say plainly whether recon was supplied at all or merely malformed, so a caller
+  // debugging a bad recon integration is told the truth about what happened.
   if (rubricIds.length === 0) {
     warnings.push(
-      'no recon supplied — rubric-membership and score-ceiling checks were skipped',
+      hasRecon
+        ? 'recon supplied but criteria.items is empty or malformed — rubric-membership checks were skipped'
+        : 'no recon supplied — rubric-membership checks were skipped',
+    );
+  }
+  if (typeof maxScore !== 'number') {
+    warnings.push(
+      hasRecon
+        ? 'recon supplied but criteria.max_base_score is missing or not a number — score-ceiling checks were skipped'
+        : 'no recon supplied — score-ceiling checks were skipped',
     );
   }
 
