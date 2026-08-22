@@ -22,7 +22,7 @@ test('init --apply creates state, then status reports phase one', async () => {
   await withTmpDir(async (dir) => {
     await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
     const raw = await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8');
-    assert.equal(JSON.parse(raw).schema_version, 1);
+    assert.equal(JSON.parse(raw).schema_version, 2);
 
     const { stdout } = await run('node', [path.join(scripts, 'status.mjs'), dir]);
     assert.match(stdout, /recon/);
