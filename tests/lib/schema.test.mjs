@@ -52,3 +52,45 @@ test('PHASE_STATUSES is the exact set from the spec', () => {
   assert.deepEqual(PHASE_STATUSES,
     ['not_started', 'in_progress', 'awaiting_approval', 'approved', 'skipped']);
 });
+
+// Regression: a hand-edited state.json with `"artifacts": "docs/architecture.md"` (a
+// string, not an array) used to pass validation as {valid: true}. resolve-next.mjs's
+// `for (const rel of artifacts)` then iterated the string's characters instead of
+// throwing or being rejected earlier — producing nonsense drift reports, or crashing
+// outright for other malformed shapes. Every phase.artifacts must be an array of strings.
+test('validateState rejects a phase whose artifacts is a string instead of an array', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.phases.recon.status = 'approved';
+  s.phases.recon.artifacts = 'docs/architecture.md';
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.match(errors.join(' '), /recon/);
+  assert.match(errors.join(' '), /artifacts/);
+});
+
+test('validateState rejects a phase whose artifacts is null', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.phases.recon.status = 'approved';
+  s.phases.recon.artifacts = null;
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.match(errors.join(' '), /recon/);
+  assert.match(errors.join(' '), /artifacts/);
+});
+
+test('validateState rejects a phase whose artifacts array contains a non-string', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.phases.recon.status = 'approved';
+  s.phases.recon.artifacts = ['fine.md', 42];
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.match(errors.join(' '), /artifacts/);
+});
+
+test('validateState accepts a phase with a proper artifacts array', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.phases.recon.status = 'approved';
+  s.phases.recon.artifacts = ['docs/architecture.md', 'docs/brief.md'];
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, true, errors.join('; '));
+});

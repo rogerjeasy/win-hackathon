@@ -111,3 +111,49 @@ test('hook exits 0 and stays quiet on a corrupt state file', async () => {
     assert.match(stdout, /could not be read/i);
   });
 });
+
+// Regression: a hand-edited state.json that is valid JSON but has a malformed
+// `artifacts` field (a string instead of an array — exactly the edit commands/init.md's
+// retrofit instructions invite a person or agent to make by hand) used to either produce
+// nonsense drift reports or crash resolve-next.mjs's missingArtifacts() with an unhandled
+// TypeError, printing a raw stack trace on every SessionStart. The hook must never crash
+// a session: it should degrade to a short, clear message and exit 0.
+test('hook exits 0 with a clear message when artifacts is a string instead of an array', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.phases.recon.status = 'approved';
+    s.phases.recon.artifacts = 'docs/architecture.md';
+    // Bypass writeState (which would refuse this) to simulate a hand-edited file,
+    // the same way a user following the retrofit instructions might type it.
+    await writeFile(path.join(dir, '.hackathon', 'state.json'), JSON.stringify(s, null, 2), 'utf8');
+
+    const { stdout, code } = await run('node', [hook], { cwd: dir })
+      .then((r) => ({ ...r, code: 0 }))
+      .catch((err) => ({ stdout: err.stdout ?? '', code: err.code ?? 1 }));
+
+    assert.equal(code, 0, 'hook must exit 0 even when state is malformed');
+    assert.match(stdout, /win-hackathon/i);
+    assert.doesNotMatch(stdout, /TypeError|at \w+ \(|\.mjs:\d+/,
+      'must show a short clear message, not a raw stack trace');
+  });
+});
+
+test('hook exits 0 with a clear message when artifacts is null', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.phases.recon.status = 'approved';
+    s.phases.recon.artifacts = null;
+    await writeFile(path.join(dir, '.hackathon', 'state.json'), JSON.stringify(s, null, 2), 'utf8');
+
+    const { stdout, code } = await run('node', [hook], { cwd: dir })
+      .then((r) => ({ ...r, code: 0 }))
+      .catch((err) => ({ stdout: err.stdout ?? '', code: err.code ?? 1 }));
+
+    assert.equal(code, 0, 'hook must exit 0 even when state is malformed');
+    assert.match(stdout, /win-hackathon/i);
+    assert.doesNotMatch(stdout, /TypeError|at \w+ \(|\.mjs:\d+/,
+      'must show a short clear message, not a raw stack trace');
+  });
+});

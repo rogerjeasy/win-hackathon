@@ -45,6 +45,13 @@ export function validateState(state) {
     if (!PHASE_STATUSES.includes(phase.status)) {
       errors.push(`phase "${name}" has invalid status "${phase.status}"`);
     }
+    if (phase.artifacts !== undefined) {
+      const isArrayOfStrings = Array.isArray(phase.artifacts)
+        && phase.artifacts.every((a) => typeof a === 'string');
+      if (!isArrayOfStrings) {
+        errors.push(`phase "${name}" has invalid artifacts (must be an array of strings)`);
+      }
+    }
   }
   if (!['solo', 'team'].includes(state.mode)) {
     errors.push(`mode must be solo or team, got "${state.mode}"`);

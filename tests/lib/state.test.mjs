@@ -68,6 +68,35 @@ test('readState throws a clear error on corrupt JSON', async () => {
   });
 });
 
+// Regression: readState() used to hand back whatever JSON.parse produced without
+// checking it was a valid win-hackathon state. A hand-edited state.json that is
+// syntactically valid JSON but semantically malformed (e.g. artifacts written as a
+// bare string instead of an array — the natural typo when following the retrofit
+// instructions in commands/init.md) passed straight through to callers like
+// resolve-next.mjs, which then crashed or produced nonsense. readState must now
+// validate what it reads, the same way writeState already validates what it writes.
+test('readState throws a clear error when JSON is valid but the state shape is not (bad artifacts)', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.phases.recon.status = 'approved';
+    s.phases.recon.artifacts = 'docs/architecture.md'; // should be an array of strings
+    await mkdir(path.dirname(statePath(dir)), { recursive: true });
+    // Bypass writeState (which would refuse this) to simulate a hand-edited file.
+    await writeFile(statePath(dir), JSON.stringify(s, null, 2), 'utf8');
+    await assert.rejects(() => readState(dir), /valid win-hackathon state/i);
+  });
+});
+
+test('readState throws a clear error when a phase status is hand-edited to something invalid', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.phases.recon.status = 'done'; // not one of PHASE_STATUSES
+    await mkdir(path.dirname(statePath(dir)), { recursive: true });
+    await writeFile(statePath(dir), JSON.stringify(s, null, 2), 'utf8');
+    await assert.rejects(() => readState(dir), /valid win-hackathon state/i);
+  });
+});
+
 test('migrateState reports no migration for a current-version state', () => {
   const s = createDefaultState({ pluginVersion: '0.1.0' });
   const r = migrateState(s);

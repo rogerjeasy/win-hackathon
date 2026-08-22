@@ -11,11 +11,19 @@ export async function readState(root) {
     if (err.code === 'ENOENT') return null;
     throw err;
   }
+  let parsed;
   try {
-    return JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     throw new Error(`${statePath(root)} could not be parsed as JSON`);
   }
+  const { valid, errors } = validateState(parsed);
+  if (!valid) {
+    throw new Error(
+      `${statePath(root)} is valid JSON but not a valid win-hackathon state: ${errors.join('; ')}`,
+    );
+  }
+  return parsed;
 }
 
 export async function writeState(root, state) {
