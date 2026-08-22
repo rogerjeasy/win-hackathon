@@ -70,6 +70,30 @@ test('the recon agent is told to check pages beyond the rules', async () => {
   }
 });
 
+test('the recon agent states its final-message contract once, in the Output section, without the opening contradicting it', async () => {
+  const content = await read('hackathon-recon.md');
+  const outputIdx = content.indexOf('## Output');
+  assert.ok(outputIdx > -1, 'hackathon-recon.md needs an Output section');
+  const preamble = content.slice(0, outputIdx);
+  const outputSection = content.slice(outputIdx);
+
+  // The actual contract: the agent's final message is a file path plus a summary of what
+  // it could not resolve. This must live in the Output section.
+  assert.match(outputSection, /final message/i);
+  assert.match(outputSection, /path/i);
+  assert.match(outputSection, /summary/i);
+  assert.match(outputSection, /unresolved|could not resolve/i);
+
+  // The opening must not itself claim the agent's final message IS the JSON payload with
+  // no summary — that's the exact contradiction this test guards against. The "only the
+  // JSON" language is fine when scoped to the file on disk, not to what gets returned.
+  assert.doesNotMatch(
+    preamble,
+    /you return only the (json|payload)/i,
+    'the opening must not claim the agent itself returns the JSON payload — the file does, per the Output section'
+  );
+});
+
 test('the idea generator is given exactly one angle and told not to score', async () => {
   const content = await read('idea-generator.md');
   assert.match(content, /angle/i);
