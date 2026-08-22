@@ -140,3 +140,33 @@ test('renderers tolerate a sparse extraction', async () => {
     assert.doesNotMatch(out, /undefined/);
   }
 });
+
+test('a quote with an embedded newline followed by # or - stays inside the blockquote', async () => {
+  const r = await golden();
+  const hostile = 'The host says this counts.\n# Not a real heading\n- Not a real list item';
+  r.criteria.items[0].quote = hostile;
+  const out = renderCriteria(r);
+
+  const lines = out.split('\n');
+  const quoteLines = lines.filter((l) => l.startsWith('> '));
+  // Every physical line of the hostile quote must appear with its own '> ' prefix.
+  assert.ok(quoteLines.includes('> The host says this counts.'));
+  assert.ok(quoteLines.includes('> # Not a real heading'));
+  assert.ok(quoteLines.includes('> - Not a real list item'));
+  // None of the hostile lines may escape to top level (bare heading/list line).
+  assert.ok(!lines.includes('# Not a real heading'));
+  assert.ok(!lines.includes('- Not a real list item'));
+});
+
+test('a quote with a pipe reaching the criteria map table is escaped, not a new column', async () => {
+  const r = await golden();
+  r.criteria.items[0].quote = 'Score based on craftsmanship | originality | polish';
+  const out = renderCriteriaMap(r);
+
+  const row = out.split('\n').find((l) => l.includes('Technical Implementation'));
+  // The literal pipes from the quote must be escaped so they don't create extra columns.
+  assert.ok(row.includes('craftsmanship \\| originality \\| polish'));
+  // A correctly-escaped row still has exactly 4 real columns (5 pipe-delimiters incl. edges).
+  const unescaped = row.replace(/\\\|/g, '');
+  assert.equal(unescaped.split('|').length - 1, 5);
+});
