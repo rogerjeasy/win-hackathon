@@ -1,0 +1,336 @@
+{
+  "schema_version": 1,
+  "source": {
+    "url": "https://h01.devpost.com",
+    "pages_fetched": [
+      { "path": "/", "method": "webfetch", "fetched_at": "2026-06-05T09:00:00Z" },
+      { "path": "/rules", "method": "webfetch", "fetched_at": "2026-06-05T09:00:12Z" },
+      { "path": "/resources", "method": "webfetch", "fetched_at": "2026-06-05T09:00:25Z" },
+      { "path": "/project-gallery", "method": "webfetch", "fetched_at": "2026-06-05T09:00:31Z" }
+    ],
+    "pages_failed": []
+  },
+  "identity": {
+    "name": "H0: Hack the Zero Stack with Vercel v0 and AWS Databases",
+    "host": "Amazon Web Services",
+    "administrator": "Devpost",
+    "theme_tags": ["Databases", "Open Ended", "Web"]
+  },
+  "dates": [
+    {
+      "label": "submission deadline",
+      "at": "2026-06-29T17:00:00-07:00",
+      "kind": "hard",
+      "quote": "Submission Period: May 27, 2026 (11:00 am Pacific Time) – June 29, 2026 (5:00 pm Pacific Time)"
+    },
+    {
+      "label": "credit request form closes",
+      "at": "2026-06-26T12:00:00-07:00",
+      "kind": "action",
+      "quote": "In order to request AWS Promotional Credits, you must complete the form at: https://forms.gle/ozhbhvaXAxHxu3kMA by June 26th at 12pm PT."
+    },
+    {
+      "label": "v0 credits expire",
+      "at": "2026-07-13T23:59:00-07:00",
+      "kind": "informational",
+      "quote": "v0 Credits are not redeemable for cash and must be redeemed by July 13, 2026."
+    },
+    {
+      "label": "judging period ends",
+      "at": "2026-07-24T17:00:00-07:00",
+      "kind": "informational",
+      "quote": "Judging Period: June 30, 2026 (10:00 am Pacific Time) – July 24, 2026 (5:00 pm Pacific Time)"
+    }
+  ],
+  "stage_one": {
+    "exists": true,
+    "quote": "The first stage will determine via pass/fail whether the ideas meet a baseline level of viability, in that the Project reasonably fits the theme and reasonably applies the required APIs/SDKs featured in the Hackathon.",
+    "gates": [
+      { "id": "theme-fit", "requirement": "Project reasonably fits the theme" },
+      { "id": "required-api", "requirement": "Project reasonably applies the required APIs/SDKs" }
+    ]
+  },
+  "criteria": {
+    "weighting": "equal",
+    "tiebreak": "listed_order",
+    "max_base_score": 5,
+    "items": [
+      {
+        "rank": 1,
+        "id": "technical-implementation",
+        "name": "Technical Implementation",
+        "weight": 0.25,
+        "quote": "Does the project demonstrate genuine software craftsmanship? Is the chosen AWS Database (Aurora, Aurora DSQL, or DynamoDB) integrated thoughtfully — with a data model, schema, or query design that reflects a deliberate architectural choice?",
+        "signals": [
+          "a deliberate data model, not a default",
+          "Vercel deployment beyond a basic setup",
+          "clean, maintainable, purposeful architecture"
+        ],
+        "evidence_slots": []
+      },
+      {
+        "rank": 2,
+        "id": "design",
+        "name": "Design",
+        "weight": 0.25,
+        "quote": "Is the user experience intuitive and well-considered? Does the front-end feel designed in relation to the back-end? Is there a cohesive, intentional balance between the two layers that reflects full-stack thinking?",
+        "signals": ["front-end designed in relation to the back-end", "full-stack coherence"],
+        "evidence_slots": []
+      },
+      {
+        "rank": 3,
+        "id": "impact",
+        "name": "Impact & Real-World Applicability",
+        "weight": 0.25,
+        "quote": "Does the project solve a meaningful problem for a real audience? Does the use of scalable database infrastructure and frontend deployment make the solution more viable — not just functional, but potentially shippable?",
+        "signals": ["a real, nameable audience", "shippable, not just functional"],
+        "evidence_slots": []
+      },
+      {
+        "rank": 4,
+        "id": "originality",
+        "name": "Originality",
+        "weight": 0.25,
+        "quote": "How creative and original is the concept? Does the project demonstrate a genuine insight about what's possible with this stack? If the idea isn't new, how significantly does this implementation push it forward?",
+        "signals": ["a genuine insight about the stack"],
+        "evidence_slots": []
+      }
+    ]
+  },
+  "bonus": {
+    "available": true,
+    "max_points": 0.6,
+    "per_item_points": 0.2,
+    "max_score_with_bonus": 5.6,
+    "kinds": ["blog", "podcast", "video"],
+    "platforms": ["builder.aws.com", "medium.com", "dev.to", "YouTube", "LinkedIn"],
+    "must_be_public": true,
+    "required_disclosure": "You must include language that says you created the piece of content for the purposes of entering this hackathon.",
+    "hashtag": "#H0Hackathon",
+    "quote": "Submissions that advance to Stage Two may earn up to 0.6 additional points on top of their score by publishing a piece of content (blog, podcast, video) covering how the project was built using one of the required databases and Vercel on any public platform."
+  },
+  "tech": {
+    "required": [
+      {
+        "name": "AWS Database",
+        "one_of": ["Aurora PostgreSQL", "Aurora DSQL", "DynamoDB"],
+        "quote": "all projects must use one of three designated Amazon Web Services Databases (Aurora, Aurora DSQL, or DynamoDB) as the primary back end"
+      },
+      {
+        "name": "Vercel or v0.app deployment",
+        "quote": "and deploy their front end on Vercel or v0.app"
+      }
+    ],
+    "bonus": [],
+    "forbidden": [],
+    "encouraged": [
+      {
+        "name": "v0",
+        "note": "recommended for speed, not required",
+        "quote": "You must deploy on Vercel, but v0 is one of several ways to do that. v0 is recommended for speed, not required."
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "id": "b2c",
+      "name": "Monetizable B2C app",
+      "description": "A business-to-consumer application for industries like ecommerce, travel, retail, or hospitality.",
+      "prizes": [
+        { "place": "First", "cash_usd": 10000, "other": "$10,000 AWS Credits" },
+        { "place": "Second", "cash_usd": 5000, "other": "$5,000 AWS Credits" },
+        { "place": "Third", "cash_usd": 3000, "other": "$3,000 AWS Credits" }
+      ]
+    },
+    {
+      "id": "b2b",
+      "name": "Monetizable B2B app",
+      "description": "A business-to-business application solving challenges in finance, technology, healthcare, insurance, marketing, or any other sector.",
+      "prizes": [
+        { "place": "First", "cash_usd": 10000, "other": "$10,000 AWS Credits" },
+        { "place": "Second", "cash_usd": 5000, "other": "$5,000 AWS Credits" },
+        { "place": "Third", "cash_usd": 3000, "other": "$3,000 AWS Credits" }
+      ]
+    },
+    {
+      "id": "million-scale",
+      "name": "Million-scale global app",
+      "description": "Gaming, social media, or entertainment, architected to scale to millions of users globally.",
+      "prizes": [
+        { "place": "First", "cash_usd": 10000, "other": "$10,000 AWS Credits" },
+        { "place": "Second", "cash_usd": 5000, "other": "$5,000 AWS Credits" },
+        { "place": "Third", "cash_usd": 3000, "other": "$3,000 AWS Credits" }
+      ]
+    },
+    {
+      "id": "open-innovation",
+      "name": "Open innovation",
+      "description": "Any full-stack application that creatively implements the Vercel/v0 and AWS Databases stack.",
+      "prizes": [
+        { "place": "First", "cash_usd": 10000, "other": "$10,000 AWS Credits" },
+        { "place": "Second", "cash_usd": 5000, "other": "$5,000 AWS Credits" },
+        { "place": "Third", "cash_usd": 3000, "other": "$3,000 AWS Credits" }
+      ]
+    }
+  ],
+  "open_prizes": [
+    { "id": "best-technical-implementation", "name": "Best Technical Implementation", "cash_usd": 2000, "eligible": "all submissions" },
+    { "id": "best-design", "name": "Best Design", "cash_usd": 2000, "eligible": "all submissions" },
+    { "id": "most-impactful", "name": "Most Impactful", "cash_usd": 2000, "eligible": "all submissions" },
+    { "id": "most-original", "name": "Most Original", "cash_usd": 2000, "eligible": "all submissions" }
+  ],
+  "prize_rules": {
+    "one_prize_per_project": true,
+    "quote": "Each Project is eligible to win one (1) prize."
+  },
+  "landscape": {
+    "gallery_available": false,
+    "gallery_note": "Devpost project galleries stay empty until winners are announced; per-track crowding is not observable during a live hackathon.",
+    "total_participants": 8711,
+    "participants_caveat": "registrations, not submissions — a weak proxy for field size",
+    "entries_observed": null,
+    "per_track": [],
+    "observed_at": "2026-06-05T09:00:31Z",
+    "prior_editions": []
+  },
+  "judges": [
+    { "name": "Joseph Idziorek", "title": "Director, Product Management, AWS Databases", "org": "AWS" },
+    { "name": "Tim Stoakes", "title": "Sr. Principal Technologist", "org": "AWS" },
+    { "name": "Karthik Vijayraghavan", "title": "Sr Manager, NoSQL Solutions Architects", "org": "AWS" },
+    { "name": "Aditya Samant", "title": "Principal Database Specialist Solutions Architect, AWS Databases", "org": "AWS" },
+    { "name": "David Castro", "title": "Principal Product Manager, AWS Databases", "org": "AWS" },
+    { "name": "Tony Gibbs", "title": "Senior Manager, Specialist Solutions Architects", "org": "AWS" },
+    { "name": "Rohan Bhatia", "title": "Principal Product Manager, AWS Databases", "org": "AWS" },
+    { "name": "Ravi Yadav", "title": "Principal Specialist, Data & AI", "org": "AWS" },
+    { "name": "Gowri Balasubramanian", "title": "Sr. Manager, Solutions Architecture", "org": "AWS" },
+    { "name": "Abhinav Anand", "title": "Technical Product Marketing", "org": "AWS" }
+  ],
+  "panel_read": "All ten judges are AWS database leadership — product managers, principal technologists and database specialist solutions architects. The database-architecture story is the strongest card: a deliberate data model, a defensible reason this engine and not another, and evidence the schema was designed rather than generated. Surface it early and everywhere.",
+  "submission_requirements": [
+    {
+      "id": "text-description",
+      "hard": true,
+      "requirement": "A text description of the features and functionality that explicitly names the AWS Database used.",
+      "quote": "Include a text description that should explain the features and functionality of your Project. Include which database(s) you used in your Project"
+    },
+    {
+      "id": "demo-video",
+      "hard": true,
+      "requirement": "Under three minutes, public on YouTube, explains the AWS Database used, and shows the project functioning.",
+      "quote": "should be less than three (3) minutes … should explain the AWS Database(s) used in the submission … must be uploaded to and made publicly visible on YouTube"
+    },
+    {
+      "id": "architecture-diagram",
+      "hard": true,
+      "requirement": "A diagram showing how the application connects to back-end components.",
+      "quote": "Include an Architecture Diagram that shows how the project application connects to back-end components"
+    },
+    {
+      "id": "vercel-project-link",
+      "hard": true,
+      "requirement": "A link to the published Vercel project.",
+      "quote": "Include a link to your published Vercel Project"
+    },
+    {
+      "id": "vercel-team-id",
+      "hard": true,
+      "requirement": "The Vercel Team ID.",
+      "quote": "Include your Vercel Team ID"
+    },
+    {
+      "id": "db-proof-screenshot",
+      "hard": true,
+      "requirement": "A Storage Configuration screenshot proving AWS Database usage.",
+      "quote": "Include the following screenshots of your v0/Vercel Project: Storage Configuration to prove AWS Database usage"
+    }
+  ],
+  "submission_form": {
+    "fields": [
+      { "id": "project_name", "limit": 60, "unit": "characters" },
+      { "id": "elevator_pitch", "limit": 200, "unit": "characters" },
+      {
+        "id": "about",
+        "limit": null,
+        "format": "markdown",
+        "default_headings": [
+          "Inspiration",
+          "What it does",
+          "How we built it",
+          "Challenges we ran into",
+          "Accomplishments that we're proud of",
+          "What we learned",
+          "What's next"
+        ]
+      }
+    ],
+    "gallery": { "max_images": 15, "ratio": "3:2", "max_mb": 5 }
+  },
+  "eligibility": {
+    "excluded_regions": [
+      "Argentina", "Italy", "Philippines", "Thailand", "Vietnam", "Syria", "Brazil",
+      "Quebec", "Russia", "Crimea", "Cuba", "Iran", "North Korea"
+    ],
+    "notes": [
+      "Any Judge, or company or individual that employs a Judge, is ineligible",
+      "Employees and immediate family of the Sponsor and Administrator are ineligible"
+    ],
+    "quote": "Individuals who are residents of, or Organizations domiciled in, a country, state, province or territory where the laws of the United States or local law prohibits participating or receiving a prize in the Hackathon"
+  },
+  "constraints": [
+    {
+      "id": "judge-testing",
+      "constraint": "Judges may score on the description, images and video alone. The project must be free and unrestricted to test, with credentials supplied if it is private.",
+      "implication": "The written submission must stand on its own, and a no-account demo path is a rule rather than a nicety.",
+      "quote": "Judges are not required to test the Project and may choose to judge based solely on the text description, images, and video provided in the Submission."
+    },
+    {
+      "id": "new-and-existing",
+      "constraint": "A pre-existing project must have adopted the required integration after the submission period opened, and evidence of in-window work may be demanded.",
+      "implication": "Keep commit history inside the submission window.",
+      "quote": "The administrator and/or the Sponsor reserve the right to request evidence of work completed during the Submission Period; failure to provide may result in disqualification."
+    },
+    {
+      "id": "one-track-per-project",
+      "constraint": "Each project may be submitted to exactly one track.",
+      "implication": "Track choice is a single irreversible bet, so it is made deliberately at :describe.",
+      "quote": "Each project can only be submitted to one Track."
+    },
+    {
+      "id": "english",
+      "constraint": "All submission materials must be in English, or accompanied by an English translation.",
+      "implication": "No action needed; noted for completeness.",
+      "quote": "All Submission materials must be in English or, if not in English, the Entrant must provide an English translation"
+    }
+  ],
+  "host_guidance": [
+    {
+      "topic": "architecture diagram",
+      "source": "/resources FAQ",
+      "guidance": "Label every box with both what it is (the component type) and what it does. Show direction of calls with arrows, bidirectional only when it actually is. Group cloud-provider services in a dashed box. The AWS Architecture Icons set and draw.io are recommended."
+    },
+    {
+      "topic": "AI-generated code",
+      "source": "/resources FAQ",
+      "guidance": "Using v0, Copilot or Cursor is allowed and encouraged, but submissions with no meaningful engineering decisions will score poorly on Technical Implementation."
+    },
+    {
+      "topic": "multiple databases",
+      "source": "/resources FAQ",
+      "guidance": "A project may use more than one AWS Database; judges evaluate the architecture including the choice of database."
+    },
+    {
+      "topic": "credential handling",
+      "source": "/resources FAQ",
+      "guidance": "Never commit credentials to the repository, which must be public for review. The Vercel Marketplace OIDC integration is the most secure option — IAM roles with no stored keys."
+    }
+  ],
+  "ambiguities": [
+    {
+      "where": "Prizes table, Monetizable B2B second and third place",
+      "issue": "The eligible-submissions column for both rows reads 'All eligible submissions that enter the Monetizable B2C App Track', which contradicts the row heading.",
+      "likely_reading": "A copy-paste error; B2B prizes are awarded to B2B entries.",
+      "remedy": "The rules invite a written request for clarification before the deadline: 'If at any time prior to the deadline, an Entrant or prospective Entrant believes that any term in the Official Rules is or may be ambiguous, they must submit a written request for clarification.'"
+    }
+  ],
+  "unresolved": []
+}
