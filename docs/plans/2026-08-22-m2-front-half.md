@@ -133,19 +133,28 @@ test('validateState accepts a null hackathon (nothing reconned yet)', () => {
   assert.equal(validateState(s).valid, true);
 });
 
-test('validateState rejects a hackathon deadline without an explicit offset', () => {
+test('validateState accepts a partial hackathon block', () => {
+  // Controller ruling (pre-flight): the state layer validates only what is present.
+  // The binding offset guard lives in recon-schema.mjs, where agent-authored dates enter;
+  // state.hackathon.deadline is copied from an already-validated hard date. Enforcing it
+  // twice would make it impossible for the M1 hook tests to write the malformed states
+  // they exist to prove the hook survives.
   const s = createDefaultState({ pluginVersion: '0.1.0' });
-  s.hackathon = {
-    name: 'H0', url: 'https://h01.devpost.com',
-    deadline: '2026-06-29T17:00:00',
-    criteria_ids: ['technical-implementation'], tiebreak: 'listed_order',
-  };
+  s.hackathon = { name: 'Big Hack', deadline: null, tech: { required: ['Bedrock'] } };
   const { valid, errors } = validateState(s);
-  assert.equal(valid, false);
-  assert.ok(errors.some((e) => /offset/.test(e)));
+  assert.deepEqual(errors, []);
+  assert.equal(valid, true);
 });
 
-test('validateState rejects an unknown tiebreak', () => {
+test('validateState still rejects a hackathon with no name', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.hackathon = { name: '', deadline: null };
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /name/.test(e)));
+});
+
+test('validateState rejects an unknown tiebreak when one is present', () => {
   const s = createDefaultState({ pluginVersion: '0.1.0' });
   s.hackathon = {
     name: 'H0', url: 'https://h01.devpost.com',
@@ -371,26 +380,27 @@ In `validateState`, insert these two blocks immediately before the final `mode` 
     }
   }
 
-  // hackathon is null until :recon runs; once populated it is a digest, and the
-  // deadline is the one field that must never be ambiguous.
+  // hackathon is null until :recon runs. Once populated it is a digest assembled by
+  // buildHackathonDigest from an already-validated recon.json, so this layer checks only
+  // what is present rather than re-running recon-schema's guarantees. In particular it does
+  // NOT offset-check `deadline`: that guard belongs in recon-schema.mjs, where agent-authored
+  // dates actually enter the system, and duplicating it here would make it impossible to
+  // persist the malformed states the SessionStart hook's regression tests need.
   if (state.hackathon !== null && state.hackathon !== undefined) {
     const h = state.hackathon;
     if (typeof h.name !== 'string' || h.name === '') {
       errors.push('hackathon.name must be a non-empty string');
     }
-    if (typeof h.url !== 'string' || h.url === '') {
-      errors.push('hackathon.url must be a non-empty string');
-    }
-    if (!hasExplicitOffset(h.deadline)) {
-      errors.push('hackathon.deadline must be ISO 8601 with an explicit UTC offset');
+    if (h.url !== undefined && typeof h.url !== 'string') {
+      errors.push('hackathon.url must be a string when present');
     }
     if (h.next_action_deadline != null && !hasExplicitOffset(h.next_action_deadline.at)) {
       errors.push('hackathon.next_action_deadline.at must be ISO 8601 with an explicit UTC offset');
     }
-    if (!Array.isArray(h.criteria_ids)) {
-      errors.push('hackathon.criteria_ids must be an array');
+    if (h.criteria_ids !== undefined && !Array.isArray(h.criteria_ids)) {
+      errors.push('hackathon.criteria_ids must be an array when present');
     }
-    if (!TIEBREAKS.includes(h.tiebreak)) {
+    if (h.tiebreak !== undefined && !TIEBREAKS.includes(h.tiebreak)) {
       errors.push(`hackathon.tiebreak must be one of ${TIEBREAKS.join(', ')}, got "${h.tiebreak}"`);
     }
   }
@@ -1587,10 +1597,9 @@ export function renderCriteria(recon) {
 export function renderCriteriaMap(recon) {
   const c = recon.criteria ?? {};
   const items = byRank(c.items);
-  const name = recon.identity?.name ? 'this project' : 'this project';
   const lines = [];
 
-  lines.push(`| # | Criterion | What the host asks | How ${name} wins it |`);
+  lines.push('| # | Criterion | What the host asks | How this project wins it |');
   lines.push('|---|---|---|---|');
   for (const item of items) {
     const marker = item.rank === 1 && c.tiebreak === 'listed_order' ? ` ${TIEBREAK_MARKER}` : '';
