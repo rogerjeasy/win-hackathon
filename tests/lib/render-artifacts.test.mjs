@@ -2,11 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
-  renderBrief, renderRules, renderCriteria, renderCriteriaMap, TIEBREAK_MARKER,
+  renderBrief, renderRules, renderCriteria, renderCriteriaMap, TIEBREAK_MARKER, renderIdeas,
 } from '../../scripts/lib/render-artifacts.mjs';
 
 async function golden() {
   const raw = await readFile(new URL('../fixtures/h0-recon.json', import.meta.url), 'utf8');
+  return JSON.parse(raw);
+}
+
+async function goldenIdeas() {
+  const raw = await readFile(new URL('../fixtures/h0-ideas.json', import.meta.url), 'utf8');
   return JSON.parse(raw);
 }
 
@@ -169,4 +174,60 @@ test('a quote with a pipe reaching the criteria map table is escaped, not a new 
   // A correctly-escaped row still has exactly 4 real columns (5 pipe-delimiters incl. edges).
   const unescaped = row.replace(/\\\|/g, '');
   assert.equal(unescaped.split('|').length - 1, 5);
+});
+
+test('the shortlist uses the scannable one-line format', async () => {
+  const out = renderIdeas(await goldenIdeas(), await golden());
+  // "N. Name — pitch · Track · Primary tech" — the format that survived real use.
+  assert.match(out, /1\. \*\*CareCircle\*\* — One shared record for everyone caring for someone\. · b2c/);
+});
+
+test('the shortlist is ordered by rank', async () => {
+  const d = await goldenIdeas();
+  d.ideas.reverse();
+  const out = renderIdeas(d, await golden());
+  assert.ok(out.indexOf('CareCircle') < out.indexOf('Daily'));
+});
+
+test('every scored idea shows its thesis, inversion and demo moment', async () => {
+  const d = await goldenIdeas();
+  const out = renderIdeas(d, await golden());
+  for (const idea of d.ideas) {
+    assert.ok(out.includes(idea.thesis), `missing thesis for ${idea.name}`);
+    assert.ok(out.includes(idea.inversion), `missing inversion for ${idea.name}`);
+    assert.ok(out.includes(idea.demo_moment), `missing demo moment for ${idea.name}`);
+  }
+});
+
+test('disqualified ideas are listed with their reasons, not hidden', async () => {
+  const out = renderIdeas(await goldenIdeas(), await golden());
+  assert.match(out, /PromptShelf/);
+  assert.match(out, /Disqualified/);
+  assert.match(out, /no required AWS database/);
+});
+
+test('disqualified ideas never show a score', async () => {
+  const out = renderIdeas(await goldenIdeas(), await golden());
+  const section = out.slice(out.indexOf('Disqualified'));
+  assert.doesNotMatch(section, /\btotal\b/i);
+});
+
+test('the round number appears so preserved rounds are distinguishable', async () => {
+  const d = await goldenIdeas();
+  d.round = 3;
+  assert.match(renderIdeas(d, await golden()), /[Rr]ound 3/);
+});
+
+test('a round with nothing scored says so plainly', async () => {
+  const d = await goldenIdeas();
+  d.ideas = [];
+  const out = renderIdeas(d, await golden());
+  assert.match(out, /No idea (survived|passed)/i);
+  assert.doesNotMatch(out, /undefined/);
+});
+
+test('renderIdeas works without a rubric', async () => {
+  const out = renderIdeas(await goldenIdeas());
+  assert.ok(out.length > 0);
+  assert.doesNotMatch(out, /undefined/);
 });
