@@ -70,6 +70,19 @@ test('init command gives git-init its own consent framing, not the file/marker o
     'git initialization is a distinct consent-gated action and needs its own instructions');
 });
 
+test('init command names "." as the git-init consent token', async () => {
+  const content = await readFile(path.join(commandsDir, 'init.md'), 'utf8');
+  // Regression: scripts/lib/init-plan.mjs's git-init action carries path: '.', which is
+  // also the literal --consent token an agent must pass to approve it. The docs never
+  // said so explicitly, so an agent writing the --consent list from prose had no way to
+  // know to include a bare "." for git-init — a space-separated approval list like
+  // "CLAUDE.md, AGENTS.md" would silently never include it.
+  assert.match(content, /consent token/i,
+    'must explicitly name a consent token for git-init, not just describe the action');
+  assert.match(content, /`\.`/,
+    'must name the literal "." as that consent token');
+});
+
 test('next command sources budget from state.json, not from :next --json', async () => {
   const content = await readFile(path.join(commandsDir, 'next.md'), 'utf8');
   // Regression: resolveNext() only ever returns {outcome, phase, drift, reason} — no
