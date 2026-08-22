@@ -22,17 +22,17 @@ angles diverge, which is the point.
 
 ## The three tests
 
-**The inversion test.** Every winner in the corpus can be stated as "X, not Y" in one
+**The inversion test.** Nearly every winner in the corpus can be stated as "X, not Y" in one
 sentence: the model goes to the data, not the data to the model; authorization lives in the
-database, not the UI; vision is the last resort, not the first tool. If you cannot write
-that sentence, the idea is not finished. This is the Originality criterion made mechanical.
+database, not the UI; vision is the last resort, not the first tool. Aim to write that
+sentence for your idea — if you cannot, it is not finished. This is the Originality
+criterion made mechanical.
 
 **The thesis test.** One line on why *this* required technology, phrased so a competitor
 using a different technology could not claim it. See `sponsor-tech-thesis`.
 
-**The demoability test.** Name the single visceral thing a judge sees inside three minutes.
-Kintwadi's is an aide's view blocked from a financial document, captioned "blocked by the
-database, not the UI." If the demo moment is "a dashboard loads," there isn't one.
+**The demoability test.** Name the single visceral thing a judge sees inside three minutes —
+one moment, not a feature list. If the demo moment is "a dashboard loads," there isn't one.
 
 ## Quantify
 
