@@ -20,6 +20,21 @@ test('validates standalone when no rubric is supplied', async () => {
   assert.equal(validateIdeas(await ideas()).valid, true);
 });
 
+test('warns when standalone validation skips rubric checks, but not when recon is supplied', async () => {
+  const d = await ideas();
+  const standalone = validateIdeas(d);
+  assert.ok(
+    standalone.warnings.some((w) => /rubric-membership and score-ceiling checks were skipped/.test(w)),
+    `expected a skipped-checks warning, got: ${JSON.stringify(standalone.warnings)}`,
+  );
+
+  const withRecon = validateIdeas(d, await recon());
+  assert.ok(
+    withRecon.warnings.every((w) => !/rubric-membership and score-ceiling checks were skipped/.test(w)),
+    `did not expect the skipped-checks warning when recon is supplied, got: ${JSON.stringify(withRecon.warnings)}`,
+  );
+});
+
 test('rejects a non-object', () => {
   assert.equal(validateIdeas(null).valid, false);
 });
