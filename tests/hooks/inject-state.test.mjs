@@ -91,6 +91,24 @@ test('hook output never exceeds 40 lines even when a required-tech entry has emb
   });
 });
 
+// Regression: the 40-line cap bounds line *count*, not byte length. A free-text field
+// with no embedded newlines at all (so oneLine()'s collapsing is a no-op) still counted
+// as a single "line" no matter how long it was, so a 400,000-character resume_note with
+// no newlines cleared the <=40-line cap while injecting ~400KB into every session.
+test('a very long no-newline resume_note is truncated, not just line-capped', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.phases.recon.status = 'in_progress';
+    s.phases.recon.resume_note = 'x'.repeat(400_000); // no newlines anywhere
+    await writeState(dir, s);
+
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.ok(stdout.split('\n').length <= 40, `got ${stdout.split('\n').length} lines`);
+    assert.ok(stdout.length < 5000,
+      `output must be bounded by length too, got ${stdout.length} chars`);
+  });
+});
+
 test('hook surfaces a resume note so a mid-phase /clear is recoverable', async () => {
   await withTmpDir(async (dir) => {
     const s = createDefaultState({ pluginVersion: '0.1.0' });
