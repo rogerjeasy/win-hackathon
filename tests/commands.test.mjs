@@ -91,3 +91,78 @@ test('next command sources budget from state.json, not from :next --json', async
   assert.match(content, /state\.json/,
     'budget must be read from state.json directly, not implied to come from :next --json');
 });
+
+test('the three M2 commands exist', async () => {
+  const files = await commandFiles();
+  for (const f of ['recon.md', 'brainstorm.md', 'describe.md']) {
+    assert.ok(files.includes(f), `missing commands/${f}`);
+  }
+});
+
+test('recon states the retry bound so a failing agent cannot loop forever', async () => {
+  const content = await readFile(path.join(commandsDir, 'recon.md'), 'utf8');
+  // recon.mjs validate exits non-zero with a full error list; the command must say how
+  // many times to feed that list back before giving up.
+  assert.match(content, /twice|two attempts|at most 2/i);
+});
+
+test('recon states the never-guess rule and recites unresolved items at the gate', async () => {
+  const content = await readFile(path.join(commandsDir, 'recon.md'), 'utf8');
+  assert.match(content, /never guess|do not guess/i);
+  assert.match(content, /unresolved/);
+  assert.match(content, /ambiguit/i);
+});
+
+test('recon does not promise gallery-derived crowding numbers', async () => {
+  const content = await readFile(path.join(commandsDir, 'recon.md'), 'utf8');
+  // Regression: an earlier draft of the design had :recon reading per-track crowding from
+  // /project-gallery. Devpost galleries are empty until winners are announced, so during a
+  // live hackathon that number does not exist and must never be implied.
+  assert.match(content, /until winners are announced|empty/i);
+});
+
+test('brainstorm encodes gate-before-score', async () => {
+  const content = await readFile(path.join(commandsDir, 'brainstorm.md'), 'utf8');
+  assert.match(content, /Stage One/i);
+  assert.match(content, /before/i);
+  assert.match(content, /disqualified/);
+});
+
+test('brainstorm dispatches four generators in parallel and one scorer separately', async () => {
+  const content = await readFile(path.join(commandsDir, 'brainstorm.md'), 'utf8');
+  assert.match(content, /parallel/i);
+  assert.match(content, /idea-generator/);
+  assert.match(content, /idea-scorer/);
+  assert.match(content, /fresh context/i);
+});
+
+test('brainstorm archives before a fresh round rather than overwriting', async () => {
+  const content = await readFile(path.join(commandsDir, 'brainstorm.md'), 'utf8');
+  assert.match(content, /--fresh/);
+  assert.match(content, /archive/);
+});
+
+test('describe names both output files', async () => {
+  const content = await readFile(path.join(commandsDir, 'describe.md'), 'utf8');
+  assert.match(content, /project\.md/);
+  assert.match(content, /strategy\.md/);
+});
+
+test('describe requires an explicit track choice', async () => {
+  const content = await readFile(path.join(commandsDir, 'describe.md'), 'utf8');
+  assert.match(content, /--track/);
+  assert.match(content, /one prize|single bet|one track/i);
+});
+
+test('describe tells the user to read the thesis aloud at the gate', async () => {
+  const content = await readFile(path.join(commandsDir, 'describe.md'), 'utf8');
+  assert.match(content, /thesis/);
+});
+
+test('every M2 command ends at an approval gate rather than advancing', async () => {
+  for (const f of ['recon.md', 'brainstorm.md', 'describe.md']) {
+    const content = await readFile(path.join(commandsDir, f), 'utf8');
+    assert.match(content, /awaiting_approval/, `${f} must set the phase to awaiting_approval`);
+    assert.match(content, /stop|do not (continue|advance|proceed)/i, `${f} must stop at the gate`);
+  }
+});
