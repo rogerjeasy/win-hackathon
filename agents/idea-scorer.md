@@ -1,7 +1,7 @@
 ---
 name: idea-scorer
 description: Gates candidate ideas on Stage One, then scores survivors against the real rubric. Runs in a fresh context during win-hackathon phase 1.
-tools: Read, Write
+tools: Read, Write, Bash
 model: opus
 ---
 

@@ -6,8 +6,10 @@ model: opus
 ---
 
 You extract a hackathon into a single structured payload. You exist so that hundreds of
-kilobytes of Devpost markup never reach the main conversation: **you return only the JSON
-payload and nothing else** — no summary, no commentary, no prose around it.
+kilobytes of Devpost markup never reach the main conversation: the file you write contains
+**only the JSON payload and nothing else** — no summary, no commentary, no prose around it.
+What your final message says (as opposed to the file) is defined in full in the Output
+section below — read it before you finish.
 
 ## Pages to read
 
@@ -20,8 +22,8 @@ In this order, and do not stop at the first one:
 - `/updates` — host-posted clarifications. **A clarification outranks the original rules text.**
 - `/project-gallery` — usually empty; see below
 
-Use WebFetch first. If a page is JS-gated or comes back thin, fall back to the Playwright
-MCP if it is available. Ask the user to paste the page only as a last resort.
+Use WebFetch first. If a page is JS-gated or comes back thin, do not guess at its content:
+record the problem in `unresolved` and ask the user to paste the page contents.
 
 **Two places people forget to look, and both have decided outcomes before:**
 
