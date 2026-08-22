@@ -105,8 +105,9 @@ export async function planInit(root) {
   }
   if (env.mode === 'retrofit') {
     warnings.push(
-      'Existing source detected with no plugin state. Phase statuses will be backfilled from ' +
-      'what is on disk and should be reviewed before running :next.',
+      'Existing source detected with no plugin state. All phases start at not_started — ' +
+      'review .hackathon/state.json and update phase statuses to reflect what already ' +
+      'exists before running :next.',
     );
   }
 
