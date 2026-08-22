@@ -67,3 +67,69 @@ test('init plan render says so when nothing needs consent', () => {
   });
   assert.match(out, /nothing pre-existing/i);
 });
+
+function stateWithDeliverables() {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.hackathon = {
+    name: 'H0', url: 'https://h01.devpost.com',
+    deadline: '2026-06-29T17:00:00-07:00',
+    next_action_deadline: { label: 'credit request form closes', at: '2026-06-26T12:00:00-07:00' },
+    tech: { required: ['AWS Database'], bonus: [], forbidden: [] },
+    criteria_ids: ['technical-implementation', 'design'],
+    tiebreak: 'listed_order', bonus_points_available: 0.6,
+    selected_track: 'b2c', recon_ref: '.hackathon/recon.json',
+  };
+  s.deliverables = {
+    submission_requirements: [
+      { id: 'demo-video', status: 'not_started' },
+      { id: 'architecture-diagram', status: 'done' },
+    ],
+    bonus_content: [{ id: 'bonus-1', status: 'not_started', url: null }],
+  };
+  return s;
+}
+
+const resolution = { outcome: 'start', phase: 'stack', drift: [], reason: 'Phase "stack" is next.' };
+
+test('the board counts outstanding submission requirements', () => {
+  const out = renderStatusBoard({ state: stateWithDeliverables(), resolution, tools: [] });
+  assert.match(out, /Deliverables/);
+  assert.match(out, /1 of 2/);
+});
+
+test('the board names the outstanding items, not just a count', () => {
+  const out = renderStatusBoard({ state: stateWithDeliverables(), resolution, tools: [] });
+  assert.match(out, /demo-video/);
+});
+
+test('the board does not nag about deliverables already done', () => {
+  const s = stateWithDeliverables();
+  for (const d of s.deliverables.submission_requirements) d.status = 'done';
+  s.deliverables.bonus_content = [];
+  const out = renderStatusBoard({ state: s, resolution, tools: [] });
+  assert.doesNotMatch(out, /architecture-diagram/);
+});
+
+test('the board surfaces the next action deadline separately from the submission deadline', () => {
+  const out = renderStatusBoard({ state: stateWithDeliverables(), resolution, tools: [] });
+  assert.match(out, /credit request form closes/);
+  assert.match(out, /2026-06-26/);
+});
+
+test('the board shows unclaimed bonus points as points, not as a task', () => {
+  const out = renderStatusBoard({ state: stateWithDeliverables(), resolution, tools: [] });
+  assert.match(out, /\+0\.6|0\.6 bonus/i);
+});
+
+test('the board shows the selected track once one is chosen', () => {
+  const out = renderStatusBoard({ state: stateWithDeliverables(), resolution, tools: [] });
+  assert.match(out, /b2c/);
+});
+
+test('the board omits the deliverables section entirely before recon', () => {
+  const out = renderStatusBoard({
+    state: createDefaultState({ pluginVersion: '0.1.0' }), resolution, tools: [],
+  });
+  assert.doesNotMatch(out, /Deliverables/);
+  assert.doesNotMatch(out, /undefined/);
+});

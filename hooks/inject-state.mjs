@@ -46,6 +46,21 @@ try {
     lines.push(`Deadline: ${oneLine(state.hackathon.deadline)} (~${hoursLeft}h left)`);
   }
 
+  const action = state.hackathon?.next_action_deadline;
+  if (action?.at) {
+    // validateState only requires `.at` to be a well-formed offset date; a hand-edited
+    // state.json can still have a next_action_deadline with no `.label`. Guard it the
+    // same way the rest of this hook guards optional fields.
+    const h = Math.round((Date.parse(action.at) - Date.now()) / 3_600_000);
+    lines.push(`Action deadline: ${oneLine(action.label ?? 'unlabeled')} — ${oneLine(action.at)} (~${h}h left)`);
+  }
+
+  // Equal weighting does not mean equal value when ties break by listed order.
+  const first = state.hackathon?.criteria_ids?.[0];
+  if (first && state.hackathon?.tiebreak === 'listed_order') {
+    lines.push(`Criteria: ${oneLine(state.hackathon.criteria_ids.join(', '))} — ties break on "${oneLine(first)}" first.`);
+  }
+
   const done = PHASES.filter((p) => state.phases[p]?.status === 'approved');
   lines.push(`Approved: ${done.length > 0 ? done.join(', ') : 'none yet'}`);
 
