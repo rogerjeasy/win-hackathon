@@ -20,18 +20,59 @@ test('validates standalone when no rubric is supplied', async () => {
   assert.equal(validateIdeas(await ideas()).valid, true);
 });
 
-test('warns when standalone validation skips rubric checks, but not when recon is supplied', async () => {
+test('warns when standalone validation skips both rubric checks, but not when a full recon is supplied', async () => {
   const d = await ideas();
   const standalone = validateIdeas(d);
   assert.ok(
-    standalone.warnings.some((w) => /rubric-membership and score-ceiling checks were skipped/.test(w)),
-    `expected a skipped-checks warning, got: ${JSON.stringify(standalone.warnings)}`,
+    standalone.warnings.some((w) => /no recon supplied.*rubric-membership checks were skipped/.test(w)),
+    `expected a rubric-membership skipped warning, got: ${JSON.stringify(standalone.warnings)}`,
+  );
+  assert.ok(
+    standalone.warnings.some((w) => /no recon supplied.*score-ceiling checks were skipped/.test(w)),
+    `expected a score-ceiling skipped warning, got: ${JSON.stringify(standalone.warnings)}`,
   );
 
   const withRecon = validateIdeas(d, await recon());
+  assert.deepEqual(
+    withRecon.warnings, [],
+    `did not expect any skipped-checks warning when a full recon is supplied, got: ${JSON.stringify(withRecon.warnings)}`,
+  );
+});
+
+test('warns about a skipped score-ceiling check specifically when recon has no max_base_score', async () => {
+  const d = await ideas();
+  const r = await recon();
+  delete r.criteria.max_base_score;
+  const { valid, warnings } = validateIdeas(d, r);
+  assert.equal(valid, true, 'a missing max_base_score degrades validation, it does not invalidate the doc');
   assert.ok(
-    withRecon.warnings.every((w) => !/rubric-membership and score-ceiling checks were skipped/.test(w)),
-    `did not expect the skipped-checks warning when recon is supplied, got: ${JSON.stringify(withRecon.warnings)}`,
+    warnings.some((w) => /recon supplied but criteria\.max_base_score is missing.*score-ceiling checks were skipped/.test(w)),
+    `expected a recon-supplied score-ceiling warning, got: ${JSON.stringify(warnings)}`,
+  );
+  assert.ok(
+    warnings.every((w) => !/rubric-membership checks were skipped/.test(w)),
+    `did not expect a rubric-membership warning when criteria.items is intact, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
+test('warns about both checks, correctly attributed to a supplied-but-malformed rubric', async () => {
+  const d = await ideas();
+  const r = await recon();
+  r.criteria.items = [];
+  delete r.criteria.max_base_score;
+  const { valid, warnings } = validateIdeas(d, r);
+  assert.equal(valid, true, 'a malformed rubric degrades validation, it does not invalidate the doc');
+  assert.ok(
+    warnings.some((w) => /recon supplied but criteria\.items is empty or malformed.*rubric-membership checks were skipped/.test(w)),
+    `expected a recon-supplied rubric-membership warning, got: ${JSON.stringify(warnings)}`,
+  );
+  assert.ok(
+    warnings.some((w) => /recon supplied but criteria\.max_base_score is missing.*score-ceiling checks were skipped/.test(w)),
+    `expected a recon-supplied score-ceiling warning, got: ${JSON.stringify(warnings)}`,
+  );
+  assert.ok(
+    warnings.every((w) => !w.startsWith('no recon supplied')),
+    `recon WAS supplied here, so no message should claim otherwise, got: ${JSON.stringify(warnings)}`,
   );
 });
 
