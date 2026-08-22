@@ -50,7 +50,8 @@ The order it works in is the point:
 3. Only then, per-criterion scoring, with ties broken by the rubric's rank order.
 
 The agent writes `.hackathon/ideas.json` and validates it. Feed validation failures back at
-most twice.
+most twice. If it still fails, stop and show the user the errors instead of running
+apply — a third attempt is a loop, not a fix.
 
 ## Step 4 — Apply
 
