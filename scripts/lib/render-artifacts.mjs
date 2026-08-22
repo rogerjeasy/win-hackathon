@@ -346,3 +346,80 @@ export function renderRules(recon) {
 
   return `${lines.join('\n').trimEnd()}\n`;
 }
+
+export function renderIdeas(doc, recon) {
+  const items = [...(doc.ideas ?? [])].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+  const out = [];
+
+  out.push(`# Ideas — round ${doc.round ?? 1}`);
+  out.push('');
+  if (recon?.identity?.name) out.push(`For **${recon.identity.name}**.`);
+  out.push(
+    'Every idea below cleared the Stage-One gate before it was scored. '
+    + 'Ideas that failed the gate are listed at the end, with reasons and no numbers.',
+  );
+  out.push('');
+
+  if (items.length === 0) {
+    out.push('## Shortlist');
+    out.push('');
+    out.push('**No idea survived the Stage-One gate this round.** That is a real result, not a failure of the run — see the disqualified list below and start a fresh round with `--fresh`.');
+    out.push('');
+  } else {
+    out.push('## Shortlist');
+    out.push('');
+    for (const idea of items) {
+      const tech = idea.primary_tech ? ` · ${idea.primary_tech}` : '';
+      out.push(`${idea.rank}. **${idea.name}** — ${idea.pitch} · ${idea.track?.id ?? 'no track'}${tech}`);
+    }
+    out.push('');
+
+    out.push('## The ideas in full');
+    out.push('');
+    for (const idea of items) {
+      out.push(`### ${idea.rank}. ${idea.name}`);
+      out.push('');
+      out.push(`*${idea.pitch}*`);
+      out.push('');
+      out.push(`- **Thesis** — ${idea.thesis}`);
+      out.push(`- **Inversion** — ${idea.inversion}`);
+      out.push(`- **Demo moment** — ${idea.demo_moment}`);
+      out.push(`- **Track** — \`${idea.track?.id ?? '?'}\`${idea.track?.ev_note ? ` — ${idea.track.ev_note}` : ''}`);
+      if (idea.angle) out.push(`- **Angle** — ${idea.angle}`);
+      if (idea.feasibility_hours != null) out.push(`- **Feasibility** — ~${idea.feasibility_hours}h`);
+      out.push('');
+      out.push('| Criterion | Score | Why |');
+      out.push('|---|---|---|');
+      for (const s of idea.scores ?? []) {
+        const name = (recon?.criteria?.items ?? []).find((c) => c.id === s.criterion_id)?.name
+          ?? s.criterion_id;
+        out.push(`| ${cell(name)} | ${s.score} | ${cell(s.rationale)} |`);
+      }
+      if (idea.total != null) {
+        const max = recon?.criteria?.max_base_score;
+        out.push(`| **Total** | **${idea.total}${max ? ` / ${max}` : ''}** | |`);
+      }
+      out.push('');
+    }
+  }
+
+  const rejected = doc.disqualified ?? [];
+  if (rejected.length > 0) {
+    out.push('## Disqualified at Stage One');
+    out.push('');
+    out.push('Not scored. A number on a non-compliant idea only makes it harder to let go of.');
+    out.push('');
+    for (const idea of rejected) {
+      out.push(`### ${idea.name}`);
+      out.push('');
+      if (idea.pitch) {
+        out.push(`*${idea.pitch}*`);
+        out.push('');
+      }
+      for (const r of idea.stage_one?.reasons ?? []) out.push(`- ${r}`);
+      out.push('');
+    }
+  }
+
+  return `${out.join('\n').trimEnd()}\n`;
+}
