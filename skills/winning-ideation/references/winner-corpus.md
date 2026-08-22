@@ -57,8 +57,8 @@ Relay named its **track** in a heading: "Business model (Monetizable B2C)."
 **Every winner has a technology thesis.** Six of six in H0. Not "we used X" but a reason a
 competitor using something else could not claim.
 
-**Every winner can be stated as an inversion.** See the tables — the form is consistent
-enough to generate against.
+**Nearly every winner can be stated as an inversion.** See the tables — it is the form to
+aim for, and most winners exhibit it, though not every row fits it cleanly (HYPE, Title AI).
 
 **Everyone quantifies.** "$3.6 trillion real estate industry" (Title AI). "Path to a
 $100M-Scale Opportunity" (HYPE). "Under 50ms at zero marginal cost" (Waylo). "74 RLS

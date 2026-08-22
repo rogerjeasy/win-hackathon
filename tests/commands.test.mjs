@@ -166,3 +166,13 @@ test('every M2 command ends at an approval gate rather than advancing', async ()
     assert.match(content, /stop|do not (continue|advance|proceed)/i, `${f} must stop at the gate`);
   }
 });
+
+test('brainstorm states a stop clause for exhausted validation retries so a failing agent cannot proceed to apply', async () => {
+  const content = await readFile(path.join(commandsDir, 'brainstorm.md'), 'utf8');
+  const step3 = content.slice(content.indexOf('## Step 3'), content.indexOf('## Step 4'));
+  // brainstorm.mjs apply runs unconditionally in Step 4; Step 3 must say what to do when
+  // the two validation retries are exhausted, or the model proceeds to apply anyway.
+  assert.match(step3, /twice|two attempts|at most 2/i);
+  assert.match(step3, /stop/i);
+  assert.match(step3, /show the user/i);
+});
