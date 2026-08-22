@@ -175,3 +175,70 @@ test('hook exits 0 with a clear message when artifacts is null', async () => {
       'must show a short clear message, not a raw stack trace');
   });
 });
+
+test('the hook names the next action deadline', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.hackathon = {
+      name: 'H0', url: 'https://h01.devpost.com',
+      deadline: '2099-06-29T17:00:00-07:00',
+      next_action_deadline: { label: 'credit request form closes', at: '2099-06-26T12:00:00-07:00' },
+      tech: { required: ['AWS Database'] },
+      criteria_ids: ['technical-implementation'], tiebreak: 'listed_order',
+      bonus_points_available: 0.6, selected_track: null, recon_ref: '.hackathon/recon.json',
+    };
+    await writeState(dir, s);
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.match(stdout, /credit request form closes/);
+  });
+});
+
+test('the hook names the tiebreak-first criterion', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.hackathon = {
+      name: 'H0', url: 'https://h01.devpost.com',
+      deadline: '2099-06-29T17:00:00-07:00', next_action_deadline: null,
+      tech: { required: [] },
+      criteria_ids: ['technical-implementation', 'design'], tiebreak: 'listed_order',
+      bonus_points_available: 0, selected_track: null, recon_ref: '.hackathon/recon.json',
+    };
+    await writeState(dir, s);
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.match(stdout, /technical-implementation/);
+    assert.match(stdout, /tie/i);
+  });
+});
+
+test('the hook stays within the line cap with every M2 field populated', async () => {
+  await withTmpDir(async (dir) => {
+    const s = createDefaultState({ pluginVersion: '0.1.0' });
+    s.hackathon = {
+      name: 'H0: Hack the Zero Stack with Vercel v0 and AWS Databases',
+      url: 'https://h01.devpost.com',
+      deadline: '2099-06-29T17:00:00-07:00',
+      next_action_deadline: { label: 'credit request form closes', at: '2099-06-26T12:00:00-07:00' },
+      tech: { required: Array.from({ length: 20 }, (_, i) => `required-tech-${i}`) },
+      criteria_ids: ['technical-implementation', 'design', 'impact', 'originality'],
+      tiebreak: 'listed_order', bonus_points_available: 0.6,
+      selected_track: 'b2c', recon_ref: '.hackathon/recon.json',
+    };
+    s.project = { name: 'CareCircle' };
+    s.deliverables = {
+      submission_requirements: Array.from({ length: 10 }, (_, i) => ({ id: `req-${i}`, status: 'not_started' })),
+      bonus_content: Array.from({ length: 3 }, (_, i) => ({ id: `bonus-${i}`, status: 'not_started' })),
+    };
+    await writeState(dir, s);
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.ok(stdout.split('\n').length <= 40, `hook emitted ${stdout.split('\n').length} lines`);
+  });
+});
+
+test('the hook stays silent when the hackathon block is still null', async () => {
+  await withTmpDir(async (dir) => {
+    await writeState(dir, createDefaultState({ pluginVersion: '0.1.0' }));
+    const { stdout } = await run('node', [hook], { cwd: dir });
+    assert.doesNotMatch(stdout, /undefined/);
+    assert.doesNotMatch(stdout, /tie/i);
+  });
+});

@@ -31,6 +31,46 @@ export function renderStatusBoard({ state, resolution, tools }) {
     lines.push(`Time: ${left}h remaining of ${state.budget.total_hours}h`);
   }
 
+  if (state.hackathon?.selected_track) {
+    lines.push('');
+    lines.push(`Track: ${state.hackathon.selected_track}`);
+  }
+
+  // An action deadline closes before the work is due — missing it costs a resource,
+  // not the hackathon, which is exactly why it is easy to forget.
+  const action = state.hackathon?.next_action_deadline;
+  if (action?.at) {
+    // validateState only requires `.at` to be a well-formed offset date; a hand-edited
+    // state.json can still have a next_action_deadline with no `.label`. Guard it so a
+    // missing label prints as a plain fallback, not the literal string "undefined".
+    lines.push('');
+    lines.push(`Next action deadline: ${action.at} — ${action.label ?? 'unlabeled action deadline'}`);
+  }
+
+  const reqs = state.deliverables?.submission_requirements ?? [];
+  const bonusItems = state.deliverables?.bonus_content ?? [];
+  const openReqs = reqs.filter((d) => d.status !== 'done' && d.status !== 'skipped');
+  const doneReqs = reqs.filter((d) => d.status === 'done');
+  const skippedReqs = reqs.filter((d) => d.status === 'skipped');
+  const openBonus = bonusItems.filter((d) => d.status !== 'done' && d.status !== 'skipped');
+
+  if (reqs.length > 0 || bonusItems.length > 0) {
+    lines.push('');
+    lines.push('Deliverables');
+    if (reqs.length > 0) {
+      // Count only items whose status is actually "done" -- lumping "skipped" in with
+      // "done" here would report e.g. "2 of 2 done" when one was merely skipped, telling
+      // the user everything is finished when a required submission item was not.
+      lines.push(`  submission requirements: ${doneReqs.length} of ${reqs.length} done` +
+        (skippedReqs.length > 0 ? ` (${skippedReqs.length} skipped)` : ''));
+      for (const d of openReqs) lines.push(`    [ ] ${d.id}`);
+    }
+    if (openBonus.length > 0) {
+      const points = state.hackathon?.bonus_points_available ?? 0;
+      lines.push(`  bonus content: ${openBonus.length} unpublished — up to +${points} unclaimed`);
+    }
+  }
+
   const missing = (tools ?? []).filter((t) => !t.present);
   if (missing.length > 0) {
     lines.push('');
