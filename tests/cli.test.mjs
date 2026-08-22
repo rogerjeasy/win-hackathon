@@ -66,3 +66,41 @@ test('init --apply --consent applies the named file only', async () => {
     assert.match(after, /# mine/);
   });
 });
+
+// Regression: git-init's consent token is the bare path "." (Action.path for the
+// git-init action). `--consent "CLAUDE.md, ."` — a space after the comma, the most
+// natural way to type a list — used to split into ['CLAUDE.md', ' .'] with no
+// trimming, so ' .' never exact-matched the '.' the applier checks for and git-init
+// was silently skipped despite looking approved.
+test('init --apply --consent trims whitespace so a space-separated list still matches', async () => {
+  await withTmpDir(async (dir) => {
+    await import('node:fs/promises').then(({ writeFile }) =>
+      writeFile(path.join(dir, 'CLAUDE.md'), '# mine\n'));
+    const { stdout } = await run(
+      'node', [path.join(scripts, 'init.mjs'), dir, '--apply', '--consent', 'CLAUDE.md, .'],
+    );
+
+    const after = await readFile(path.join(dir, 'CLAUDE.md'), 'utf8');
+    assert.match(after, /BEGIN:win-hackathon/,
+      'CLAUDE.md consent must still match despite no leading space in this entry');
+    assert.equal(await access(path.join(dir, '.git')).then(() => true, () => false), true,
+      'git-init consent (the "." entry, with a leading space from the list) must still match');
+    assert.equal(stdout.includes('Skipped'), false,
+      'nothing should be reported skipped once every listed action is consented');
+  });
+});
+
+// Regression: the skipped-actions report used to print only the bare path (e.g. "- .",
+// which does not say what "." refers to). It must name the action's kind too.
+test('init --apply reports skipped actions with both kind and path', async () => {
+  await withTmpDir(async (dir) => {
+    await import('node:fs/promises').then(({ writeFile }) =>
+      writeFile(path.join(dir, 'CLAUDE.md'), '# mine\n'));
+    const { stdout } = await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+
+    assert.match(stdout, /-\s+update-block\s+CLAUDE\.md/,
+      'a skipped file action must report its kind, not just its bare path');
+    assert.match(stdout, /-\s+git-init\s+\./,
+      'a skipped git-init must read as "git-init .", not the uninformative bare "."');
+  });
+});
