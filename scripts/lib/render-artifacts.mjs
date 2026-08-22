@@ -6,6 +6,15 @@ const bullet = (s) => `- ${s}`;
 /** Escape a cell so a quote containing a pipe cannot break the markdown table. */
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n+/g, ' ');
 
+/**
+ * Render a payload string as a blockquote-safe block: every line is prefixed
+ * with `> ` so an embedded newline followed by `#`, `-`, `>`, or a blank line
+ * cannot break out of the blockquote under CommonMark. Trailing blank lines
+ * are trimmed first so we never emit a bare `> ` line that terminates the
+ * quote early.
+ */
+const quoteBlock = (s) => String(s ?? '').replace(/\n+$/, '').split('\n').map((line) => `> ${line}`).join('\n');
+
 export function renderBrief(recon) {
   const lines = [];
   const id = recon.identity ?? {};
@@ -44,7 +53,7 @@ export function renderBrief(recon) {
     for (const g of recon.stage_one.gates ?? []) lines.push(bullet(`**${g.id}** — ${g.requirement}`));
     if (recon.stage_one.quote) {
       lines.push('');
-      lines.push(`> ${recon.stage_one.quote}`);
+      lines.push(quoteBlock(recon.stage_one.quote));
     }
     lines.push('');
   }
@@ -185,7 +194,7 @@ export function renderCriteria(recon) {
     lines.push('');
     lines.push(`\`${item.id}\`${item.weight != null ? ` · weight ${item.weight}` : ''}`);
     lines.push('');
-    lines.push(`> ${item.quote}`);
+    lines.push(quoteBlock(item.quote));
     lines.push('');
     if ((item.signals ?? []).length > 0) {
       lines.push('What this rewards:');
@@ -239,7 +248,7 @@ export function renderRules(recon) {
       lines.push(r.requirement);
       lines.push('');
       if (r.quote) {
-        lines.push(`> ${r.quote}`);
+        lines.push(quoteBlock(r.quote));
         lines.push('');
       }
     }
@@ -265,7 +274,7 @@ export function renderRules(recon) {
         lines.push('');
       }
       if (c.quote) {
-        lines.push(`> ${c.quote}`);
+        lines.push(quoteBlock(c.quote));
         lines.push('');
       }
     }
@@ -284,7 +293,7 @@ export function renderRules(recon) {
     for (const n of el.notes ?? []) lines.push(bullet(n));
     if ((el.notes ?? []).length > 0) lines.push('');
     if (el.quote) {
-      lines.push(`> ${el.quote}`);
+      lines.push(quoteBlock(el.quote));
       lines.push('');
     }
   }
