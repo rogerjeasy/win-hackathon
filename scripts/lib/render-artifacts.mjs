@@ -13,7 +13,7 @@ const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n+/g, ' ');
  * are trimmed first so we never emit a bare `> ` line that terminates the
  * quote early.
  */
-const quoteBlock = (s) => String(s ?? '').replace(/\n+$/, '').split('\n').map((line) => `> ${line}`).join('\n');
+export const quoteBlock = (s) => String(s ?? '').replace(/\n+$/, '').split('\n').map((line) => `> ${line}`).join('\n');
 
 export function renderBrief(recon) {
   const lines = [];
