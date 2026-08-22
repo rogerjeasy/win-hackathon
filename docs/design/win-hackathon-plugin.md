@@ -2,6 +2,7 @@
 
 **Status:** Approved design, ready for implementation planning
 **Date:** 2026-08-21
+**Amended:** 2026-08-22 — §3, §4, §8, §10, §12, §15 revised after reviewing twelve winning Devpost submissions and the two reference repositories. Detail in `m2-front-half.md`.
 **Author:** Roger Jeasy Bavibidila
 **Supersedes:** `project-idea.md`
 
@@ -42,9 +43,9 @@ Eleven phases, numbered 0–10. Each has one command, defined inputs, defined ou
 
 | # | Phase | Command | Output |
 |---|---|---|---|
-| 0 | **Recon** — ingest Devpost, extract rules, judging criteria, sponsor tech, deadline | `:recon <url>` | `.hackathon/brief.md`, `rules.md`, `criteria.md` |
-| 1 | **Brainstorm** — 10 ideas, each scored against the real judging criteria | `:brainstorm` | `.hackathon/ideas.md` (`--fresh` starts a clean round, prior rounds kept) |
-| 2 | **Describe** — full project description of the chosen idea | `:describe` | `.hackathon/project.md` |
+| 0 | **Recon** — ingest Devpost: rules, judging rubric, sponsor tech, panel, deadlines, bonus mechanics | `:recon <url>` | `.hackathon/recon.json`, `brief.md`, `rules.md`, `criteria.md` |
+| 1 | **Brainstorm** — 10 ideas, gated on Stage One, then scored against the real judging criteria | `:brainstorm` | `.hackathon/ideas.json`, `ideas.md` (`--fresh` starts a clean round, prior rounds kept) |
+| 2 | **Describe** — the product case and the win strategy for the chosen idea | `:describe` | `.hackathon/project.md`, `strategy.md` |
 | 3 | **Stack** — sponsor tech wins, defaults fill gaps | `:stack` | `.hackathon/stack.md` |
 | 4 | **Architect** — architecture + data model + diagrams | `:architect` | `docs/architecture.md`, `docs/data-model.md`, `docs/assets/*.drawio` + `.png` |
 | 5 | **Requirements** — features, acceptance criteria, Gherkin | `:requirements` | `.hackathon/requirements.md`, `features/*.feature` |
@@ -78,12 +79,15 @@ Two zones. `.hackathon/` is where the work happens; `docs/` and the repo root ar
 ```
 .hackathon/                  ← workshop (committed, out of the way)
   state.json                   phase status, approvals, deadline, stack decisions
+  recon.json                   validated extraction payload — brief/rules/criteria render from it
   brief.md                     hackathon digest
   rules.md                     verbatim rules + eligibility
-  criteria.md                  judging criteria with weights, prize tracks
+  criteria.md                  judging rubric: weights, tiebreak order, evidence slots
+  ideas.json                   validated scoring payload — ideas.md renders from it
   ideas.md                     current round of 10 ideas + scores
   ideas-round-N.md             every prior round, preserved
-  project.md                   selected project description
+  project.md                   selected project description (the stable product case)
+  strategy.md                  how we win: criteria map, track EV, heading plan, bonus plan
   stack.md                     stack decisions + rationale
   requirements.md              features + acceptance criteria
   challenges.md                running issues log  ← Rule 2
@@ -119,22 +123,26 @@ infra/                       Terraform
 
 ```jsonc
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "plugin_version": "0.1.0",
 
+  // A digest only. The full extraction lives in .hackathon/recon.json — state.json is
+  // re-injected by the SessionStart hook under a hard ~40-line cap and must stay small.
   "hackathon": {
     "name": "…",
     "url": "https://devpost.com/hackathons/…",
     "deadline": "2026-09-15T23:59:00-07:00",
-    "submission_requirements": ["public repo", "≤3 min video", "live URL"],
-    "prize_tracks": [
-      { "name": "Best Use of Bedrock", "criteria_ref": "criteria.md#bedrock" }
-    ],
+    "next_action_deadline": { "label": "credit request form closes", "at": "…" },
     "tech": {
       "required": ["Amazon Bedrock"],
       "bonus":    ["Aurora pgvector"],
       "forbidden": []
-    }
+    },
+    "criteria_ids": ["technical-implementation", "design", "impact", "originality"],
+    "tiebreak": "listed_order",
+    "bonus_points_available": 0.6,
+    "selected_track": null,
+    "recon_ref": ".hackathon/recon.json"
   },
 
   "project": {
@@ -170,6 +178,13 @@ infra/                       Terraform
     "total_hours": 48,
     "spent_hours": 11.5,
     "phase_budget": { "brainstorm": 2, "architect": 4, "build": 24, "ship": 4, "submit": 3 }
+  },
+
+  // Seeded at :recon (submission requirements) and :describe (bonus content), rendered by
+  // :status, delivered at :submit. Tracking is what stops a cheap requirement being forgotten.
+  "deliverables": {
+    "submission_requirements": [{ "id": "demo-video", "status": "not_started" }],
+    "bonus_content": []
   }
 }
 ```
@@ -180,6 +195,7 @@ infra/                       Terraform
 - `resume_note` is written when a phase is interrupted. The `SessionStart` hook surfaces it verbatim so a `/clear` mid-phase is recoverable.
 - `compliance.required_tech_verified[].evidence` is a `file:line` citation. A claim without a citation is treated as unverified.
 - `schema_version` gates migrations. On mismatch, `:init` migrates and backs up first.
+- **v1 → v2** adds `deliverables` and reshapes `hackathon` into a digest with `recon_ref`. The migration is additive and idempotent. Full M2 schemas live in `m2-front-half.md`.
 
 ---
 
@@ -281,14 +297,15 @@ Located in `commands/*.md`, invoked as `/win-hackathon:<name>`.
 
 #### `:recon <devpost-url>`
 
-Ingests the hackathon.
+Ingests the hackathon. Full specification in `m2-front-half.md` §5.
 
-- **Fetch strategy:** `WebFetch` on `/`, `/rules`, `/resources`, `/submissions`, `/participants`. If a page is JS-gated or returns thin content, fall back to the Playwright MCP. Manual paste is the last resort.
-- **Dispatches:** `hackathon-recon` agent (raw HTML must not enter the main context).
-- **Extracts:** deadline + timezone, judging criteria with weights, prize tracks, required/bonus/forbidden technology, submission requirements, eligibility, IP terms.
-- **Writes:** `brief.md`, `rules.md`, `criteria.md`; populates `state.json.hackathon`.
+- **Fetch strategy:** `WebFetch` on `/`, `/rules`, `/resources`, `/updates`, `/project-gallery`. If a page is JS-gated or returns thin content, fall back to the Playwright MCP. Manual paste is the last resort. `/updates` carries host rule-clarifications, which outrank the original text. Project galleries stay **empty until winners are announced**, so per-track crowding is unobservable during a live hackathon — for a recurring series, the prior edition's gallery is fetched instead.
+- **Dispatches:** `hackathon-recon` agent (raw HTML must not enter the main context). It returns **only a validated `recon.json`**; `brief.md`, `rules.md` and `criteria.md` are rendered from it.
+- **Extracts:** deadline + timezone, judging criteria with weights **and tiebreak order**, the **Stage-One pass/fail gate**, prize tracks and open prizes, required/bonus/forbidden technology, submission requirements, **submission form field limits**, eligibility, IP terms, the **judging panel and what it implies**, **bonus-point mechanics**, **every dated action** (credit forms, registration) not just the submission deadline, **host guidance from FAQs**, architecture-constraining constraints, and **rule ambiguities** with the clarification remedy.
+- **Validates:** `recon-schema.mjs` before anything is written. Failures return to the agent verbatim, bounded at two retries. Every extracted claim carries a verbatim `quote` — the compliance rule applied to recon.
+- **Writes:** `recon.json`, `brief.md`, `rules.md`, `criteria.md`; populates `state.json.hackathon` and seeds `deliverables.submission_requirements`.
 - **Asks:** total hours available → seeds `budget`.
-- **Flags explicitly:** any rule that constrains architecture (e.g. "must be built during the event", "no pre-existing code", "must be open source").
+- **Recites at the gate, never buries:** `ambiguities` and `unresolved`. Recon may complete without knowing everything; it may not guess.
 
 #### `:brainstorm [--fresh] [--angle <name>]`
 
@@ -299,14 +316,18 @@ Generates and ranks ten ideas.
   - `social-impact` — a real, nameable beneficiary
   - `sponsor-native` — impossible without the required tech, not merely using it
   - `underserved-niche` — a specific audience nobody builds for
-- Then one `idea-scorer` agent, in a **fresh context**, ranks all candidates against `criteria.md`. Separating generation from scoring prevents the generator's enthusiasm from anchoring its own evaluation.
-- **Each idea contains:** problem statement, intended audience, key features, why-it-wins, required-tech fit, 48-hour feasibility, and a per-criterion score.
+- Then one `idea-scorer` agent, in a **fresh context**, ranks all candidates against the rubric in `recon.json` (rendered for humans as `criteria.md`). Separating generation from scoring prevents the generator's enthusiasm from anchoring its own evaluation.
+- **Evaluation order matters.** (1) The **Stage-One gate** — theme fit and genuine use of required technology; failures are listed as disqualified with reasons and are **never scored**, because a number invites falling in love with a non-compliant idea. (2) The **inversion test** — can this be stated as *X, not Y* in one sentence? (3) The **thesis test** — is there a one-line justification for the required technology that a competitor using different technology could not claim? (4) Only then, per-criterion scoring, with ties resolved by the rubric's criterion rank.
+- **Each idea contains:** problem statement, intended audience, key features, thesis, inversion, track with EV note, the single **demo moment** a judge sees in under three minutes, required-tech fit, feasibility in hours, and a per-criterion score. Emitted as a validated `ideas.json`; `ideas.md` renders from it.
 - `--fresh` starts a new round with **no knowledge of prior rounds** and preserves the old file as `ideas-round-N.md`. This is the documented replacement for the current `/clear`-and-regenerate loop.
 - **Gate:** you select one idea, or request another round.
 
 #### `:describe`
 
-Expands the selected idea into `project.md`: description, goal, target users, user stories, feature list (must-have / should-have / stretch), explicit limitations, and out-of-scope. Limitations are mandatory — they become the "What's next" section of the submission.
+Writes two files — the stable product case and the volatile competitive layer. Full specification in `m2-front-half.md` §7.
+
+- **`project.md`** — TL;DR pitch, the problem and *why now*, the insight framed as two extremes and an underserved middle, personas, features by pillar, a **day in the life with named characters**, product principles, limitations and out-of-scope. Limitations are mandatory — they become the "What's next" section of the submission. The named characters are load-bearing: in the project that won, they became the seed data, the demo script *and* the Devpost narrative, so later phases reuse the same names.
+- **`strategy.md`** — the thesis in one line; a criteria map rendered from the same rubric as `criteria.md` so the two cannot drift; track choice with EV reasoning; the **heading plan** (at least one submission heading per judging criterion, thesis promoted to a top-level heading); the demo moment and a three-minute shot skeleton; the bonus-content plan; risks and mitigations.
 
 #### `:stack`
 
@@ -414,10 +435,11 @@ Drives `@fission-ai/openspec`. Verifies the CLI, runs `openspec init` if the dir
 
 | Skill | Content |
 |---|---|
-| **`winning-ideation`** | Angles that win; anti-patterns (todo apps, thin chatbot wrappers, "X but with AI"); the novelty test; the demoability test; scoping to the available hours |
-| **`judging-criteria-scoring`** | Parsing criteria into weighted rubrics; scoring honestly; expected value across prize tracks; when a narrow track beats the grand prize |
-| `devpost-recon` | Devpost page anatomy; where rules, criteria, and sponsor requirements actually live; what to extract verbatim vs. summarize. (Named to avoid collision with the `hackathon-recon` *agent* that consumes it) |
-| `project-description` | The shape of a project description that survives contact with implementation |
+| **`winning-ideation`** | Angles that win; anti-patterns (todo apps, thin chatbot wrappers, "X but with AI"); the novelty test; the demoability test; the quantification habit; scoping to the available hours. Ships `references/winner-corpus.md` — twelve winning submissions distilled to pitch, thesis, inversion, heading structure and prize, so the plugin carries its own evidence instead of relying on model recall |
+| **`judging-criteria-scoring`** | Parsing criteria into weighted rubrics; **Stage One as a separate pass/fail gate run before scoring**; **tiebreak by listed order**, so the first criterion outweighs its nominal weight; **bonus points as score headroom** (a 5.6 ceiling, not 5); expected value across prize tracks, computed from prize structure and prior editions — and stating the uncertainty honestly, because galleries are empty until winners are announced |
+| **`sponsor-tech-thesis`** | The one-line "why *this* technology, that a competitor using something else could not claim." The inversion form; the placement rule — a top-level heading high in the document, which is what separated the track winners from the category prize; and the failure mode of a thesis the architecture does not actually support. Loaded at four phases: `:brainstorm` scores against it, `:describe` promotes it, `:architect` must earn it, `:submit` leads with it |
+| `devpost-recon` | Devpost page anatomy; where rules, criteria, and sponsor requirements actually live — **including partner resource pages, which carry their own required-signal lists**, and FAQs, which carry host scoring language; separating hard deadlines from dated actions; spotting rule ambiguities and the clarification remedy; what to extract verbatim vs. summarize. (Named to avoid collision with the `hackathon-recon` *agent* that consumes it) |
+| `project-description` | The shape of a project description that survives contact with implementation; named characters as load-bearing; the heading-per-criterion rule |
 
 ### Design
 
@@ -530,6 +552,12 @@ Budget is seeded at `:recon`, spent time is stamped by the PostToolUse hook, and
 
 `:check` verifies required technology is genuinely used — a dependency in `package.json` is not evidence; a `file:line` call site is. Runs automatically after each `:build` feature and again at `:submit`. Missing required sponsor technology is a common disqualifier and the cheapest possible loss.
 
+### Bonus contributions
+
+Many hackathons attach extra points to published content about how the project was built — H0 offered +0.2 per public piece to a maximum of +0.6, raising the ceiling from 5.0 to **5.6**. That is roughly eleven percent of the maximum score for a few hours of writing, and most entrants skip it.
+
+It is handled in three steps across three milestones, so nothing is built early and nothing is forgotten: `:recon` extracts the mechanics (points, eligible platforms, the required "created for this hackathon" disclosure, the hashtag, and the separate deadline) into `recon.json`; `:describe` writes the plan into `strategy.md` and seeds `state.json.deliverables.bonus_content`; `:submit` delivers and records the published URLs. `:status` surfaces the outstanding items throughout.
+
 ### Team mode
 
 Default `solo`: direct commits, no PR ceremony, worktrees only to parallelize your own agents. Setting `mode: team` enables branch-per-feature, PR review gates, and owner fields on tasks in `state.json`. The mode is a state field, not a separate installation.
@@ -544,7 +572,7 @@ win-hackathon/
     plugin.json
   commands/            17 command definitions
   agents/              8 agent definitions
-  skills/<name>/SKILL.md   22 skills
+  skills/<name>/SKILL.md   23 skills
   hooks/
     hooks.json
     inject-state.sh
@@ -596,7 +624,7 @@ Too large for a single pass. Five milestones; the plugin is genuinely useful fro
 | Milestone | Contents | Usable after? |
 |---|---|---|
 | **M1 — Spine** | `plugin.json`, state schema + `state.mjs`, `detect-env.mjs`, `:init` (all six scenarios), `:next`, `:status`, SessionStart hook | Not yet — infrastructure only |
-| **M2 — Front half** | `:recon`, `:brainstorm` (+ 4 generators, scorer), `:describe`, the ideation and scoring skills | **Yes** — replaces the manual ideation loop end to end |
+| **M2 — Front half** | `:recon`, `:brainstorm` (+ 4 generators, scorer), `:describe`, state schema v2, and five skills. Specified in `m2-front-half.md` | **Yes** — replaces the manual ideation loop end to end |
 | **M3 — Design** | `:stack`, `:architect`, `:requirements`, `:spec`, design + engineering skills, `security-invariants`, `framework-drift-guard` | **Yes** — covers everything up to writing code |
 | **M4 — Build & ship** | `:build`, `:ship`, `:check`, `:pivot`, deploy skills, `deploy-engineer`, `compliance-checker`, remaining hooks | **Yes** — full pipeline to a live URL |
 | **M5 — Close** | `:review`, `:submit`, `:log`, submission skills, `quality-reviewer`, `submission-writer` | Complete |
@@ -609,7 +637,7 @@ Too large for a single pass. Five milestones; the plugin is genuinely useful fro
 
 Deferred deliberately; none blocks M1–M3.
 
-1. **Idea-scoring calibration.** Scores are only useful if they discriminate. Needs validation against past hackathons with known outcomes before the numbers are trusted for selection.
+1. **Idea-scoring calibration.** *Partially answered.* `winning-ideation` now ships a corpus of twelve winning submissions with known placements — six of them from a single hackathon we also entered — which is the calibration set this question asked for. What the corpus still cannot say is how far apart the runners-up scored, so scores remain a ranking aid, not a selection oracle.
 2. **Devpost markup stability.** `:recon` parsing will break when Devpost changes its pages. The fallback chain limits the damage, but the extraction prompts will need periodic revision.
 3. **Multi-hackathon concurrency.** One `.hackathon/` per repository is assumed. Running two hackathons from one repo is out of scope.
 4. **Budget accuracy.** Wall-clock time from commit stamps is a proxy for effort, not a measure of it. Adequate for triage; not for planning.
