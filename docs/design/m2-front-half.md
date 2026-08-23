@@ -620,3 +620,26 @@ call in CI, which satisfies the approved design's §14 validation requirement di
    the runners-up scored. Scores remain a ranking aid, not a selection oracle.
 </content>
 </invoke>
+
+## Design note (2026-08-23): the Playwright MCP fallback was dropped
+
+Earlier revisions of this document, and of `win-hackathon-plugin.md` (§302, §417, §615),
+specify a Playwright MCP fallback for `:recon` when `WebFetch` returns thin or JS-gated
+content, and the `recon.json` example at §137 shows `"method": "playwright"`. **That
+capability was removed during M2 and is not implemented.** Those passages are kept as the
+historical design record; they no longer describe the plugin.
+
+The reason is portability, not preference. A Claude Code agent's frontmatter `tools:` list
+gates what it may call, and MCP tools are named `mcp__<server>__<tool>` where the server
+segment comes from each user's own MCP configuration. There is no name we can hardcode in
+`agents/hackathon-recon.md` that resolves on more than the machine it was written on, so a
+Playwright entry in that list is either wrong for most installs or silently unreachable —
+which is what it was: the agent was instructed to use a tool its own frontmatter never
+granted.
+
+`:recon` now degrades honestly instead: on a thin or JS-gated page it records the gap in
+`unresolved` and asks the user to paste the page contents. That costs one manual step on
+the rare JS-gated page and never promises a capability the agent does not have.
+
+Restoring real Playwright support needs a portable way to name MCP tools across installs.
+Until that exists, do not add `mcp__*` entries to any agent's `tools:` list.

@@ -72,7 +72,7 @@ export function validateIdeas(doc, recon) {
       errors.push(`${where} failed the Stage-One gate and belongs in disqualified, not ideas`);
     }
 
-    // The three tests every winning submission in the corpus passes.
+    // The three tests nearly every winning submission in the corpus passes.
     if (!isNonEmptyString(idea?.thesis)) {
       errors.push(`${where}.thesis must state why this technology, in one line a competitor could not claim`);
     }
