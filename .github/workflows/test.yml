@@ -27,14 +27,17 @@ jobs:
     name: node ${{ matrix.node }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          # No `cache: npm` on purpose: caching keys off a lockfile, and this
-          # plugin has zero runtime dependencies, so there is no lockfile and
-          # nothing to restore.
+          # Caching keys off a lockfile, and this plugin has zero runtime
+          # dependencies, so there is no lockfile and nothing to restore.
+          # setup-node >=6 only auto-caches when package.json declares a
+          # `packageManager` field, which this one does not — but pin it off
+          # so adding that field later cannot silently break the build.
+          package-manager-cache: false
 
       # No install step for the same reason. `npm ci` would fail outright
       # without a lockfile. The suite is `node --test` over the repo as-is.
