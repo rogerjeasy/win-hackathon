@@ -1,6 +1,16 @@
 # win-hackathon
 
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
+![node:test](https://img.shields.io/badge/node%3Atest-344%20passing-3C873A)
+![dependencies](https://img.shields.io/badge/dependencies-0-4C1)
+![build step](https://img.shields.io/badge/build%20step-none-4C1)
+![CI](https://img.shields.io/badge/CI-Node%2020%20%7C%2022%20%7C%2024-2088FF?logo=githubactions&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-6%20commands%20%C2%B7%203%20agents%20%C2%B7%205%20skills-000000?logo=markdown&logoColor=white)
+![JSON](https://img.shields.io/badge/JSON-schema--validated-lightgrey?logo=json&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-1%20wrapper-4EAA25?logo=gnubash&logoColor=white)
+[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 
 A Claude Code plugin that encodes an end-to-end hackathon workflow — from reading the
 Devpost rules to submitting a deployed, documented, judge-ready project — as commands,
@@ -82,31 +92,6 @@ Two rules the schemas enforce because they lose hackathons outright:
 - Every date carries an explicit UTC offset. A floating `2026-06-29T17:00:00` is rejected.
 - A disqualified idea is never scored — a number invites falling in love with an idea that
   cannot win.
-
-## Tech stack
-
-**Node.js ≥ 20, and nothing else.** `package.json` declares no `dependencies` and no
-`devDependencies` — every import in the codebase resolves to a `node:` builtin.
-
-| Layer | What's used |
-|---|---|
-| Language | JavaScript, ESM (`.mjs`), no transpilation and no build step |
-| Runtime | Node.js ≥ 20 (`engines`), developed on v24 |
-| Tests | `node:test` + `node:assert/strict` — 344 tests across 22 files |
-| I/O | `node:fs/promises`, `node:path` — atomic writes via write-temp-then-`rename` |
-| Model-facing surface | Markdown: 6 commands, 3 agents, 5 skills |
-| Data | JSON — `state.json`, `recon.json`, `ideas.json`, each schema-validated before any write |
-| Shell | One 4-line bash wrapper, so `hooks.json` need not hard-code a node path |
-| CI | GitHub Actions, matrix over Node 20 / 22 / 24 |
-
-Roughly 2,500 lines of implementation against 3,800 lines of tests.
-
-The zero-dependency rule is a deliberate constraint, not an accident of scope. A plugin
-that installs by cloning a repo has no install step to run, so a dependency would have to
-be vendored or asked of the user. It also keeps the CI job to three steps and means there
-is no lockfile to keep current. Node was chosen over Python because Node is *already* a
-hard requirement of the workflow this plugin drives — OpenSpec is an npm CLI and Next.js
-is the default frontend — so it adds no runtime that isn't there anyway.
 
 ## Dependencies
 
