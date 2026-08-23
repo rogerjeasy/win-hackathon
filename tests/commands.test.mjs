@@ -6,9 +6,33 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const commandsDir = path.join(root, 'commands');
+const agentsDir = path.join(root, 'agents');
 
 async function commandFiles() {
   return (await readdir(commandsDir)).filter((f) => f.endsWith('.md'));
+}
+
+async function agentFiles() {
+  return (await readdir(agentsDir)).filter((f) => f.endsWith('.md'));
+}
+
+// Installed as a plugin, a bare repo-relative path (e.g. `skills/foo/bar.md`) resolves
+// against the USER's project cwd, not the plugin's own directory, and ENOENTs. Every
+// reference into the plugin's own tree — scripts, skills, agents, references, hooks — must
+// be rooted with ${CLAUDE_PLUGIN_ROOT}. This catches an unrooted path anywhere in a command
+// or agent file, not just the scripts/*.mjs paths the older, narrower check covers.
+const PLUGIN_DIR_NAMES = ['scripts', 'skills', 'agents', 'references', 'hooks'];
+const rootedOrNot = new RegExp(
+  `(\\$\\{CLAUDE_PLUGIN_ROOT\\}/)?\\b(${PLUGIN_DIR_NAMES.join('|')})/[\\w./-]+`,
+  'g',
+);
+
+function findUnrootedPluginPaths(content) {
+  const offenders = [];
+  for (const m of content.matchAll(rootedOrNot)) {
+    if (!m[1]) offenders.push(m[0]);
+  }
+  return offenders;
 }
 
 test('the three M1 commands exist', async () => {
@@ -32,6 +56,23 @@ test('every script referenced by a command exists', async () => {
     const content = await readFile(path.join(commandsDir, f), 'utf8');
     for (const m of content.matchAll(/scripts\/([a-z-]+\.mjs)/g)) {
       await access(path.join(root, 'scripts', m[1]));
+    }
+  }
+});
+
+test('every reference into the plugin tree from a command or agent file is rooted with ${CLAUDE_PLUGIN_ROOT}', async () => {
+  for (const [dir, files] of [
+    [commandsDir, await commandFiles()],
+    [agentsDir, await agentFiles()],
+  ]) {
+    for (const f of files) {
+      const content = await readFile(path.join(dir, f), 'utf8');
+      const offenders = findUnrootedPluginPaths(content);
+      assert.deepEqual(
+        offenders, [],
+        `${f} references its own plugin tree without \${CLAUDE_PLUGIN_ROOT}, which ENOENTs `
+        + `once installed as a plugin (resolves against the user's project cwd instead): ${offenders.join(', ')}`,
+      );
     }
   }
 });
