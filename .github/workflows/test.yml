@@ -1,0 +1,44 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The suite only ever reads the checkout; nothing needs write access.
+permissions:
+  contents: read
+
+# A new push to the same branch makes the in-flight run irrelevant.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20 is the floor declared in package.json engines; 24 is what
+        # development happens on. Both ends get checked, not just one.
+        node: ['20', '22', '24']
+
+    name: node ${{ matrix.node }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          # Caching keys off a lockfile, and this plugin has zero runtime
+          # dependencies, so there is no lockfile and nothing to restore.
+          # setup-node >=6 only auto-caches when package.json declares a
+          # `packageManager` field, which this one does not — but pin it off
+          # so adding that field later cannot silently break the build.
+          package-manager-cache: false
+
+      # No install step for the same reason. `npm ci` would fail outright
+      # without a lockfile. The suite is `node --test` over the repo as-is.
+      - run: npm test
