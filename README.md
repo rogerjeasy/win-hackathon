@@ -40,7 +40,9 @@ You never need to remember that order — `:next` resolves it from on-disk state
 - [`superpowers`](https://github.com/obra/superpowers) — `:build` invokes its SDD and TDD skills
 - [`@fission-ai/openspec`](https://github.com/Fission-AI/OpenSpec) — required for `:spec`.
   Install the scoped name; the bare `openspec` package on npm is an unrelated stub.
-- Playwright MCP (optional) — `:recon` fallback when a page is JS-gated
+- No Playwright/MCP dependency. `:recon` uses `WebFetch`; when a page is JS-gated or
+  comes back thin it records the gap in `unresolved` and asks you to paste the page,
+  rather than failing silently. See the design note in `docs/design/m2-front-half.md`.
 
 ## License
 
