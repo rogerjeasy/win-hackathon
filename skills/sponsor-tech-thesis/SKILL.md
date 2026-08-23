@@ -15,8 +15,9 @@ property of the engine, and excludes the alternative.
 
 ## The form
 
-Every winner in `../winning-ideation/references/winner-corpus.md` has one, and they share a
-shape — an inversion that names the excluded alternative:
+Every H0 winner in `../winning-ideation/references/winner-corpus.md` has one — that
+hackathon's table is the one with a Thesis column — and they share a shape: an inversion
+that names the excluded alternative:
 
 - Sammy: the model is stored inside Aurora and inference runs in the VPC, so "nothing ever
   leaves that private network boundary" — the model goes to the data, not the data to the model.
@@ -35,12 +36,13 @@ cannot do].**
 This is the finding the skill exists for.
 
 Kintwadi's thesis — "the database is the thesis, not a default" — is as strong as any in the
-corpus. It sits inside "How we built it," several screens down. It won Best Design, $2,000.
+corpus. It is buried inside "How we built it." It won Best Design, $2,000.
 
 Relay put "Which AWS Database — and why Aurora DSQL" at **section three**, ahead of "How we
 built it." HYPE gave the argument two top-level headings. Sonar renamed a default heading
-around it: "How we built it — the data model is the product." Each won a $10,000 track
-first place.
+around it: "How we built it — the data model is the product." All three won $10,000 — Sonar
+a track first place, Relay and HYPE category prizes (Most Impactful and Best Technical
+Implementation).
 
 **Promote the thesis to a top-level heading, high in the document.** Same argument, more
 readers, different prize.

@@ -25,20 +25,20 @@ shape below is the one that held up from ideation through submission.
 
 ## Named characters are load-bearing
 
-The names you invent in "a day in the life" are not decoration. In the entry that won, the
-same four people became the **seeded demo data**, the **demo video script**, and the
-**submission narrative**. One decision, three deliverables, and a judge who reads the
-description then opens the demo sees the same family.
+The names you invent in "a day in the life" are not decoration. Reuse them as your
+**seeded demo data**, your **demo video script**, and your **submission narrative**. One
+decision, three deliverables, and a judge who reads the description then opens the demo
+sees the same family.
 
 So: name them once, deliberately, with a plausible geography that carries the point of the
 product. Then reuse those exact names in every later phase.
 
 ## Quantify
 
-Every winning submission in the reference corpus puts a number in the pitch. Market size,
-latency, a count of the thing you built, a population figure. "$3.6 trillion real estate
-industry." "74 RLS policies across 33 tables." "Under 50ms at zero marginal cost." A number
-is the cheapest credibility available.
+Everyone in the reference corpus quantifies somewhere in the submission. Market size,
+latency, a count of the thing you built. "$3.6 trillion real estate industry." "74 RLS
+policies across 33 tables." "Under 50ms at zero marginal cost." A number is the cheapest
+credibility available.
 
 ## Limitations are the "What's next" section
 
@@ -53,6 +53,7 @@ does, How we built it, Challenges, Accomplishments, What we learned, What's next
 floor, and winners insert headings for the criteria they intend to win.
 
 Plan **at least one heading per judging criterion**, and put the technology thesis at the
-top level rather than buried inside "How we built it." In the reference corpus that
-placement is what separates the track winners from the category prizes: the same argument,
-promoted, read by more judges.
+top level rather than buried inside "How we built it." In the reference corpus, Relay, HYPE
+and Sonar promoted that same argument to a top-level heading and each won $10,000; Kintwadi
+left it buried and won a $2,000 category prize instead. Same argument, different placement,
+different reach.
