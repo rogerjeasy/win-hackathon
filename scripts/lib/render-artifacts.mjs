@@ -140,7 +140,7 @@ export function renderBrief(recon) {
       lines.push(bullet(`${ls.entries_observed} entries visible in the project gallery`));
     } else {
       lines.push(bullet(
-        'Project gallery is empty — Devpost galleries populate only **until winners are announced**, '
+        'Project gallery is empty — Devpost galleries stay **empty until winners are announced**, '
         + 'so per-track crowding cannot be observed during a live hackathon.',
       ));
     }
