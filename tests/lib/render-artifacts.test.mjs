@@ -39,7 +39,12 @@ test('the brief states the bonus ceiling, not just that a bonus exists', async (
 test('the brief reports an empty gallery rather than implying no competition', async () => {
   const out = renderBrief(await golden());
   assert.match(out, /gallery/i);
-  assert.match(out, /until winners are announced/);
+  // The fact runs one way only: galleries STAY EMPTY until winners are announced. The
+  // inverted form ("galleries populate only until winners are announced") claims the
+  // reverse and still satisfies a bare /until winners are announced/ — which is exactly
+  // how the inverted sentence once shipped into the user's brief.
+  assert.match(out, /galleries stay \*\*empty until winners are announced\*\*/);
+  assert.doesNotMatch(out, /populate only/i);
 });
 
 test('the brief surfaces unresolved items when there are any', async () => {
