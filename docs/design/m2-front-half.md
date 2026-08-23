@@ -618,7 +618,6 @@ call in CI, which satisfies the approved design's §14 validation requirement di
    the damage; extraction prompts will need periodic revision.
 3. **Score discrimination.** The corpus tells us what winners look like, not how far apart
    the runners-up scored. Scores remain a ranking aid, not a selection oracle.
-</content>
 </invoke>
 
 ## Design note (2026-08-23): the Playwright MCP fallback was dropped
