@@ -48,7 +48,7 @@
   - `readRawState(root): Promise<object|null>` from `state.mjs` — parses without validating, so a v1 file can be migrated
   - `migrateStateFile(root): Promise<{migrated: boolean, from: number}>` from `state.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/lib/iso-datetime.test.mjs`:
 
@@ -285,12 +285,12 @@ test('migrateStateFile reports nothing to do when there is no state file', async
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test tests/lib/iso-datetime.test.mjs tests/lib/schema.test.mjs tests/lib/state.test.mjs`
 Expected: FAIL — `iso-datetime.mjs` does not exist; `CURRENT_SCHEMA_VERSION` is 1; `DELIVERABLE_STATUSES`, `readRawState`, `migrateStateFile` are not exported.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `scripts/lib/iso-datetime.mjs`:
 
@@ -464,14 +464,14 @@ export async function migrateStateFile(root) {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npm test`
 Expected: PASS — the full suite, including every M1 test. `createDefaultState` now emits
 `deliverables`, so any M1 test asserting an exact default-state shape must be updated to
 include it; if one fails, add the key to its expectation rather than weakening the assertion.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/iso-datetime.mjs scripts/lib/paths.mjs scripts/lib/schema.mjs \
@@ -499,7 +499,7 @@ git commit -m "feat: state schema v2 with deliverables, offset-checked deadlines
   - `tests/fixtures/h0-recon.json` — a golden fixture extracted from the real H0 hackathon in
     `examples/zero-hackathon/`, reused by Tasks 3, 4, 7 and 8.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/lib/recon-schema.test.mjs`:
 
@@ -1015,12 +1015,12 @@ Create `tests/fixtures/h0-recon.json` — extracted from `examples/zero-hackatho
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/lib/recon-schema.test.mjs`
 Expected: FAIL — `Cannot find module '../../scripts/lib/recon-schema.mjs'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `scripts/lib/recon-schema.mjs`:
 
@@ -1198,12 +1198,12 @@ function validateLandscape(landscape, errors) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/lib/recon-schema.test.mjs`
 Expected: PASS, 20 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/recon-schema.mjs tests/lib/recon-schema.test.mjs tests/fixtures/h0-recon.json
@@ -1228,7 +1228,7 @@ git commit -m "feat: add recon extraction contract with a golden H0 fixture"
   - `TIEBREAK_MARKER = '**(tiebreak first)**'` — one constant, so the marker the renderer
     writes and the marker the tests look for cannot drift apart
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/lib/render-artifacts.test.mjs`:
 
@@ -1377,12 +1377,12 @@ test('renderers tolerate a sparse extraction', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/lib/render-artifacts.test.mjs`
 Expected: FAIL — `Cannot find module '../../scripts/lib/render-artifacts.mjs'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `scripts/lib/render-artifacts.mjs`:
 
@@ -1728,12 +1728,12 @@ export function renderRules(recon) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/lib/render-artifacts.test.mjs`
 Expected: PASS, 17 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/render-artifacts.mjs tests/lib/render-artifacts.test.mjs
@@ -1759,7 +1759,7 @@ git commit -m "feat: render brief, rules and judging rubric from a validated rec
   - `applyRecon(root, recon, { now }): Promise<{ artifacts: string[] }>`
   - CLI: `node scripts/recon.mjs validate <path> [--json]` and `node scripts/recon.mjs apply <root> [--recon <path>]`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/lib/recon-apply.test.mjs`:
 
@@ -2015,12 +2015,12 @@ test('recon.mjs apply refuses to run when there is no state', async () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test tests/lib/recon-apply.test.mjs tests/cli.test.mjs`
 Expected: FAIL — `Cannot find module '../../scripts/lib/recon-apply.mjs'`, and `recon.mjs` does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `scripts/lib/recon-apply.mjs`:
 
@@ -2204,12 +2204,12 @@ if (subcommand === 'validate') {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test tests/lib/recon-apply.test.mjs tests/cli.test.mjs`
 Expected: PASS, 17 + 5 new tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/recon-apply.mjs scripts/recon.mjs tests/lib/recon-apply.test.mjs tests/cli.test.mjs
@@ -2232,7 +2232,7 @@ git commit -m "feat: add the :recon CLI — validate a payload, then apply it to
   - `IDEAS_SCHEMA_VERSION = 1`
   - `tests/fixtures/h0-ideas.json` — a two-idea, one-disqualified fixture reused by Task 6.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/lib/ideas-schema.test.mjs`:
 
@@ -2465,12 +2465,12 @@ Create `tests/fixtures/h0-ideas.json`:
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/lib/ideas-schema.test.mjs`
 Expected: FAIL — `Cannot find module '../../scripts/lib/ideas-schema.mjs'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `scripts/lib/ideas-schema.mjs`:
 
@@ -2611,12 +2611,12 @@ function validateScores(idea, where, rubricIds, maxScore, errors) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/lib/ideas-schema.test.mjs`
 Expected: PASS, 21 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/ideas-schema.mjs tests/lib/ideas-schema.test.mjs tests/fixtures/h0-ideas.json
@@ -2643,7 +2643,7 @@ git commit -m "feat: add the ideas scoring contract, gating Stage-One failures o
   - CLI: `node scripts/brainstorm.mjs validate <path> [--recon <path>] [--json]`,
     `node scripts/brainstorm.mjs archive <root>`, `node scripts/brainstorm.mjs apply <root>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/lib/render-artifacts.test.mjs`:
 
@@ -2841,12 +2841,12 @@ test('applyIdeas requires state to exist', async () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test tests/lib/render-artifacts.test.mjs tests/lib/brainstorm-apply.test.mjs`
 Expected: FAIL — `renderIdeas` is not exported; `brainstorm-apply.mjs` does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Append to `scripts/lib/render-artifacts.mjs`:
 
@@ -3103,12 +3103,12 @@ if (subcommand === 'validate') {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test tests/lib/render-artifacts.test.mjs tests/lib/brainstorm-apply.test.mjs`
 Expected: PASS, 25 + 10 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/render-artifacts.mjs scripts/lib/brainstorm-apply.mjs scripts/brainstorm.mjs \
@@ -3135,7 +3135,7 @@ git commit -m "feat: render the idea shortlist and add the :brainstorm CLI with 
   - CLI: `node scripts/describe.mjs scaffold <root> --idea <id>` and
     `node scripts/describe.mjs apply <root> --idea <id> --track <track-id>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/lib/describe-apply.test.mjs`:
 
@@ -3356,12 +3356,12 @@ test('applyDescribe requires recon to have run', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/lib/describe-apply.test.mjs`
 Expected: FAIL — `Cannot find module '../../scripts/lib/describe-apply.mjs'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `scripts/lib/describe-apply.mjs`:
 
@@ -3673,12 +3673,12 @@ if (subcommand === 'scaffold') {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/lib/describe-apply.test.mjs`
 Expected: PASS, 16 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/describe-apply.mjs scripts/describe.mjs tests/lib/describe-apply.test.mjs
@@ -3699,7 +3699,7 @@ git commit -m "feat: add the :describe CLI producing project.md and a strategy s
 - Consumes: `state.deliverables` and `state.hackathon.next_action_deadline` (Task 1).
 - Produces: no new exports. `renderStatusBoard` gains a deliverables section and an action-deadline line; the hook gains one line for the next action deadline and one for the tiebreak-first criterion.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/lib/render.test.mjs`:
 
@@ -3849,12 +3849,12 @@ test('the hook stays silent when the hackathon block is still null', async () =>
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test tests/lib/render.test.mjs tests/hooks/inject-state.test.mjs`
 Expected: FAIL — no "Deliverables" section, no action-deadline line, no tiebreak line.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `scripts/lib/render.mjs`, insert this block into `renderStatusBoard` immediately after
 the existing budget block (which ends at line 32) and before the missing-tools block:
@@ -3913,12 +3913,12 @@ In `hooks/inject-state.mjs`, replace the deadline block (lines 44–47) with:
   }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test tests/lib/render.test.mjs tests/hooks/inject-state.test.mjs`
 Expected: PASS. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/lib/render.mjs hooks/inject-state.mjs tests/lib/render.test.mjs tests/hooks/inject-state.test.mjs
@@ -3939,7 +3939,7 @@ git commit -m "feat: surface deliverables, action deadlines and the tiebreak cri
 - Consumes: the `recon.json` and `ideas.json` contracts (Tasks 2 and 5) — the agents' whole job is to emit conforming payloads.
 - Produces: three agent definitions discoverable by the Task tool. No code exports.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/agents.test.mjs`:
 
@@ -4042,12 +4042,12 @@ test('the scorer is told ties break on the first-ranked criterion', async () => 
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/agents.test.mjs`
 Expected: FAIL — `ENOENT` reading the `agents` directory.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `agents/hackathon-recon.md`:
 
@@ -4270,12 +4270,12 @@ Fix and re-validate on failure, at most twice. Return the path and a two-sentenc
 of how the top three differ — not a restatement of the scores.
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/agents.test.mjs`
 Expected: PASS, 12 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agents/ tests/agents.test.mjs
@@ -4296,7 +4296,7 @@ git commit -m "feat: add the recon, idea-generator and idea-scorer agent definit
 - Consumes: nothing at runtime; these are loaded by the commands in Task 12.
 - Produces: three skill directories. The test file created here is extended by Task 11.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/skills.test.mjs`:
 
@@ -4403,12 +4403,12 @@ test('project-description carries the heading-per-criterion rule', async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/skills.test.mjs`
 Expected: FAIL — `ENOENT` reading the `skills` directory.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `skills/devpost-recon/SKILL.md`:
 
@@ -4621,12 +4621,12 @@ placement is what separates the track winners from the category prizes: the same
 promoted, read by more judges.
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/skills.test.mjs`
 Expected: PASS, 11 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/ tests/skills.test.mjs
@@ -4647,7 +4647,7 @@ git commit -m "feat: add the devpost-recon, judging-criteria-scoring and project
 - Consumes: `tests/skills.test.mjs` from Task 10.
 - Produces: two more skill directories and the corpus reference file. `winning-ideation` is the skill `idea-generator` and `idea-scorer` load; `sponsor-tech-thesis` is loaded at four phases across the whole workflow.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/skills.test.mjs`:
 
@@ -4726,12 +4726,12 @@ test('sponsor-tech-thesis warns about a thesis the architecture cannot support',
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/skills.test.mjs`
 Expected: FAIL — `skills/winning-ideation` and `skills/sponsor-tech-thesis` do not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `skills/winning-ideation/references/winner-corpus.md`:
 
@@ -4955,12 +4955,12 @@ Write the thesis at `:describe`, then treat it as a bill the build has to pay. I
 honest claim scores better than a large one a judge can puncture in thirty seconds.
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/skills.test.mjs`
 Expected: PASS, 21 tests. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/winning-ideation skills/sponsor-tech-thesis tests/skills.test.mjs
@@ -4981,7 +4981,7 @@ git commit -m "feat: add winning-ideation with the winner corpus, and the sponso
 - Consumes: every script and agent from Tasks 4, 6, 7, 9, and the skills from Tasks 10–11.
 - Produces: the three user-facing commands. This is the task that makes M2 usable.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/commands.test.mjs`:
 
@@ -5062,12 +5062,12 @@ test('every M2 command ends at an approval gate rather than advancing', async ()
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test tests/commands.test.mjs`
 Expected: FAIL — `commands/recon.md` and the other two do not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `commands/recon.md`:
 
@@ -5280,12 +5280,12 @@ moment, and the bonus plan.
 Ask for approval and **stop**. Do not proceed to `:stack`.
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test tests/commands.test.mjs`
 Expected: PASS — the M1 tests plus 11 new ones. Then `npm test` — full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add commands/recon.md commands/brainstorm.md commands/describe.md tests/commands.test.mjs
@@ -5298,23 +5298,23 @@ git commit -m "feat: add the recon, brainstorm and describe command definitions"
 
 After Task 12, verify M2 end to end rather than trusting the unit tests alone.
 
-- [ ] **Full suite:** `npm test` — every suite green, no skipped tests.
-- [ ] **Migration from a real M1 project:** take a directory initialized by M1 (schema v1),
+- [x] **Full suite:** `npm test` — every suite green, no skipped tests.
+- [x] **Migration from a real M1 project:** take a directory initialized by M1 (schema v1),
       run `node scripts/recon.mjs apply .` against the golden fixture, and confirm the state
       migrates to v2 without losing any phase status or budget value.
-- [ ] **Validator rejects reality's worst case:** hand-edit a copy of `tests/fixtures/h0-recon.json`
+- [x] **Validator rejects reality's worst case:** hand-edit a copy of `tests/fixtures/h0-recon.json`
       to use `"at": "2026-06-29T17:00:00"` and confirm `recon.mjs validate` exits 1 naming the
       offset. This is the single most expensive bug the schema prevents.
-- [ ] **Gate before scoring holds:** hand-edit `tests/fixtures/h0-ideas.json` to give a
+- [x] **Gate before scoring holds:** hand-edit `tests/fixtures/h0-ideas.json` to give a
       disqualified idea a score and confirm `brainstorm.mjs validate` refuses it.
-- [ ] **Round preservation:** run `brainstorm.mjs apply`, then `archive`, then `apply` again,
+- [x] **Round preservation:** run `brainstorm.mjs apply`, then `archive`, then `apply` again,
       and confirm `ideas-round-1.*` still exists untouched alongside a new `ideas.md`.
-- [ ] **Hook budget:** with recon applied and a project name set, run `node hooks/inject-state.mjs`
+- [x] **Hook budget:** with recon applied and a project name set, run `node hooks/inject-state.mjs`
       from the project root and confirm ≤40 lines that name the next phase, the submission
       deadline, the next action deadline, and the tiebreak criterion.
-- [ ] **Status board:** run `node scripts/status.mjs .` and confirm it shows outstanding
+- [x] **Status board:** run `node scripts/status.mjs .` and confirm it shows outstanding
       deliverables and the unclaimed bonus points without nagging about finished items.
-- [ ] **Drift coverage comes free:** delete `.hackathon/criteria.md` after approving recon and
+- [x] **Drift coverage comes free:** delete `.hackathon/criteria.md` after approving recon and
       confirm `node scripts/next.mjs .` reports drift naming that file. Nothing in Task 4 wired
       this up — `resolve-next.mjs` already walks `phase.artifacts`.
 - [ ] **Live run against a real hackathon:** run `/win-hackathon:recon <url>` against an
@@ -5327,4 +5327,28 @@ After Task 12, verify M2 end to end rather than trusting the unit tests alone.
 M2's acceptance test is the live run. The unit tests prove the contracts hold; only reading
 a real brief proves the extraction is worth having.
 
-</content>
+### Verification record — 2026-08-23
+
+The eight mechanical checks above were re-run from a clean scratch project and passed:
+
+- `npm test` → **344 tests, 0 failures, 0 skipped**.
+- A literal v1 `state.json` (schema_version 1, `budget.total_hours: 36`, no `deliverables`)
+  survived `recon.mjs apply` as v2 with the budget and phase history intact and a
+  `deliverables` block added.
+- `at: "2026-06-29T17:00:00"` → exit 1, `dates[0] (submission deadline).at must be ISO 8601
+  with an explicit UTC offset`.
+- An idea moved into `disqualified` while still carrying `scores` → exit 1, refused by name.
+- `apply` → `archive` → `apply` left `ideas-round-1.{md,json}` beside a fresh `ideas.md`.
+- `inject-state.mjs` emitted **10 lines** (cap 40), naming the next phase, the submission
+  deadline, and the tiebreak criterion.
+- `status.mjs` showed 0-of-6 submission requirements and 3 unpublished bonus slots (+0.6
+  unclaimed), and did not nag about approved phases.
+- Deleting `.hackathon/criteria.md` made `next.mjs` report `outcome: drift` naming that file.
+
+The last two boxes stay open on purpose — they are human judgment calls, not assertions:
+the live run against an archived Devpost hackathon, and a real marketplace install. M2's
+acceptance test is still the live run.
+
+One cosmetic observation, not a defect in scope: with the archived H0 fixture the hook
+renders a past deadline as `~-1315h left`. Real use has a future deadline; worth a guard
+when a later milestone touches the countdown.
