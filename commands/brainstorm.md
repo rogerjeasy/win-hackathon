@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Write, Task
 Generate and rank ideas for this hackathon.
 
 Load the `winning-ideation` and `sponsor-tech-thesis` skills before starting, and read
-`skills/winning-ideation/references/winner-corpus.md` for calibration.
+`${CLAUDE_PLUGIN_ROOT}/skills/winning-ideation/references/winner-corpus.md` for calibration.
 
 Requires an approved `:recon` — the rubric in `.hackathon/recon.json` is what everything is
 scored against.
