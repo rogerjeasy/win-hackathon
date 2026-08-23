@@ -164,9 +164,19 @@ test('recon does not promise gallery-derived crowding numbers', async () => {
 
 test('brainstorm encodes gate-before-score', async () => {
   const content = await readFile(path.join(commandsDir, 'brainstorm.md'), 'utf8');
-  assert.match(content, /Stage One/i);
-  assert.match(content, /before/i);
-  assert.match(content, /disqualified/);
+  // Scoped to Step 3 and asserted positionally: the previous version checked only that
+  // the three words occurred anywhere in the file, so a command that scored first and
+  // gated afterwards would have passed it.
+  const from = content.indexOf('## Step 3');
+  const to = content.indexOf('## Step 4');
+  assert.ok(from !== -1 && to > from, 'brainstorm.md must have a Step 3 and a Step 4');
+  const step3 = content.slice(from, to);
+  const gate = step3.indexOf('Stage-One gate');
+  const scoring = step3.indexOf('per-criterion scoring');
+  assert.ok(gate !== -1, 'Step 3 must name the Stage-One gate');
+  assert.ok(scoring !== -1, 'Step 3 must name the scoring step');
+  assert.ok(gate < scoring, 'the Stage-One gate must be ordered before scoring');
+  assert.match(step3.slice(gate, scoring), /disqualified/);
 });
 
 test('brainstorm dispatches four generators in parallel and one scorer separately', async () => {

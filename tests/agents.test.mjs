@@ -102,9 +102,16 @@ test('the idea generator is given exactly one angle and told not to score', asyn
 
 test('the scorer runs the Stage-One gate before scoring', async () => {
   const content = await read('idea-scorer.md');
-  assert.match(content, /Stage One/i);
-  assert.match(content, /disqualified/);
-  assert.match(content, /before/i);
+  // Ordering IS the claim. Asserting that "Stage One", "disqualified" and "before" each
+  // appear somewhere passes on a file whose steps run in reverse -- which is exactly what
+  // the previous version did. Assert the positions instead.
+  const gate = content.indexOf('The Stage-One gate');
+  const scoring = content.indexOf('Only now, score');
+  assert.ok(gate !== -1, 'the Stage-One gate step must be named');
+  assert.ok(scoring !== -1, 'the scoring step must be named');
+  assert.ok(gate < scoring, 'the Stage-One gate must be ordered before scoring');
+  assert.match(content.slice(gate, scoring), /disqualified/,
+    'the gate must route failures to disqualified before any scoring happens');
 });
 
 test('the scorer applies the inversion and thesis tests', async () => {

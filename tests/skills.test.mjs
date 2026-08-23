@@ -73,10 +73,22 @@ test('devpost-recon covers dated actions and rule ambiguities', async () => {
 
 test('judging-criteria-scoring covers all four scoring mechanics', async () => {
   const content = await readSkill('judging-criteria-scoring');
+  // Word boundaries and section scoping both matter here. A bare /tie/i matches inside
+  // "Properties" and a bare /EV/i matches inside "eleven" -- so the previous version of
+  // this test passed with the tiebreak and expected-value sections deleted outright.
+  const section = (start, end) => {
+    const from = content.indexOf(start);
+    const to = content.indexOf(end);
+    assert.ok(from !== -1, `missing section: ${start}`);
+    assert.ok(to > from, `missing section: ${end}`);
+    return content.slice(from, to);
+  };
   assert.match(content, /Stage One/i);
-  assert.match(content, /tie/i);
+  assert.match(section('## "Equally weighted"', '## The score ceiling'), /\bties?\b|\btiebreak/i,
+    'the tiebreak section must actually discuss ties');
   assert.match(content, /bonus/i);
-  assert.match(content, /expected value|EV/i);
+  assert.match(section('## Choosing a track', '## Scoring honestly'), /\bexpected[-\s]value\b|\bEV\b/,
+    'the track-choice section must actually discuss expected value');
 });
 
 test('judging-criteria-scoring is honest about unobservable crowding', async () => {
@@ -109,7 +121,25 @@ test('the evidence-bearing skills exist', async () => {
 test('winning-ideation ships the winner corpus as a reference', async () => {
   const p = path.join(skillsDir, 'winning-ideation/references/winner-corpus.md');
   const corpus = await readFile(p, 'utf8');
-  assert.ok(corpus.length > 2000, 'the corpus should carry real evidence, not a stub');
+  // A length check is not an evidence check. The previous `corpus.length > 2000` passed
+  // against 3.4KB of the twelve project names repeated -- no pitches, theses, inversions
+  // or prizes. Require every project to have a table row whose columns are filled in.
+  const projects = [
+    'Waylo', 'Sammy', 'Sonar', 'HYPE', 'Relay', 'Kintwadi',
+    'Cassandra', 'CrisisRoute', 'Karma',
+    'BackstageCommercials', 'Title AI', 'Project Memoria',
+  ];
+  const rows = corpus.split('\n');
+  for (const name of projects) {
+    const row = rows.find((l) => l.startsWith(`| **${name}**`));
+    assert.ok(row, `${name} has no table row in the corpus`);
+    const cells = row.split('|').slice(1, -1).map((c) => c.trim());
+    assert.ok(cells.length >= 4, `${name}'s row has ${cells.length} columns, expected >= 4`);
+    for (const [i, cell] of cells.entries()) {
+      assert.ok(cell.length > 3, `${name}'s column ${i + 1} is empty`);
+    }
+    assert.ok(row.length > 120, `${name}'s row is too thin to be evidence: ${row.length} chars`);
+  }
 });
 
 test('the corpus names every project it claims to cover', async () => {
@@ -134,9 +164,20 @@ test('the corpus records the prize each project won', async () => {
   assert.match(corpus, /First Place/i);
 });
 
-test('winning-ideation points at the corpus rather than restating it', async () => {
+test('winning-ideation points the reader at a reachable corpus path', async () => {
   const content = await readSkill('winning-ideation');
-  assert.match(content, /winner-corpus\.md/);
+  // Renamed deliberately. The old name promised "rather than restating it", but the
+  // no-restatement property is PARKED (the skill does quote a few corpus inversions
+  // inline, and restructuring three skills into citation form was ruled out of scope).
+  // A test whose name certifies a property nobody enforces is worse than no test, so
+  // this now checks the weaker thing it can honestly check: that a reader is pointed at
+  // a full, reachable path and told to go read it -- not shown a bare filename.
+  assert.match(content, /references\/winner-corpus\.md/,
+    'must give the path to the corpus, not just the basename');
+  const idx = content.indexOf('winner-corpus.md');
+  const around = content.slice(Math.max(0, idx - 240), idx + 240);
+  assert.match(around, /\bread\b|\bsee\b|\bconsult\b/i,
+    'the corpus reference must read as an instruction to go read it');
 });
 
 test('winning-ideation carries the inversion test and the anti-patterns', async () => {
