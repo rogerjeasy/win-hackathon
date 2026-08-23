@@ -35,11 +35,10 @@ Fill in `project.md` against its section spine. Two things carry more weight tha
 **"Why now."** What changed recently that makes this the moment. It is what separates a
 product from a project.
 
-**The named characters in "a day in the life."** These are load-bearing. In the entry that
-won, the same four people became the seeded demo data, the demo video script, and the
-submission narrative — one decision, three deliverables. Name them deliberately, give them a
-geography that carries the point of the product, and expect every later phase to reuse those
-exact names.
+**The named characters in "a day in the life."** These are load-bearing: reuse them as the
+seeded demo data, the demo video script, and the submission narrative — one decision, three
+deliverables. Name them deliberately, give them a geography that carries the point of the
+product, and expect every later phase to reuse those exact names.
 
 Then complete `strategy.md`: fill the "how it wins" column of the criteria map, choose the
 angle and platform for each bonus slot, and write the risks table. Do not edit the criteria

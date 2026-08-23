@@ -88,10 +88,11 @@ export function renderStrategySkeleton({ recon, idea }) {
   out.push(`**Stated as an inversion:** ${idea.inversion}`);
   out.push('');
   out.push(
-    'This sentence is the single most load-bearing line in the submission. Every winner '
-    + 'in the reference corpus has one, and the ones that took first place in a track gave '
-    + 'it a **top-level heading high in the document** rather than burying it inside "How '
-    + 'we built it". Promote it.',
+    'The thesis above is the single most load-bearing line in the submission — nearly every '
+    + 'winner in the reference corpus states it as an inversion like this one. Promote it to a '
+    + '**top-level heading high in the document** rather than burying it inside "How we built '
+    + 'it": in the corpus, the projects that promoted it (Relay, HYPE, Sonar) each won '
+    + '$10,000, while the one that buried it (Kintwadi) won a $2,000 category prize.',
   );
   out.push('');
 

@@ -54,8 +54,9 @@ Relay named its **track** in a heading: "Business model (Monetizable B2C)."
 
 ## What generalises
 
-**Every winner has a technology thesis.** Six of six in H0. Not "we used X" but a reason a
-competitor using something else could not claim.
+**Every winner in H0 has a technology thesis.** Six of six — the other two hackathons in
+this corpus don't record a Thesis column, so this claim is scoped to H0. Not "we used X" but
+a reason a competitor using something else could not claim.
 
 **Nearly every winner can be stated as an inversion.** See the tables — it is the form to
 aim for, and most winners exhibit it, though not every row fits it cleanly (HYPE, Title AI).
