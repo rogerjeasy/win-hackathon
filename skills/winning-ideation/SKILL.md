@@ -36,9 +36,9 @@ one moment, not a feature list. If the demo moment is "a dashboard loads," there
 
 ## Quantify
 
-Every winning pitch in the corpus carries a number — market size, latency, a count of the
-thing built, a population figure. It is the cheapest credibility available, and its absence
-is conspicuous.
+Everyone in the corpus quantifies somewhere in the submission — market size, latency, a
+count of the thing built. It is the cheapest credibility available, and its absence is
+conspicuous.
 
 ## Anti-patterns
 

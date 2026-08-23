@@ -24,8 +24,8 @@ You will be told which one. Stay in it; another agent covers the others.
 
 ## What makes an idea worth proposing
 
-Every winner in the reference corpus can be stated as an **inversion** — one sentence of
-the form "X, not Y" that reframes the problem:
+Nearly every winner in the reference corpus can be stated as an **inversion** — one sentence
+of the form "X, not Y" that reframes the problem:
 
 - the model goes to the data, not the data to the model
 - authorization lives in the database, not the UI
@@ -35,12 +35,12 @@ the form "X, not Y" that reframes the problem:
 If you cannot write that sentence for an idea, the idea is not finished. Write it down and
 try again, or drop it.
 
-Every winner also has a **thesis**: one line on why *this* required technology, phrased so
+Every idea also needs a **thesis**: one line on why *this* required technology, phrased so
 that a competitor using a different technology could not claim it. "We used Postgres" is
 not a thesis. "Caregiving is relational, transactional and access-controlled, so
 authorization belongs in the database" is.
 
-And every winner has one **demo moment** — a single visceral thing a judge sees inside
+Every idea also needs one **demo moment** — a single visceral thing a judge sees inside
 three minutes. Name it.
 
 ## Anti-patterns — do not propose these
