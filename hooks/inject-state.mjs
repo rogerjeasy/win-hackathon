@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readState } from '../scripts/lib/state.mjs';
+import { readState, migrateStateFile } from '../scripts/lib/state.mjs';
 import { resolveNext } from '../scripts/lib/resolve-next.mjs';
 import { PHASES } from '../scripts/lib/paths.mjs';
 
@@ -31,6 +31,11 @@ function oneLine(str) {
 // short, clear message and a clean exit rather than an unhandled rejection and a raw
 // stack trace on every SessionStart.
 try {
+  // Migrate before reading, for the same reason status.mjs and next.mjs do: readState()
+  // validates, so a state.json from an older plugin version throws and the hook degrades
+  // to its catch — telling the user to run :status, which would have been just as broken.
+  // migrateStateFile is additive, idempotent, and a no-op when there is no state file.
+  await migrateStateFile(root);
   const state = await readState(root);
   if (state === null) process.exit(0);
 

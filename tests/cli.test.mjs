@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile, access, copyFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from './helpers/tmp.mjs';
+import { writeV1State } from './helpers/v1-state.mjs';
 
 const run = promisify(execFile);
 const scripts = fileURLToPath(new URL('../scripts/', import.meta.url));
@@ -198,6 +199,100 @@ test('brainstorm.mjs apply prints warnings AND the refusal message on an invalid
         assert.ok(iWarn1 >= 0 && iWarn2 >= 0 && iRefuse >= 0);
         assert.ok(iWarn1 < iRefuse && iWarn2 < iRefuse,
           'both warnings must precede the refusal message, matching pre-fix output order');
+        return true;
+      },
+    );
+  });
+});
+
+// --- schema migration at the entry points ------------------------------------------
+// Regression (critical): migrateStateFile was wired only into the three NEW M2 commands
+// (recon/brainstorm/describe apply). status, next, the SessionStart hook and :init all
+// read state without migrating, so a user who ran M1 and pulled M2 got a raw unhandled
+// stack trace out of state.mjs from every command that could have told them what to do
+// — including the one the hook points them at. Each of these drives a REAL v1 state
+// file through one entry point; none of the pre-existing tests did.
+
+test('status.mjs migrates a v1 state file instead of crashing on it', async () => {
+  await withTmpDir(async (dir) => {
+    await writeV1State(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'status.mjs'), dir]);
+    assert.match(stdout, /recon/);
+    const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
+    assert.equal(after.schema_version, 2);
+    assert.deepEqual(after.deliverables, { submission_requirements: [], bonus_content: [] });
+  });
+});
+
+test('next.mjs migrates a v1 state file instead of crashing on it', async () => {
+  await withTmpDir(async (dir) => {
+    await writeV1State(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'next.mjs'), dir, '--json']);
+    const r = JSON.parse(stdout);
+    assert.equal(r.outcome, 'start');
+    assert.equal(r.phase, 'recon');
+    const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
+    assert.equal(after.schema_version, 2);
+  });
+});
+
+test('init.mjs --apply migrates an existing v1 state file and backs it up first', async () => {
+  await withTmpDir(async (dir) => {
+    await writeV1State(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+
+    const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
+    assert.equal(after.schema_version, 2, ':init is the command the design makes responsible for migrating');
+    assert.match(stdout, /backup:.*state\.json/,
+      'the design requires :init to back up before it migrates');
+  });
+});
+
+test('a migrated v1 state keeps the fields it already had', async () => {
+  await withTmpDir(async (dir) => {
+    await writeV1State(dir, (s) => {
+      s.phases.recon.status = 'approved';
+      s.phases.recon.artifacts = [];
+      s.mode = 'team';
+      s.budget.total_hours = 36;
+    });
+    await run('node', [path.join(scripts, 'status.mjs'), dir]);
+    const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
+    assert.equal(after.schema_version, 2);
+    assert.equal(after.phases.recon.status, 'approved');
+    assert.equal(after.mode, 'team');
+    assert.equal(after.budget.total_hours, 36);
+  });
+});
+
+test('status.mjs prints an actionable message, not a stack trace, on a corrupt state', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await writeFile(path.join(dir, '.hackathon/state.json'), '{ not json', 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'status.mjs'), dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /could not be parsed as JSON/);
+        assert.match(err.stderr, /win-hackathon:init/);
+        assert.doesNotMatch(err.stderr, /^\s+at /m, 'no raw stack frames may reach the user');
+        return true;
+      },
+    );
+  });
+});
+
+test('next.mjs prints an actionable message, not a stack trace, on a corrupt state', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await writeFile(path.join(dir, '.hackathon/state.json'), '{ not json', 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'next.mjs'), dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /could not be parsed as JSON/);
+        assert.match(err.stderr, /win-hackathon:init/);
+        assert.doesNotMatch(err.stderr, /^\s+at /m, 'no raw stack frames may reach the user');
         return true;
       },
     );

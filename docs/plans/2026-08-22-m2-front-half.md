@@ -1520,7 +1520,7 @@ export function renderBrief(recon) {
       lines.push(bullet(`${ls.entries_observed} entries visible in the project gallery`));
     } else {
       lines.push(bullet(
-        'Project gallery is empty — Devpost galleries populate only **until winners are announced**, '
+        'Project gallery is empty — Devpost galleries stay **empty until winners are announced**, '
         + 'so per-track crowding cannot be observed during a live hackathon.',
       ));
     }
@@ -4445,7 +4445,7 @@ treated. Capture it in `host_guidance` verbatim.
 
 ## The gallery is empty and that is not a bug
 
-Devpost project galleries populate only **until winners are announced**. During the
+Devpost project galleries stay **empty until winners are announced**. During the
 submission period you cannot see how many people entered a track, so per-track crowding is
 unobservable. Record `gallery_available: false`, leave `entries_observed` null, and do not
 substitute the participant count — that counts registrations, most of which never submit.
