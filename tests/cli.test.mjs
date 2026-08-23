@@ -298,3 +298,111 @@ test('next.mjs prints an actionable message, not a stack trace, on a corrupt sta
     );
   });
 });
+
+// --- describe.mjs had no subprocess coverage at all despite writing state: neither
+// subcommand, neither exit path. Same for brainstorm's validate and archive.
+
+async function seedThroughBrainstorm(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  await run('node', [path.join(scripts, 'recon.mjs'), 'apply', dir, '--recon', fixture]);
+  await run('node', [path.join(scripts, 'brainstorm.mjs'), 'apply', dir, '--ideas', ideasFixture]);
+}
+
+test('describe.mjs apply writes both artifacts and gates the phase', async () => {
+  await withTmpDir(async (dir) => {
+    await seedThroughBrainstorm(dir);
+    const { stdout } = await run('node', [
+      path.join(scripts, 'describe.mjs'), 'apply', dir, '--idea', 'idea-07', '--track', 'b2c',
+    ]);
+    assert.match(stdout, /project\.md/);
+    assert.match(stdout, /strategy\.md/);
+    assert.match(stdout, /awaiting_approval/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.describe.status, 'awaiting_approval');
+    assert.equal(state.hackathon.selected_track, 'b2c');
+  });
+});
+
+test('describe.mjs apply exits 2 on a missing required flag', async () => {
+  await withTmpDir(async (dir) => {
+    await seedThroughBrainstorm(dir);
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'describe.mjs'), 'apply', dir, '--idea', 'idea-07']),
+      (err) => {
+        assert.equal(err.code, 2, 'a usage error must exit 2, not 1');
+        assert.match(err.stderr, /--track/);
+        return true;
+      },
+    );
+  });
+});
+
+test('describe.mjs apply exits 1 and names the idea when it was disqualified', async () => {
+  await withTmpDir(async (dir) => {
+    await seedThroughBrainstorm(dir);
+    await assert.rejects(
+      () => run('node', [
+        path.join(scripts, 'describe.mjs'), 'apply', dir, '--idea', 'idea-03', '--track', 'b2c',
+      ]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /idea-03/);
+        return true;
+      },
+    );
+  });
+});
+
+test('describe.mjs scaffold prints a skeleton and writes nothing', async () => {
+  await withTmpDir(async (dir) => {
+    await seedThroughBrainstorm(dir);
+    const before = await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8');
+    const { stdout } = await run('node', [
+      path.join(scripts, 'describe.mjs'), 'scaffold', dir, '--idea', 'idea-07',
+    ]);
+    assert.ok(stdout.trim().length > 0, 'scaffold must print a skeleton');
+    await assert.rejects(() => access(path.join(dir, 'docs', 'strategy.md')), /ENOENT/);
+    assert.equal(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'), before,
+      'scaffold must not mutate state');
+  });
+});
+
+test('describe.mjs exits 2 on an unknown subcommand', async () => {
+  await withTmpDir(async (dir) => {
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'describe.mjs'), 'bogus', dir]),
+      (err) => { assert.equal(err.code, 2); return true; },
+    );
+  });
+});
+
+test('brainstorm.mjs validate exits 0 on the fixture and 1 on an invalid payload', async () => {
+  const ok = await run('node', [
+    path.join(scripts, 'brainstorm.mjs'), 'validate', ideasFixture, '--recon', fixture,
+  ]);
+  assert.match(ok.stdout, /valid/i);
+
+  await withTmpDir(async (dir) => {
+    const bad = JSON.parse(await readFile(ideasFixture, 'utf8'));
+    bad.ideas[0].thesis = '';
+    const p = path.join(dir, 'bad.json');
+    await writeFile(p, JSON.stringify(bad), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'brainstorm.mjs'), 'validate', p, '--recon', fixture]),
+      (err) => { assert.equal(err.code, 1); assert.match(err.stderr, /thesis/); return true; },
+    );
+  });
+});
+
+test('brainstorm.mjs archive moves the round aside and says so when there is none', async () => {
+  await withTmpDir(async (dir) => {
+    const empty = await run('node', [path.join(scripts, 'brainstorm.mjs'), 'archive', dir]);
+    assert.match(empty.stdout, /nothing to archive/i);
+
+    await seedThroughBrainstorm(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'brainstorm.mjs'), 'archive', dir]);
+    assert.match(stdout, /round|archiv/i);
+    await assert.rejects(() => access(path.join(dir, '.hackathon', 'ideas.json')), /ENOENT/,
+      'archiving must move the current round out of the way');
+  });
+});
