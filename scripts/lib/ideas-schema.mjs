@@ -27,8 +27,12 @@ export function validateIdeas(doc, recon) {
   if (scored === null || rejected === null) return { valid: false, errors, warnings };
 
   const hasRecon = recon !== undefined && recon !== null;
-  const rubricIds = (recon?.criteria?.items ?? []).map((i) => i.id);
-  const maxScore = recon?.criteria?.max_base_score;
+  const rawItems = recon?.criteria?.items;
+  const rubricIds = Array.isArray(rawItems)
+    ? rawItems.filter((i) => isNonEmptyString(i?.id)).map((i) => i.id)
+    : [];
+  const rawMaxScore = recon?.criteria?.max_base_score;
+  const maxScore = Number.isFinite(rawMaxScore) ? rawMaxScore : undefined;
 
   // Rubric-membership and score-ceiling checks have independent failure causes — an
   // absent recon skips both, but a malformed recon can supply one without the other

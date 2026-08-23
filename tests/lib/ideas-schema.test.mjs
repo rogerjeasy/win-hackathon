@@ -80,6 +80,54 @@ test('rejects a non-object', () => {
   assert.equal(validateIdeas(null).valid, false);
 });
 
+test('degrades to a warning instead of throwing when criteria.items is an object, not an array', async () => {
+  const d = await ideas();
+  const r = await recon();
+  r.criteria.items = {};
+  assert.doesNotThrow(() => validateIdeas(d, r));
+  const { warnings } = validateIdeas(d, r);
+  assert.ok(
+    warnings.some((w) => /recon supplied but criteria\.items is empty or malformed/.test(w)),
+    `expected a malformed-items warning, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
+test('degrades to a warning instead of throwing when criteria.items contains a null entry', async () => {
+  const d = await ideas();
+  const r = await recon();
+  r.criteria.items = [null];
+  assert.doesNotThrow(() => validateIdeas(d, r));
+  const { warnings } = validateIdeas(d, r);
+  assert.ok(
+    warnings.some((w) => /recon supplied but criteria\.items is empty or malformed/.test(w)),
+    `expected a malformed-items warning, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
+test('degrades to a warning instead of throwing when criteria.items is a string', async () => {
+  const d = await ideas();
+  const r = await recon();
+  r.criteria.items = 'nope';
+  assert.doesNotThrow(() => validateIdeas(d, r));
+  const { warnings } = validateIdeas(d, r);
+  assert.ok(
+    warnings.some((w) => /recon supplied but criteria\.items is empty or malformed/.test(w)),
+    `expected a malformed-items warning, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
+test('degrades to a warning instead of throwing when max_base_score is NaN', async () => {
+  const d = await ideas();
+  const r = await recon();
+  r.criteria.max_base_score = NaN;
+  assert.doesNotThrow(() => validateIdeas(d, r));
+  const { warnings } = validateIdeas(d, r);
+  assert.ok(
+    warnings.some((w) => /recon supplied but criteria\.max_base_score is missing or not a number/.test(w)),
+    `expected a score-ceiling warning, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
 test('rejects a wrong schema_version', async () => {
   const d = await ideas();
   d.schema_version = 7;
