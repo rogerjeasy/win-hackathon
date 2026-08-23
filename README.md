@@ -1,5 +1,7 @@
 # win-hackathon
 
+[![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
+
 A Claude Code plugin that encodes an end-to-end hackathon workflow — from reading the
 Devpost rules to submitting a deployed, documented, judge-ready project — as commands,
 agents, skills, and hooks.
@@ -81,7 +83,34 @@ Two rules the schemas enforce because they lose hackathons outright:
 - A disqualified idea is never scored — a number invites falling in love with an idea that
   cannot win.
 
+## Tech stack
+
+**Node.js ≥ 20, and nothing else.** `package.json` declares no `dependencies` and no
+`devDependencies` — every import in the codebase resolves to a `node:` builtin.
+
+| Layer | What's used |
+|---|---|
+| Language | JavaScript, ESM (`.mjs`), no transpilation and no build step |
+| Runtime | Node.js ≥ 20 (`engines`), developed on v24 |
+| Tests | `node:test` + `node:assert/strict` — 344 tests across 22 files |
+| I/O | `node:fs/promises`, `node:path` — atomic writes via write-temp-then-`rename` |
+| Model-facing surface | Markdown: 6 commands, 3 agents, 5 skills |
+| Data | JSON — `state.json`, `recon.json`, `ideas.json`, each schema-validated before any write |
+| Shell | One 4-line bash wrapper, so `hooks.json` need not hard-code a node path |
+| CI | GitHub Actions, matrix over Node 20 / 22 / 24 |
+
+Roughly 2,500 lines of implementation against 3,800 lines of tests.
+
+The zero-dependency rule is a deliberate constraint, not an accident of scope. A plugin
+that installs by cloning a repo has no install step to run, so a dependency would have to
+be vendored or asked of the user. It also keeps the CI job to three steps and means there
+is no lockfile to keep current. Node was chosen over Python because Node is *already* a
+hard requirement of the workflow this plugin drives — OpenSpec is an npm CLI and Next.js
+is the default frontend — so it adds no runtime that isn't there anyway.
+
 ## Dependencies
+
+These are requirements of the *workflow*, not of the plugin's own code:
 
 - [`superpowers`](https://github.com/obra/superpowers) — `:build` invokes its SDD and TDD skills
 - [`@fission-ai/openspec`](https://github.com/Fission-AI/OpenSpec) — required for `:spec`.
@@ -89,8 +118,6 @@ Two rules the schemas enforce because they lose hackathons outright:
 - No Playwright/MCP dependency. `:recon` uses `WebFetch`; when a page is JS-gated or
   comes back thin it records the gap in `unresolved` and asks you to paste the page,
   rather than failing silently. See the design note in `docs/design/m2-front-half.md`.
-
-Node ≥ 20. Zero runtime dependencies.
 
 ## License
 
