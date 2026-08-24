@@ -7,12 +7,14 @@ import { readFile, access, copyFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from './helpers/tmp.mjs';
 import { writeV1State } from './helpers/v1-state.mjs';
+import { readState, writeState } from '../scripts/lib/state.mjs';
 
 const run = promisify(execFile);
 const scripts = fileURLToPath(new URL('../scripts/', import.meta.url));
 const fixture = fileURLToPath(new URL('./fixtures/h0-recon.json', import.meta.url));
 const ideasFixture = fileURLToPath(new URL('./fixtures/h0-ideas.json', import.meta.url));
 const stackFixture = fileURLToPath(new URL('./fixtures/h0-stack.json', import.meta.url));
+const architectureFixture = fileURLToPath(new URL('./fixtures/h0-architecture.json', import.meta.url));
 
 test('init --dry-run writes nothing', async () => {
   await withTmpDir(async (dir) => {
@@ -447,4 +449,95 @@ test('stack.mjs with no subcommand exits 2 with usage', async () => {
       return true;
     },
   );
+});
+
+// --- architect.mjs --------------------------------------------------------------------
+
+test('architect.mjs validate exits 0 on the golden fixture', async () => {
+  const { stdout } = await run('node', [path.join(scripts, 'architect.mjs'), 'validate', architectureFixture]);
+  assert.match(stdout, /valid/i);
+});
+
+test('architect.mjs validate lists every problem at once on stderr', async () => {
+  await withTmpDir(async (dir) => {
+    const bad = JSON.parse(await readFile(architectureFixture, 'utf8'));
+    bad.edges.push({ from: 'web', to: 'ghost' });
+    delete bad.access_control;
+    const p = path.join(dir, 'bad.json');
+    await writeFile(p, JSON.stringify(bad), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'architect.mjs'), 'validate', p]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /ghost/);
+        assert.match(err.stderr, /access_control/);
+        return true;
+      },
+    );
+  });
+});
+
+async function seedForArchitect(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  const state = await readState(dir);
+  state.project = { name: 'Kintwadi', selected_idea: 'i1' };
+  await writeState(dir, state);
+  await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+  await copyFile(architectureFixture, path.join(dir, '.hackathon', 'architecture.json'));
+  await copyFile(stackFixture, path.join(dir, '.hackathon', 'stack.json'));
+}
+
+test('architect.mjs apply --dry-run reports without writing', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForArchitect(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'architect.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(stdout, /Dry run/);
+    assert.match(stdout, /AGENTS\.md/);
+    // docs/architecture.md exists only once :architect actually writes; a dry run must
+    // not create it.
+    await assert.rejects(() => access(path.join(dir, 'docs', 'architecture.md')), /ENOENT/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.architect.status, 'not_started');
+  });
+});
+
+test('architect.mjs apply writes the eight artifacts end to end and gates the phase', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForArchitect(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'architect.mjs'), 'apply', dir]);
+    assert.match(stdout, /Wrote 8 artifact\(s\)/);
+    assert.match(stdout, /awaiting_approval/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.architect.status, 'awaiting_approval');
+    assert.equal(state.project.architecture_ref, '.hackathon/architecture.json');
+  });
+});
+
+test('architect.mjs apply reports a backup when AGENTS.md already exists', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForArchitect(dir);
+    await writeFile(path.join(dir, 'AGENTS.md'), '# Mine\n\nHand-written rule.\n', 'utf8');
+    const { stdout } = await run('node', [path.join(scripts, 'architect.mjs'), 'apply', dir]);
+    assert.match(stdout, /Backed up before overwriting/);
+    assert.match(stdout, /AGENTS\.md/);
+    const after = await readFile(path.join(dir, 'AGENTS.md'), 'utf8');
+    assert.match(after, /Hand-written rule\./);
+  });
+});
+
+test('architect.mjs apply refuses an invalid payload with exit 1', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForArchitect(dir);
+    const bad = JSON.parse(await readFile(architectureFixture, 'utf8'));
+    bad.edges.push({ from: 'web', to: 'ghost' });
+    await writeFile(path.join(dir, '.hackathon', 'architecture.json'), JSON.stringify(bad), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'architect.mjs'), 'apply', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /refusing to apply/);
+        return true;
+      },
+    );
+  });
 });

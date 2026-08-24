@@ -258,3 +258,23 @@ test('sponsor-wins precedence is ordered, with required tech first', async () =>
     'defaults must never be presented as outranking a mandate');
   assert.ok(step2.indexOf('Personal defaults') < step2.indexOf('Bonus tech'));
 });
+
+// --- architect.md ------------------------------------------------------------------------
+
+test('the architect command exists', async () => {
+  const files = await commandFiles();
+  assert.ok(files.includes('architect.md'), 'missing commands/architect.md');
+});
+
+test('the architect command dry-runs before it applies', async () => {
+  const md = await readCommand('architect.md');
+  assert.ok(md.indexOf('--dry-run') < md.indexOf('apply .\n'),
+    'the preview must come before the write, or the warning arrives too late');
+});
+
+test('the architect command stops at the gate', async () => {
+  const md = await readCommand('architect.md');
+  const gate = md.slice(md.indexOf('## Step 5'));
+  assert.match(gate, /explicit yes/i);
+  assert.match(gate, /\bshort\b/, 'it must tell the user a short AGENTS.md is legitimate');
+});
