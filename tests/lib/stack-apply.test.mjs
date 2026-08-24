@@ -111,6 +111,22 @@ test('applyStack refuses an invalid payload rather than writing half of it', asy
   });
 });
 
+test('a pipe in a slot rationale is escaped, not left to corrupt the table', async () => {
+  const stack = await fixture('h0-stack.json');
+  stack.slots = [{
+    ...stack.slots[0],
+    rationale: 'Chosen over DynamoDB | SQLite for relational access.',
+  }];
+  const table = section(renderStack(stack), '## Stack', '## Bleeding edge');
+  const row = table.split('\n').find((l) => l.includes('Chosen over'));
+  assert.ok(row.includes('Chosen over DynamoDB \\| SQLite for relational access.'),
+    'a raw pipe silently splits the column');
+  // Splitting on an unescaped pipe (one not preceded by a backslash) must still find
+  // exactly five columns -- a raw pipe in the cell would otherwise split it into six.
+  const cells = row.split(/(?<!\\)\|/).slice(1, -1);
+  assert.equal(cells.length, 5, 'the row must keep its five-column shape');
+});
+
 test('applyStack fails clearly when :init has not run', async () => {
   await withTmpDir(async (root) => {
     const stack = await fixture('h0-stack.json');

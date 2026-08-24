@@ -36,6 +36,21 @@ export function renderStatusBoard({ state, resolution, tools }) {
     lines.push(`Track: ${state.hackathon.selected_track}`);
   }
 
+  const stack = state.project?.stack;
+  if (stack?.repo_shape) {
+    lines.push('');
+    lines.push(`Stack: ${stack.repo_shape}${stack.primary_database ? ` · ${stack.primary_database}` : ''}`);
+  }
+
+  // Only the unverified ones. A board that lists everything verified is a board nobody reads.
+  const verified = state.compliance?.required_tech_verified ?? {};
+  const outstanding = Object.entries(verified).filter(([, ok]) => !ok).map(([id]) => id);
+  if (outstanding.length > 0) {
+    lines.push('');
+    lines.push('Required tech not yet verified');
+    for (const id of outstanding) lines.push(`  [ ] ${id}`);
+  }
+
   // An action deadline closes before the work is due — missing it costs a resource,
   // not the hackathon, which is exactly why it is easy to forget.
   const action = state.hackathon?.next_action_deadline;
