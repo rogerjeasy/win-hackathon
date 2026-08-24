@@ -93,11 +93,15 @@ it's been laid out, which is a different, earlier step.
 
 A screen is built from named, reusable pieces — `Card`, `Badge`, `Avatar`, `Tabs`, a form
 built on `react-hook-form` + `zod` — not one component that renders the whole page inline.
-Decomposition is what makes the system reusable at all: a `GhostCard` or a `ContractSparkline`
-built once gets used everywhere it's needed, and a change to how badges look happens in one
-file instead of in every screen that drew its own badge. A page-sized component is a system
-of one, used once, that has to be re-derived — or copy-pasted and drifted — the next time a
-similar screen is needed.
+Kintwadi's own tree shows the shape at both levels: generic primitives live in
+`src/components/ui/` (`card.tsx`, `badge.tsx`, `avatar.tsx`, `tabs.tsx`), and domain pieces
+sit beside the screens that use them — `StatusBanner` (`src/components/dashboard/status-banner.tsx`)
+and `EventCard` (`src/components/timeline/event-card.tsx`) are each their own file, built
+once and reused everywhere that piece of UI is needed. Decomposition is what makes the
+system reusable at all: a change to how a badge looks happens in one file instead of in
+every screen that drew its own badge. A page-sized component is a system of one, used once,
+that has to be re-derived — or copy-pasted and drifted — the next time a similar screen is
+needed.
 
 ## Fix the system once, before the first screen
 

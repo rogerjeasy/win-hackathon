@@ -305,16 +305,34 @@ test('architecture-diagramming warns that hand edits are lost', async () => {
 
 test('frontend-architecture states protection is the default, not an opt-in', async () => {
   const md = await readSkill('frontend-architecture');
-  assert.match(md, /\bdefault\b/);
-  assert.match(md, /opt-in/i);
+  // Scoped to the body, not the frontmatter: the description line alone used to be the only
+  // thing satisfying these two assertions, so stripping the whole body and keeping just the
+  // frontmatter passed. The body must say it itself.
+  const body = md.slice(md.indexOf('\n---', 4) + 4);
+  assert.match(body, /\bdefault\b/,
+    'the body itself must state the default, not just the frontmatter description');
+  assert.match(body, /opt-in/i,
+    'the body itself must say "opt-in", not just the frontmatter description');
   assert.ok(md.indexOf('requireSession') < md.indexOf('proxy.ts'),
     'the server guard is primary; the edge allowlist is the optimistic layer and comes second');
 });
 
 test('backend-architecture keeps token scopes separated', async () => {
   const md = await readSkill('backend-architecture');
-  assert.match(md, /\bscope/i);
-  assert.match(md, /\bKarma\b/, 'the practice needs the project it was measured in');
+  // Scoped to the token-scope section itself. "scope" (8x) and "Karma" (8x) both appear
+  // throughout the file -- in the DAL section, the closing summary -- so an unscoped match
+  // survives deleting this entire section. Require the section to exist between its own
+  // heading and the next, and require it to name the actual three tokens, not just the word
+  // "scope".
+  const start = md.indexOf('## Separated token scopes');
+  const end = md.indexOf('## Dependency injection');
+  assert.ok(start !== -1 && end > start,
+    'the token-scope section must exist, between its own heading and the next one');
+  const section = md.slice(start, end);
+  assert.match(section, /\bKarma\b/, 'the practice needs the project it was measured in');
+  for (const token of ['DT_API_TOKEN', 'DT_OTEL_TOKEN', 'DT_QUERY_TOKEN']) {
+    assert.ok(section.includes(token), `token-scope section is missing ${token}`);
+  }
 });
 
 test('data-modeling requires a policy in the same change as a new table', async () => {

@@ -9,11 +9,12 @@ Kintwadi's `AGENTS.md` states the routing invariant in one sentence: every authe
 page lives under `src/app/(app)/`, and that route group's `layout.tsx` runs
 `requireSession()` on the server, redirecting unauthenticated users to `/sign-in`. Nothing
 inside the group has to remember to check auth — the layout already ran before any page
-component executes. That is what "protection is the DEFAULT" means in practice: a new
-screen only has to land in the right folder, not opt in to being secured. Public routes
-(marketing, `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, `/pricing`,
-`/how-it-works`, `/invite/*`) live *outside* the group, deliberately — the group's boundary
-is the security boundary, not a naming convention layered on top of one.
+component executes. That is protection as the default, not an opt-in — a new screen only
+has to land in the right folder to be secured; there is no separate opt-in step to remember.
+Public routes (marketing, `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`,
+`/pricing`, `/how-it-works`, `/invite/*`, `/style-guide`) live *outside* the group,
+deliberately — the group's boundary is the security boundary, not a naming convention
+layered on top of one.
 
 Route a new screen wrong — inside the public tree because it "just needs one quick check" —
 and it ships unauthenticated. Route it right and it inherits the guard for free. There is no
