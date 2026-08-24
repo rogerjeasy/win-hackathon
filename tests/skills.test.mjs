@@ -265,3 +265,31 @@ test('the corpus states what it cannot say', async () => {
   const md = await readReference('security-invariants', 'invariants-corpus.md');
   assert.match(md.slice(md.lastIndexOf('##')), /cannot say|read from the outside/i);
 });
+
+test('monorepo-structure carries both real shapes with their evidence project', async () => {
+  const md = await readSkill('monorepo-structure');
+  const mono = md.slice(md.indexOf('## next-monolith'), md.indexOf('## multi-service'));
+  assert.match(mono, /\bKintwadi\b/);
+  assert.match(mono, /\(app\)/, 'the protected route group is the load-bearing detail');
+  const multi = md.slice(md.indexOf('## multi-service'));
+  assert.match(multi, /\bKarma\b/);
+  assert.match(multi, /\bagents\/\B|\bagents\/\b/, 'Karma has three services, not two');
+});
+
+test('monorepo-structure gives criteria, not just descriptions', async () => {
+  const md = await readSkill('monorepo-structure');
+  assert.ok(md.indexOf('## Choosing') > md.indexOf('## multi-service'),
+    'the criteria come after both shapes are on the table');
+  assert.match(md.slice(md.indexOf('## Choosing')), /network hop|deploy target/);
+});
+
+test('architecture-diagramming records that nobody automated a PNG export', async () => {
+  const md = await readSkill('architecture-diagramming');
+  assert.match(md, /\bno\b[^.]*automat[^.]*PNG|PNG[^.]*by hand/i);
+});
+
+test('architecture-diagramming warns that hand edits are lost', async () => {
+  const md = await readSkill('architecture-diagramming');
+  assert.match(md, /architecture\.json/);
+  assert.match(md, /hand edit|edited by hand/i);
+});
