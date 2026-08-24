@@ -217,10 +217,15 @@ test('sponsor-tech-thesis warns about a thesis the architecture cannot support',
 
 test('framework-drift-guard ships the canonical banner, not a paraphrase', async () => {
   const md = await readSkill('framework-drift-guard');
-  assert.match(md, /# This is NOT the .* you know/);
-  assert.match(md, /may all differ from your training data/);
-  assert.match(md, /Heed deprecation notices\./);
-  assert.match(md, /<!-- BEGIN:nextjs-agent-rules -->/);
+  const banner = md.slice(
+    md.indexOf('<!-- BEGIN:nextjs-agent-rules -->'),
+    md.indexOf('<!-- END:nextjs-agent-rules -->'),
+  );
+  assert.ok(banner.length > 0, 'the canonical banner block must be present');
+  assert.match(banner, /# This is NOT the .* you know/);
+  assert.match(banner, /may all differ from your training data/);
+  assert.match(banner, /node_modules\/next\/dist\/docs\//);
+  assert.match(banner, /Heed deprecation notices\./);
 });
 
 test('framework-drift-guard says when NOT to emit a banner', async () => {
