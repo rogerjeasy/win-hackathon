@@ -92,8 +92,11 @@ export function renderArchitecture(architecture) {
   const ds = a.design_system;
   const tokens = ds?.tokens ?? {};
   const tokenKeys = [...new Set([...Object.keys(tokens.light ?? {}), ...Object.keys(tokens.dark ?? {})])];
+  // Must list every field the section body below can render -- a guard that omits one
+  // silently drops content the payload actually had (e.g. breakpoints_px with nothing else set).
   const hasDesignSystemContent = !!ds &&
-    (!!ds.personality || has(ds.anti_generic) || tokenKeys.length > 0 || !!ds.type);
+    (!!ds.personality || has(ds.anti_generic) || tokenKeys.length > 0 || !!ds.type ||
+      has(ds.breakpoints_px));
 
   if (hasDesignSystemContent) {
     out.push('## Design system');
