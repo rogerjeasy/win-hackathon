@@ -223,7 +223,7 @@ test('every M2 field survives into the hook output, tail included', async () => 
       tiebreak: 'listed_order', bonus_points_available: 0.6,
       selected_track: 'b2c', recon_ref: '.hackathon/recon.json',
     };
-    s.project = { name: 'CareCircle' };
+    s.project = { name: 'CareCircle', selected_idea: 'i1' };
     s.deliverables = {
       submission_requirements: Array.from({ length: 10 }, (_, i) => ({ id: `req-${i}`, status: 'not_started' })),
       bonus_content: Array.from({ length: 3 }, (_, i) => ({ id: `bonus-${i}`, status: 'not_started' })),

@@ -1,7 +1,9 @@
 import { PHASES } from './paths.mjs';
 import { hasExplicitOffset } from './iso-datetime.mjs';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
+
+export const REPO_SHAPES = ['next-monolith', 'multi-service'];
 
 export const PHASE_STATUSES = [
   'not_started', 'in_progress', 'awaiting_approval', 'approved', 'skipped',
@@ -109,5 +111,40 @@ export function validateState(state) {
   if (!['solo', 'team'].includes(state.mode)) {
     errors.push(`mode must be solo or team, got "${state.mode}"`);
   }
+
+  validateProject(state.project, errors);
+
   return { valid: errors.length === 0, errors };
+}
+
+// `project` was unvalidated through v2 — it was only ever defaulted to null. M4's
+// compliance-checker reads project.stack, and an unvalidated field a later phase
+// depends on is how a silent status bug ships.
+function validateProject(project, errors) {
+  if (project === null || project === undefined) return;   // :describe has not run
+  if (typeof project !== 'object' || Array.isArray(project)) {
+    errors.push('project must be an object or null');
+    return;
+  }
+  const nonEmpty = (v) => typeof v === 'string' && v.trim() !== '';
+  if (!nonEmpty(project.name)) errors.push('project.name must be a non-empty string');
+  if (!nonEmpty(project.selected_idea)) {
+    errors.push('project.selected_idea must be a non-empty string');
+  }
+
+  if (project.stack !== undefined && project.stack !== null) {
+    if (typeof project.stack !== 'object' || Array.isArray(project.stack)) {
+      errors.push('project.stack must be an object');
+    } else if (!REPO_SHAPES.includes(project.stack.repo_shape)) {
+      errors.push(
+        `project.stack.repo_shape "${project.stack.repo_shape}" is not one of ${REPO_SHAPES.join(', ')}`,
+      );
+    }
+  }
+
+  for (const key of ['architecture_ref', 'requirements_ref']) {
+    if (project[key] !== undefined && !nonEmpty(project[key])) {
+      errors.push(`project.${key} must be a non-empty string when present`);
+    }
+  }
 }
