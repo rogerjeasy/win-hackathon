@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateStack, STACK_SCHEMA_VERSION, SOURCES, THESIS_SUPPORT }
+import { validateStack, STACK_SCHEMA_VERSION, SOURCES, THESIS_SUPPORT, requirementKey }
   from '../../scripts/lib/stack-schema.mjs';
 
 async function fixture(name) {
@@ -48,6 +48,31 @@ test('choosing forbidden tech is an error', async () => {
   const { valid, errors } = validateStack(s, r);
   assert.equal(valid, false);
   assert.ok(errors.some((e) => /forbidden/i.test(e)), errors.join('; '));
+});
+
+test('a required slot whose choice does not satisfy one_of is an error', async () => {
+  const s = await golden();
+  s.slots[0].choice = 'PostgreSQL on Render';
+  const { valid, errors } = validateStack(s, await recon());
+  assert.equal(valid, false);
+  assert.ok(
+    errors.some((e) => /does not satisfy required tech/i.test(e) && /Aurora PostgreSQL/.test(e)),
+    errors.join('; '),
+  );
+});
+
+test('the golden fixture\'s database choice satisfies required tech one_of', async () => {
+  const { errors } = validateStack(await golden(), await recon());
+  assert.ok(
+    !errors.some((e) => /does not satisfy required tech/i.test(e)),
+    `golden fixture's "Amazon Aurora PostgreSQL..." choice should satisfy one_of, got: ${errors.join('; ')}`,
+  );
+});
+
+test('requirementKey is exported and derives the same key crossCheckRecon uses', async () => {
+  const r = await recon();
+  const dbRequirement = r.tech.required.find((req) => req.name === 'AWS Database');
+  assert.equal(requirementKey(dbRequirement), 'aws-database');
 });
 
 test('a stack where nothing carries the thesis is an error', async () => {
