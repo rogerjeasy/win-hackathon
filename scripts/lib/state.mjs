@@ -91,6 +91,15 @@ export function migrateState(state) {
     migrated = true;
   }
 
+  // v2 -> v3: no field is added here. v3 differs from v2 only in that `project` is now
+  // validated, and every v2 project shape that was legal is still legal, so the migration
+  // is a version bump alone. Stated explicitly because an empty migration branch looks
+  // like an oversight otherwise.
+  if (next.schema_version === 2) {
+    next = { ...next, schema_version: 3 };
+    migrated = true;
+  }
+
   return { state: next, migrated, from };
 }
 

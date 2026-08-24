@@ -17,7 +17,7 @@ test('readState returns null when there is no state file', async () => {
 test('writeState then readState round-trips', async () => {
   await withTmpDir(async (dir) => {
     const s = createDefaultState({ pluginVersion: '0.1.0' });
-    s.project = { name: 'Kintwadi' };
+    s.project = { name: 'Kintwadi', selected_idea: 'i1' };
     await writeState(dir, s);
     const back = await readState(dir);
     assert.equal(back.project.name, 'Kintwadi');
@@ -132,7 +132,7 @@ test('migrateState upgrades a v1 state by adding deliverables', () => {
   const { state, migrated, from } = migrateState(v1State());
   assert.equal(migrated, true);
   assert.equal(from, 1);
-  assert.equal(state.schema_version, 2);
+  assert.equal(state.schema_version, 3);
   assert.deepEqual(state.deliverables, { submission_requirements: [], bonus_content: [] });
 });
 
@@ -178,7 +178,7 @@ test('migrateStateFile upgrades a v1 file on disk and reports it', async () => {
     assert.equal(result.from, 1);
 
     const after = await readState(dir);        // now passes validation
-    assert.equal(after.schema_version, 2);
+    assert.equal(after.schema_version, 3);
     assert.deepEqual(after.deliverables, { submission_requirements: [], bonus_content: [] });
   });
 });
@@ -197,4 +197,45 @@ test('migrateStateFile reports nothing to do when there is no state file', async
   await withTmpDir(async (dir) => {
     assert.deepEqual(await migrateStateFile(dir), { migrated: false, from: null });
   });
+});
+
+test('v2 state migrates to v3 additively', () => {
+  const v2 = {
+    schema_version: 2,
+    plugin_version: '0.1.0',
+    hackathon: null,
+    project: { name: 'Kintwadi', selected_idea: 'i1' },
+    phases: {},
+    mode: 'solo',
+    team: [],
+    compliance: { last_checked: null, required_tech_verified: {} },
+    budget: { total_hours: null, spent_hours: 0, phase_budget: {} },
+    deliverables: { submission_requirements: [{ id: 'demo-video', status: 'done' }], bonus_content: [] },
+  };
+  const { state, migrated, from } = migrateState(v2);
+  assert.equal(migrated, true);
+  assert.equal(from, 2);
+  assert.equal(state.schema_version, 3);
+  assert.deepEqual(state.project, { name: 'Kintwadi', selected_idea: 'i1' },
+    'migration is additive — it must not invent stack or ref fields');
+  assert.equal(state.deliverables.submission_requirements[0].status, 'done',
+    'existing deliverable statuses survive migration');
+});
+
+test('v1 migrates all the way to v3 in one call', () => {
+  const v1 = { schema_version: 1, phases: {}, project: null };
+  const { state } = migrateState(v1);
+  assert.equal(state.schema_version, 3);
+  assert.ok(state.deliverables, 'the v1->v2 step still runs');
+});
+
+test('migration is idempotent', () => {
+  const once = migrateState({ schema_version: 1, phases: {}, project: null }).state;
+  const twice = migrateState(once);
+  assert.equal(twice.migrated, false);
+  assert.deepEqual(twice.state, once);
+});
+
+test('still refuses a version newer than it knows', () => {
+  assert.throws(() => migrateState({ schema_version: 99 }), /newer than supported/);
 });

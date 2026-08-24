@@ -30,3 +30,40 @@ export function backupDir(root, stamp) {
 export function timestamp(now = new Date()) {
   return now.toISOString().replace(/\.\d+Z$/, 'Z').replace(/:/g, '-');
 }
+
+export const STACK_FILE = 'stack.json';
+export const ARCHITECTURE_FILE = 'architecture.json';
+export const REQUIREMENTS_FILE = 'requirements.json';
+export const SPECS_DIR = 'specs';
+export const DOCS_DIR = 'docs';
+export const ASSETS_DIR = 'assets';
+export const FEATURES_DIR = 'features';
+
+export function stackPath(root) {
+  return path.join(root, HACKATHON_DIR, STACK_FILE);
+}
+
+export function architecturePath(root) {
+  return path.join(root, HACKATHON_DIR, ARCHITECTURE_FILE);
+}
+
+export function requirementsPath(root) {
+  return path.join(root, HACKATHON_DIR, REQUIREMENTS_FILE);
+}
+
+export function specsDir(root) {
+  return path.join(root, HACKATHON_DIR, SPECS_DIR);
+}
+
+/** Showroom. docs/ is judge-facing and deliberately NOT under .hackathon/. */
+export function docsPath(root, name) {
+  return path.join(root, DOCS_DIR, name);
+}
+
+export function assetsPath(root, name) {
+  return path.join(root, DOCS_DIR, ASSETS_DIR, name);
+}
+
+export function featurePath(root, slug) {
+  return path.join(root, FEATURES_DIR, `${slug}.feature`);
+}

@@ -97,8 +97,8 @@ test('validateState accepts a phase with a proper artifacts array', () => {
 
 import { DELIVERABLE_STATUSES } from '../../scripts/lib/schema.mjs';
 
-test('the current schema version is 2', () => {
-  assert.equal(CURRENT_SCHEMA_VERSION, 2);
+test('the current schema version is 3', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 3);
 });
 
 test('a default state carries an empty deliverables block', () => {
@@ -169,6 +169,43 @@ test('validateState rejects an unknown tiebreak when one is present', () => {
   const { valid, errors } = validateState(s);
   assert.equal(valid, false);
   assert.ok(errors.some((e) => /tiebreak/.test(e)));
+});
+
+test('schema version is 3', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 3);
+});
+
+test('a null project is still valid — :describe has not run yet', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  assert.equal(validateState(s).valid, true);
+});
+
+test('a non-null project must carry a name and a selected idea', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.project = { name: '', selected_idea: 'i1' };
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /project\.name/.test(e)), errors.join('; '));
+});
+
+test('project.stack must use a known repo shape', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.project = { name: 'Kintwadi', selected_idea: 'i1', stack: { repo_shape: 'microservices' } };
+  const { valid, errors } = validateState(s);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /repo_shape/.test(e)), errors.join('; '));
+});
+
+test('a fully populated v3 project validates', () => {
+  const s = createDefaultState({ pluginVersion: '0.1.0' });
+  s.project = {
+    name: 'Kintwadi',
+    selected_idea: 'i1',
+    stack: { repo_shape: 'next-monolith', primary_database: 'Aurora', ref: '.hackathon/stack.json' },
+    architecture_ref: '.hackathon/architecture.json',
+    requirements_ref: '.hackathon/requirements.json',
+  };
+  assert.deepEqual(validateState(s).errors, []);
 });
 
 test('validateState accepts a fully populated hackathon digest', () => {
