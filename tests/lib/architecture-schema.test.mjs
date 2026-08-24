@@ -28,6 +28,19 @@ test('never throws on malformed input', () => {
   }
 });
 
+test('never throws on malformed nested values', async () => {
+  const base = await golden();
+  const cases = [
+    ['components entry is a string', { ...base, components: ['nope'] }],
+    ['edges is a number', { ...base, edges: 42 }],
+    ['access_control is an array', { ...base, access_control: [] }],
+  ];
+  for (const [label, doc] of cases) {
+    assert.doesNotThrow(() => validateArchitecture(doc), label);
+    assert.equal(validateArchitecture(doc).valid, false, label);
+  }
+});
+
 test('a dangling edge endpoint is an error', async () => {
   const a = await golden();
   a.edges.push({ from: 'web', to: 'ghost', label: 'nowhere' });
