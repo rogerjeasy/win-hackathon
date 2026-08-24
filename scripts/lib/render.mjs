@@ -109,3 +109,14 @@ export function renderInitPlan(plan) {
   }
   return lines.join('\n');
 }
+
+/** A Markdown table. Empty rows render as nothing — a header with no data is noise. */
+export function renderTable(headers, rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return '';
+  const cell = (v) => (v === null || v === undefined ? '—' : String(v).replace(/\|/g, '\\|'));
+  return [
+    `| ${headers.join(' | ')} |`,
+    `|${headers.map(() => '---').join('|')}|`,
+    ...rows.map((r) => `| ${r.map(cell).join(' | ')} |`),
+  ].join('\n');
+}

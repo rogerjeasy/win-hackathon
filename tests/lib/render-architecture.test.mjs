@@ -136,3 +136,37 @@ test('a single-tier system renders as "is/are the whole system", not a talks-to 
   const md = renderArchitecture(arch);
   assert.equal(paragraphOf(md), 'Solo App is the whole system. Thesis single.');
 });
+
+test('a pipe in why_this_choice is escaped so the legend table keeps its column count', async () => {
+  const arch = await golden();
+  arch.components = [
+    { ...arch.components[0],
+      why_this_choice: 'Throughput comparison: reads | writes at 10x scale.' },
+    ...arch.components.slice(1),
+  ];
+  const legend = section(renderArchitecture(arch), '## Component legend', '## Key request flows');
+  const row = legend.split('\n').find((l) => l.includes('Throughput comparison'));
+  assert.ok(row, 'the row with the raw-pipe field is missing from the legend');
+  assert.ok(row.includes('reads \\| writes'),
+    'the pipe must be escaped, not left to split the column');
+  // Column boundaries are unescaped pipes only -- an escaped '\\|' must not count as one,
+  // or this check would itself be fooled by the very bug it is guarding against.
+  const cols = (line) => line.split(/(?<!\\)\|/).length;
+  const headerCols = cols(legend.split('\n').find((l) => l.startsWith('| Component')));
+  assert.equal(cols(row), headerCols,
+    'an unescaped pipe silently shifts every column after it');
+});
+
+test('an empty design_system object renders no heading, not a bare one', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 'One line.',
+    context_bar: { track: 'T', primary_database: 'DB', ai: 'none', frontend: 'F' },
+    components: [{ id: 'a', label: 'A', tier: 1, trust_zone: 'public',
+      what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' }],
+    access_control: { model: 'none' },
+    design_system: {},
+  };
+  const md = renderArchitecture(arch);
+  assert.ok(!md.includes('## Design system'),
+    'an empty design_system object must not emit a bare heading');
+});
