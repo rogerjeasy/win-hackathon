@@ -16,6 +16,8 @@ async function skillNames() {
   return names;
 }
 const readSkill = (name) => readFile(path.join(skillsDir, name, 'SKILL.md'), 'utf8');
+const readReference = (skill, file) =>
+  readFile(path.join(skillsDir, skill, 'references', file), 'utf8');
 
 test('the M2 process skills exist', async () => {
   const names = await skillNames();
@@ -211,4 +213,50 @@ test('sponsor-tech-thesis names the four phases that load it', async () => {
 test('sponsor-tech-thesis warns about a thesis the architecture cannot support', async () => {
   const content = await readSkill('sponsor-tech-thesis');
   assert.match(content, /cannot support|does not support|unsupported|cash the cheque|earn it/i);
+});
+
+test('framework-drift-guard ships the canonical banner, not a paraphrase', async () => {
+  const md = await readSkill('framework-drift-guard');
+  assert.match(md, /# This is NOT the .* you know/);
+  assert.match(md, /may all differ from your training data/);
+  assert.match(md, /Heed deprecation notices\./);
+  assert.match(md, /<!-- BEGIN:nextjs-agent-rules -->/);
+});
+
+test('framework-drift-guard says when NOT to emit a banner', async () => {
+  const md = await readSkill('framework-drift-guard');
+  const tail = md.slice(md.length / 2);
+  assert.match(tail, /\bnot\b[^.]*\bbanner\b|\bbanner\b[^.]*\bnoise\b/i,
+    'a skill that only says when to act will act every time');
+});
+
+test('security-invariants closes its shape section with the stop-and-flag line', async () => {
+  const md = await readSkill('security-invariants');
+  const shape = md.slice(md.indexOf('## The shape'), md.indexOf('## Families'));
+  assert.ok(shape.includes('stop and flag it instead of shipping it'));
+});
+
+test('security-invariants tells the reader a short contract is legitimate', async () => {
+  const md = await readSkill('security-invariants');
+  const scaling = md.slice(md.indexOf('## Scaling'), md.indexOf('## The reader'));
+  assert.match(scaling, /\bSonar\b/, 'the claim needs its evidence beside it');
+  assert.match(scaling, /never pad|do not pad/i);
+});
+
+test('the invariants corpus carries all four shapes with their prizes', async () => {
+  const md = await readReference('security-invariants', 'invariants-corpus.md');
+  for (const [project, prize] of [
+    ['Kintwadi', 'Best Design'],
+    ['Sonar', 'First Place'],
+    ['HYPE', 'Best Technical Implementation'],
+    ['Karma', 'Second Place'],
+  ]) {
+    const row = md.split('\n').find((l) => l.includes(project) && l.includes(prize));
+    assert.ok(row, `${project} must appear with its real prize (${prize})`);
+  }
+});
+
+test('the corpus states what it cannot say', async () => {
+  const md = await readReference('security-invariants', 'invariants-corpus.md');
+  assert.match(md.slice(md.lastIndexOf('##')), /cannot say|read from the outside/i);
 });
