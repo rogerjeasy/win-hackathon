@@ -8,18 +8,20 @@ description: Use at :architect — FastAPI service structure as Karma (Second Pl
 Karma is not one FastAPI app; it's a **gateway** (`api/`, FastAPI on Cloud Run) that talks to
 an **agent service** (`agents/`, the ADK agent system on Vertex AI Agent Engine) over its own
 task-invocation boundary. The two ship on separate GitHub Actions workflows —
-`deploy-api.yml` targets Cloud Run, `deploy-agents.yml` targets Agent Engine — and run in
-parallel on every push to main, alongside the web and synthetic-env deploys. The gateway
-owns HTTP concerns: routing, auth, request validation, Firestore reads/writes. The agent
-service owns long-running agent reasoning and holds its own state (Memory Bank). Neither
-redeploying the gateway nor a slow agent invocation blocks the other, because they are
-genuinely different deploy targets, not two folders sharing one process.
+`deploy-api.yml` targets Cloud Run, `deploy-agents.yml` targets Agent Engine — each gated by
+a `paths:` filter (`api/**` and `agents/**` respectively) so a change to one only redeploys
+that one, not both, alongside the equally path-filtered web and synthetic-env deploys. The
+gateway owns HTTP concerns: routing, auth, request validation, Firestore reads/writes. The
+agent service owns long-running agent reasoning and holds its own state (Memory Bank).
+Neither redeploying the gateway nor a slow agent invocation blocks the other, because they
+are genuinely different deploy targets, not two folders sharing one process.
 
 The question worth asking before drawing this line: does this piece of logic have a
 different scaling shape, a different deploy cadence, or a different failure mode than the
-rest of the service? Karma's agents run long (learning a service's contracts can take
-minutes) and need a durable runtime; the gateway needs to answer a dashboard request in
-milliseconds. That mismatch is the actual argument for the split — not "microservices are
+rest of the service? Karma's Learner runs as its own asynchronous phase in the service
+lifecycle (`registered → learning → ready`, tracked in Firestore rather than held in the
+HTTP request) and needs a durable runtime; the gateway needs to answer a dashboard request
+in milliseconds. That mismatch is the actual argument for the split — not "microservices are
 more architecturally serious."
 
 ## Secrets live in a secret manager, not in env vars
@@ -77,15 +79,35 @@ changes, and no route quietly growing its own slightly-different query for the s
 
 ## Error contracts that don't leak internals
 
-A user-facing response should never carry a raw exception string. Karma's routes generally
-log the exception (`logger.warning(...) `/ `logger.error(...)`, with `error=str(exc)` going
-to structured logs) and return a stable, generic message to the client — the raw exception
-belongs in the log line an operator reads, not in the JSON a browser parses. A stack trace
-or a database driver's error text can carry table names, query shapes, or internal hostnames
-that are exactly what an attacker wants and exactly what a user doesn't need. Treat "log the
-real error, return a contract" as the default shape for every `except Exception` block that
-sits behind a route — not "log the real error, and also return it because it was
-convenient."
+A user-facing response should never carry a raw exception string. The rule: log the real
+exception where an operator reads it (structured logs), and return a stable, generic message
+where a client parses it — a stack trace or a database driver's error text can carry table
+names, query shapes, or internal hostnames that are exactly what an attacker wants and
+exactly what a user doesn't need.
+
+Karma is a useful *cautionary* example of how this rule gets broken, not a model of
+following it. In `services.py`, the learning-task handler catches the exception and stores
+it verbatim into Firestore:
+
+```python
+except Exception as exc:
+    log.error("learning_task_exception", error=str(exc))
+    await firestore_client.update_service_phase(
+        service_id, "error", extra={"error_message": str(exc)}
+    )
+```
+
+That `error_message` field is not log-only — `_doc_to_response()` reads it straight back out
+(`error_message=doc.get("error_message")`) into `ServiceResponse`, which is the
+`response_model` for `GET /services/{id}`. So the raw Python exception text that landed in
+`error_message` is reachable in a client-facing JSON field the next time that service's
+detail is fetched. This is exactly the failure shape to design against: an exception gets
+stringified into a field that reads as internal (a status/diagnostic column), and a later
+response model serializes that field straight through without re-checking what's actually in
+it. The fix is not "don't store the exception" — an operator legitimately wants
+`error_message` for debugging — it's to keep the client-facing field and the
+operator-facing field separate, or to sanitize at the point the response model is built, not
+assume a stored string is safe because of where it was written.
 
 ## The shape
 
