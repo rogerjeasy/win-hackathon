@@ -302,3 +302,42 @@ test('architecture-diagramming warns that hand edits are lost', async () => {
   assert.match(md, /architecture\.json/);
   assert.match(md, /hand edit|edited by hand/i);
 });
+
+test('frontend-architecture states protection is the default, not an opt-in', async () => {
+  const md = await readSkill('frontend-architecture');
+  assert.match(md, /\bdefault\b/);
+  assert.match(md, /opt-in/i);
+  assert.ok(md.indexOf('requireSession') < md.indexOf('proxy.ts'),
+    'the server guard is primary; the edge allowlist is the optimistic layer and comes second');
+});
+
+test('backend-architecture keeps token scopes separated', async () => {
+  const md = await readSkill('backend-architecture');
+  assert.match(md, /\bscope/i);
+  assert.match(md, /\bKarma\b/, 'the practice needs the project it was measured in');
+});
+
+test('data-modeling requires a policy in the same change as a new table', async () => {
+  const md = await readSkill('data-modeling');
+  assert.match(md, /same change/i);
+});
+
+test('ui-design-principles carries the anti-generic list verbatim', async () => {
+  const md = await readSkill('ui-design-principles');
+  for (const rule of ['gradient', 'neon', 'glassmorphism', 'emoji']) {
+    assert.match(md, new RegExp(`\\b${rule}`, 'i'), `the anti-generic list is missing "${rule}"`);
+  }
+  assert.match(md, /#000|pure black/i);
+});
+
+test('ui-design-principles fixes the system before the first screen', async () => {
+  const md = await readSkill('ui-design-principles');
+  const closing = md.slice(md.lastIndexOf('##'));
+  assert.match(closing, /before the first screen|once.*reuse/i,
+    'this is the rule that produced the Best Design win; it belongs at the end, as the takeaway');
+});
+
+test('ui-design-principles names all four breakpoints', async () => {
+  const md = await readSkill('ui-design-principles');
+  for (const bp of ['375', '820', '1024', '1440']) assert.ok(md.includes(bp), `missing ${bp}px`);
+});
