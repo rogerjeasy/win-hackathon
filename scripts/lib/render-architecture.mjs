@@ -13,6 +13,7 @@
 
 import { layout } from './layout.mjs';
 import { emitMermaid } from './emit-mermaid.mjs';
+import { renderTable } from './render.mjs';
 
 const has = (a) => Array.isArray(a) && a.length > 0;
 
@@ -56,12 +57,14 @@ export function renderArchitecture(architecture) {
 
   out.push('## Component legend — *what it is* + *what it does* + *why this choice*');
   out.push('');
-  out.push('| Component | What it is | What it does | Why this choice |');
-  out.push('|---|---|---|---|');
-  for (const c of a.components ?? []) {
-    out.push(`| **${c.label}** | ${c.what_it_is} | ${c.what_it_does} | ${c.why_this_choice} |`);
+  const legend = renderTable(
+    ['Component', 'What it is', 'What it does', 'Why this choice'],
+    (a.components ?? []).map((c) => [`**${c.label}**`, c.what_it_is, c.what_it_does, c.why_this_choice]),
+  );
+  if (legend) {
+    out.push(legend);
+    out.push('');
   }
-  out.push('');
 
   if (has(a.flows)) {
     out.push('## Key request flows');
@@ -87,7 +90,12 @@ export function renderArchitecture(architecture) {
   }
 
   const ds = a.design_system;
-  if (ds) {
+  const tokens = ds?.tokens ?? {};
+  const tokenKeys = [...new Set([...Object.keys(tokens.light ?? {}), ...Object.keys(tokens.dark ?? {})])];
+  const hasDesignSystemContent = !!ds &&
+    (!!ds.personality || has(ds.anti_generic) || tokenKeys.length > 0 || !!ds.type);
+
+  if (hasDesignSystemContent) {
     out.push('## Design system');
     out.push('');
     if (ds.personality) {
@@ -100,14 +108,12 @@ export function renderArchitecture(architecture) {
       for (const rule of ds.anti_generic) out.push(`- ${rule}`);
       out.push('');
     }
-    const tokens = ds.tokens ?? {};
-    const keys = [...new Set([...Object.keys(tokens.light ?? {}), ...Object.keys(tokens.dark ?? {})])];
-    if (keys.length > 0) {
-      out.push('| Token | Light | Dark |');
-      out.push('|---|---|---|');
-      for (const k of keys) {
-        out.push(`| ${k} | \`${tokens.light?.[k] ?? '—'}\` | \`${tokens.dark?.[k] ?? '—'}\` |`);
-      }
+    if (tokenKeys.length > 0) {
+      const tokenTable = renderTable(
+        ['Token', 'Light', 'Dark'],
+        tokenKeys.map((k) => [k, `\`${tokens.light?.[k] ?? '—'}\``, `\`${tokens.dark?.[k] ?? '—'}\``]),
+      );
+      out.push(tokenTable);
       out.push('');
     }
     if (ds.type) {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDefaultState } from '../../scripts/lib/schema.mjs';
-import { renderStatusBoard, renderInitPlan } from '../../scripts/lib/render.mjs';
+import { renderStatusBoard, renderInitPlan, renderTable } from '../../scripts/lib/render.mjs';
 
 test('board shows every phase with its status', () => {
   const state = createDefaultState({ pluginVersion: '0.1.0' });
@@ -158,4 +158,23 @@ test('a skipped requirement is not listed among the outstanding items', () => {
   const out = renderStatusBoard({ state: s, resolution, tools: [] });
   assert.match(out, /\[ \] public-repo/);
   assert.doesNotMatch(out, /\[ \] architecture-diagram/);
+});
+
+test('renderTable emits a header, a separator and one row per entry', () => {
+  const md = renderTable(['A', 'B'], [['1', '2'], ['3', '4']]);
+  assert.deepEqual(md.split('\n'), ['| A | B |', '|---|---|', '| 1 | 2 |', '| 3 | 4 |']);
+});
+
+test('renderTable escapes pipes in cell content', () => {
+  const md = renderTable(['A'], [['x | y']]);
+  assert.ok(md.includes('x \\| y'), 'a raw pipe in a cell silently splits the column');
+});
+
+test('renderTable renders null and undefined cells as an em dash, not "undefined"', () => {
+  assert.ok(renderTable(['A'], [[null]]).includes('| — |'));
+  assert.ok(renderTable(['A'], [[undefined]]).includes('| — |'));
+});
+
+test('renderTable with no rows returns an empty string, not a headerless table', () => {
+  assert.equal(renderTable(['A', 'B'], []), '');
 });
