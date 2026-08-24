@@ -16,6 +16,10 @@ async function agentFiles() {
   return (await readdir(agentsDir)).filter((f) => f.endsWith('.md'));
 }
 
+async function readCommand(file) {
+  return readFile(path.join(commandsDir, file), 'utf8');
+}
+
 // Installed as a plugin, a bare repo-relative path (e.g. `skills/foo/bar.md`) resolves
 // against the USER's project cwd, not the plugin's own directory, and ENOENTs. Every
 // reference into the plugin's own tree — scripts, skills, agents, references, hooks — must
@@ -226,4 +230,31 @@ test('brainstorm states a stop clause for exhausted validation retries so a fail
   assert.match(step3, /twice|two attempts|at most 2/i);
   assert.match(step3, /stop/i);
   assert.match(step3, /show the user/i);
+});
+
+// --- stack.md --------------------------------------------------------------------------
+
+test('the stack command stops at the approval gate, after showing the table', async () => {
+  const md = await readCommand('stack.md');
+  const gate = md.slice(md.indexOf('## Step 6'));
+  assert.match(gate, /\bawaiting_approval\b/);
+  assert.ok(md.indexOf('## Step 6') > md.indexOf('## Step 5'),
+    'the gate is the last step, not an aside partway through');
+  assert.match(gate, /explicit yes/i);
+});
+
+test('the stack command loads its three skills before resolving anything', async () => {
+  const md = await readCommand('stack.md');
+  const preamble = md.slice(0, md.indexOf('## Step 1'));
+  for (const skill of ['monorepo-structure', 'sponsor-tech-thesis', 'framework-drift-guard']) {
+    assert.ok(preamble.includes(skill), `${skill} must load before the work starts`);
+  }
+});
+
+test('sponsor-wins precedence is ordered, with required tech first', async () => {
+  const md = await readCommand('stack.md');
+  const step2 = md.slice(md.indexOf('## Step 2'), md.indexOf('## Step 3'));
+  assert.ok(step2.indexOf('Required sponsor tech is fixed') < step2.indexOf('Personal defaults'),
+    'defaults must never be presented as outranking a mandate');
+  assert.ok(step2.indexOf('Personal defaults') < step2.indexOf('Bonus tech'));
 });
