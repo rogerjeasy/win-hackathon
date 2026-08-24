@@ -12,6 +12,7 @@ const run = promisify(execFile);
 const scripts = fileURLToPath(new URL('../scripts/', import.meta.url));
 const fixture = fileURLToPath(new URL('./fixtures/h0-recon.json', import.meta.url));
 const ideasFixture = fileURLToPath(new URL('./fixtures/h0-ideas.json', import.meta.url));
+const stackFixture = fileURLToPath(new URL('./fixtures/h0-stack.json', import.meta.url));
 
 test('init --dry-run writes nothing', async () => {
   await withTmpDir(async (dir) => {
@@ -405,4 +406,45 @@ test('brainstorm.mjs archive moves the round aside and says so when there is non
     await assert.rejects(() => access(path.join(dir, '.hackathon', 'ideas.json')), /ENOENT/,
       'archiving must move the current round out of the way');
   });
+});
+
+// --- stack.mjs -----------------------------------------------------------------------
+
+test('stack.mjs validate exits 0 on the golden fixture', async () => {
+  const { stdout } = await run('node', [path.join(scripts, 'stack.mjs'), 'validate', stackFixture]);
+  assert.match(stdout, /valid/);
+});
+
+test('stack.mjs validate lists every problem at once on stderr', async () => {
+  await withTmpDir(async (dir) => {
+    const bad = path.join(dir, 'bad.json');
+    await writeFile(bad, JSON.stringify({ schema_version: 1, repo_shape: 'nope', slots: [] }), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'stack.mjs'), 'validate', bad]),
+      (err) => {
+        assert.equal(err.code, 1);
+        // The agent retrying needs all the problems in one pass, not the first one.
+        assert.ok(err.stderr.split('\n').filter((l) => l.trim().startsWith('- ')).length >= 2, err.stderr);
+        return true;
+      },
+    );
+  });
+});
+
+test('stack.mjs validate --json emits the full result object', async () => {
+  const { stdout } = await run('node', [path.join(scripts, 'stack.mjs'), 'validate', stackFixture, '--json']);
+  const parsed = JSON.parse(stdout);
+  assert.equal(parsed.valid, true);
+  assert.ok(Array.isArray(parsed.warnings));
+});
+
+test('stack.mjs with no subcommand exits 2 with usage', async () => {
+  await assert.rejects(
+    () => run('node', [path.join(scripts, 'stack.mjs')]),
+    (err) => {
+      assert.equal(err.code, 2);
+      assert.match(err.stderr, /usage/);
+      return true;
+    },
+  );
 });
