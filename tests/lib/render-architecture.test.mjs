@@ -170,3 +170,19 @@ test('an empty design_system object renders no heading, not a bare one', () => {
   assert.ok(!md.includes('## Design system'),
     'an empty design_system object must not emit a bare heading');
 });
+
+test('a design_system carrying only breakpoints_px still renders the section', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 'One line.',
+    context_bar: { track: 'T', primary_database: 'DB', ai: 'none', frontend: 'F' },
+    components: [{ id: 'a', label: 'A', tier: 1, trust_zone: 'public',
+      what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' }],
+    access_control: { model: 'none' },
+    design_system: { breakpoints_px: [320, 768, 1024] },
+  };
+  const md = renderArchitecture(arch);
+  assert.ok(md.includes('## Design system'),
+    'breakpoints_px alone must still render the section, not be dropped by the guard');
+  assert.ok(md.includes('**Breakpoints.** 320px · 768px · 1024px'),
+    'the breakpoints line itself must render');
+});
