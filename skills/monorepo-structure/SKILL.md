@@ -44,11 +44,11 @@ terms
 
 `(app)` is a Next.js route group — the parenthesised segment is stripped from the URL, so
 everything inside it (`dashboard`, `people`, `medications`, `appointments`, `incidents`,
-`admin`, twenty folders total) resolves to `/dashboard`, `/people`, and so on, while sharing
-one `layout.tsx` that gates every one of them on a session check. It sits as a sibling to
-`about`, `pricing`, and `sign-in` inside the *same* `src/app` — the public marketing shell and
-the protected product are one deploy artifact, distinguished only by which folder a route
-lives in.
+`admin`, nineteen folders total) resolves to `/dashboard`, `/people`, and so on, while sharing
+the one `layout.tsx` that sits alongside them and gates every one of those folders on a session
+check. It sits as a sibling to `about`, `pricing`, and `sign-in` inside the *same* `src/app` —
+the public marketing shell and the protected product are one deploy artifact, distinguished
+only by which folder a route lives in.
 
 ```
 $ ls src/db
@@ -116,8 +116,10 @@ web/**`, `deploy-api.yml` only on `api/**`, `deploy-agents.yml` only on `agents/
 `deploy-synthetic-env.yml` only on `synthetic-env/**` — a change to one service deploys only
 that service, never the other two. The fifth, `publish-packages.yml`, fires on a GitHub
 release rather than a path filter. `infrastructure/terraform` holds one Terraform tree
-covering all three services, and `setup-wif.sh` / `setup-wif.ps1` set up Workload Identity
-Federation so each deploy workflow authenticates to GCP without a long-lived key.
+covering all three services, and `setup-wif.ps1` sets up Workload Identity Federation so each
+deploy workflow authenticates to GCP without a long-lived key. (The other two scripts in that
+directory, `setup-dynatrace.sh` and `setup-dynatrace.ps1`, are the sponsor-tech setup — a
+`.sh`/`.ps1` pair for dynatrace, not for WIF.)
 
 ## Choosing
 

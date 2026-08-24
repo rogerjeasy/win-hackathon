@@ -283,9 +283,18 @@ test('monorepo-structure gives criteria, not just descriptions', async () => {
   assert.match(md.slice(md.indexOf('## Choosing')), /network hop|deploy target/);
 });
 
-test('architecture-diagramming records that nobody automated a PNG export', async () => {
+test('architecture-diagramming records that nobody automated a PNG export, exactly once', async () => {
   const md = await readSkill('architecture-diagramming');
-  assert.match(md, /\bno\b[^.]*automat[^.]*PNG|PNG[^.]*by hand/i);
+  // Scoped to the corpus section, and counted rather than merely matched: a looser pattern
+  // (e.g. one also matching "PNG ... by hand") is satisfiable by supporting prose elsewhere
+  // in the same paragraph even after the claim sentence itself is deleted -- that decoy is
+  // exactly what shipped here once already. "automat" is a rare, specific anchor, so a count
+  // of 1 means the claim sentence itself is present, not just PNG- or hand-adjacent prose.
+  const corpus = md.slice(md.indexOf('## The corpus'), md.indexOf('## The tier model'));
+  const matches = corpus.match(/\bno\b[^.]*automat[^.]*PNG/gi) ?? [];
+  assert.equal(matches.length, 1,
+    'the claim must appear exactly once in the corpus section, or the test can be defeated ' +
+    'by deleting the one copy while unrelated prose keeps it passing');
 });
 
 test('architecture-diagramming warns that hand edits are lost', async () => {
