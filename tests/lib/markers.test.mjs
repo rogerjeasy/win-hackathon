@@ -95,3 +95,46 @@ test('hand-written content outside every block survives', () => {
   assert.ok(md.includes('Something I wrote by hand.'));
   assert.equal(readBlock(md), 'generated');
 });
+
+test('an orphaned BEGIN with no END throws, and the message names the marker', () => {
+  const content = '# My rules\n\n<!-- BEGIN:win-hackathon -->\nSome hand-written notes I forgot to close.';
+  assert.throws(() => upsertBlock(content, 'v1'), (err) => {
+    assert.match(err.message, /refusing to write/);
+    assert.ok(err.message.includes(BEGIN), 'message names the BEGIN marker');
+    assert.ok(err.message.includes(END), 'message names the END marker');
+    return true;
+  });
+});
+
+test('an orphaned END with no BEGIN throws too', () => {
+  const content = 'some text\n<!-- END:win-hackathon -->\nmore hand-written content';
+  assert.throws(() => upsertBlock(content, 'v1'), (err) => {
+    assert.match(err.message, /refusing to write/);
+    assert.ok(err.message.includes(BEGIN), 'message names the BEGIN marker');
+    assert.ok(err.message.includes(END), 'message names the END marker');
+    return true;
+  });
+});
+
+test('regression: a second write must not silently eat hand-written text left by an unclosed block', () => {
+  // This is the exact shape the old, unparameterised regex produced: a user's orphaned
+  // BEGIN with no END, followed by a properly-appended block from an earlier upsertBlock
+  // call. Two BEGINs, one END — the lazy, non-global blockRe used to match from the
+  // *first* BEGIN all the way to the only END, and a second write silently replaced
+  // everything in between, hand-written notes included.
+  const run1 =
+    '# My rules\n\n' +
+    '<!-- BEGIN:win-hackathon -->\n' +
+    'Some hand-written notes I forgot to close.\n\n' +
+    '<!-- BEGIN:win-hackathon -->\n' +
+    'v1\n' +
+    '<!-- END:win-hackathon -->\n';
+
+  assert.throws(() => upsertBlock(run1, 'v2'), /refusing to write/);
+  assert.ok(run1.includes('Some hand-written notes I forgot to close.'),
+    'the content passed in must still hold the notes — nothing was silently replaced');
+});
+
+// A well-formed block updating in place, and content outside it surviving, is already
+// covered by 'upsertBlock replaces only the block on a second write' and
+// 'upsertBlock preserves content that follows the block' above — not duplicated here.
