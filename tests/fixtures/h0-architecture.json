@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "thesis_line": "The database is the thesis, not a default — authorization lives in the database, not the UI.",
+  "context_bar": {
+    "track": "Monetizable B2C",
+    "primary_database": "Amazon Aurora PostgreSQL (Serverless v2 — RLS · pgvector)",
+    "ai": "Amazon Bedrock — Claude Sonnet 4.5 + Titan embeddings",
+    "frontend": "Next.js on Vercel"
+  },
+  "components": [
+    { "id": "web", "label": "Next.js on Vercel", "tier": 1, "kind": "frontend",
+      "what_it_is": "The single deployable surface.",
+      "what_it_does": "Serves marketing and the authenticated app; server actions perform every write.",
+      "why_this_choice": "One deployable removes a network hop from every mutation and keeps auth in one place.",
+      "stack_slot": "frontend", "trust_zone": "public" },
+    { "id": "dal", "label": "Data access layer", "tier": 2, "kind": "service",
+      "what_it_is": "The only path from application code to tenant data.",
+      "what_it_does": "Opens an RLS-scoped transaction and sets the session user before any query runs.",
+      "why_this_choice": "A single chokepoint is auditable; scattered queries are not.",
+      "stack_slot": "frontend", "trust_zone": "authenticated" },
+    { "id": "db", "label": "Aurora PostgreSQL", "tier": 3, "kind": "database",
+      "what_it_is": "The system of record.",
+      "what_it_does": "Stores the care record and enforces row-level security on every read and write.",
+      "why_this_choice": "The authorization model is per-row and relational; the database can enforce it, the UI cannot.",
+      "stack_slot": "database", "trust_zone": "privileged" }
+  ],
+  "edges": [
+    { "from": "web", "to": "dal", "label": "server action", "crosses_boundary": false },
+    { "from": "dal", "to": "db", "label": "RLS-scoped transaction", "crosses_boundary": true }
+  ],
+  "trust_boundaries": [
+    { "id": "aws", "label": "AWS account boundary", "contains": ["db"] }
+  ],
+  "flows": [
+    { "id": "record-medication", "title": "Recording a medication dose",
+      "steps": [
+        "A caregiver submits the dose form; the server action re-checks the session.",
+        "The DAL opens a transaction and sets app.current_user_id.",
+        "The dose row and its audit row commit together, or neither commits."
+      ] }
+  ],
+  "entities": [
+    { "name": "care_circle", "group": "identity-and-tenancy",
+      "purpose": "The tenant. Everything else hangs off it.", "tenant_scoped": false,
+      "fields": [{ "name": "id", "type": "uuid", "note": "primary key" }],
+      "relationships": [{ "to": "membership", "kind": "one-to-many" }] },
+    { "name": "membership", "group": "identity-and-tenancy",
+      "purpose": "Who belongs to a circle, and in what role.", "tenant_scoped": true,
+      "fields": [{ "name": "role", "type": "text", "note": "owner | caregiver | viewer" }],
+      "relationships": [{ "to": "care_circle", "kind": "many-to-one" }] },
+    { "name": "audit_log", "group": "collaboration-and-system",
+      "purpose": "Append-only record of every state-changing action.", "tenant_scoped": true,
+      "fields": [{ "name": "action", "type": "text", "note": "verb, never free text" }],
+      "relationships": [] }
+  ],
+  "access_control": {
+    "model": "rls",
+    "session_context": "app.current_user_id",
+    "capability_matrix": [
+      { "role": "owner", "can": ["read:all", "write:all", "invite"] },
+      { "role": "caregiver", "can": ["read:care", "write:care"] },
+      { "role": "viewer", "can": ["read:summary"] }
+    ],
+    "policies": [
+      { "id": "tenant-isolation", "applies_to": ["membership", "audit_log"],
+        "rule": "a row is visible only when its circle is in the caller's membership set" },
+      { "id": "audit-append-only", "applies_to": ["audit_log"],
+        "rule": "INSERT is permitted; there is no UPDATE or DELETE policy, so neither can succeed" }
+    ]
+  },
+  "invariants": [
+    { "id": "protected-by-default",
+      "statement": "Every authenticated page lives under the (app) route group, whose layout runs requireSession() on the server.",
+      "enforced_by": "src/app/(app)/layout.tsx" },
+    { "id": "dal-only-tenant-access",
+      "statement": "All tenant data access goes through withAuthedDb(), which runs inside an RLS-scoped transaction.",
+      "enforced_by": "src/db/dal.ts" }
+  ],
+  "design_system": {
+    "personality": "Calm, warm, human, dignified. Quiet confidence.",
+    "anti_generic": ["no purple/indigo gradients", "no neon", "no glassmorphism everywhere",
+                     "no emoji as UI icons", "avoid pure #000 on #FFF"],
+    "tokens": {
+      "light": { "background": "#FBFAF8", "foreground": "#1B231F", "primary": "#0F766E", "accent": "#EC7C5A" },
+      "dark": { "background": "#101512", "foreground": "#E9ECE8", "primary": "#14B8A6", "accent": "#F0916F" }
+    },
+    "type": { "ui": "Inter", "display": "Fraunces", "base_px": 16, "min_meaningful_px": 14 },
+    "breakpoints_px": [375, 820, 1024, 1440]
+  }
+}
