@@ -1,34 +1,44 @@
-export const BEGIN = '<!-- BEGIN:win-hackathon -->';
-export const END = '<!-- END:win-hackathon -->';
+const DEFAULT_NAME = 'win-hackathon';
+
+export function markersFor(name = DEFAULT_NAME) {
+  return { BEGIN: `<!-- BEGIN:${name} -->`, END: `<!-- END:${name} -->` };
+}
+
+export const { BEGIN, END } = markersFor();
 
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const BLOCK_RE = new RegExp(`${escapeRe(BEGIN)}\\n?([\\s\\S]*?)\\n?${escapeRe(END)}`);
-
-export function hasBlock(content) {
-  return BLOCK_RE.test(content);
+function blockRe(name) {
+  const { BEGIN: b, END: e } = markersFor(name);
+  return new RegExp(`${escapeRe(b)}\\n?([\\s\\S]*?)\\n?${escapeRe(e)}`);
 }
 
-export function readBlock(content) {
-  const m = content.match(BLOCK_RE);
+export function hasBlock(content, name = DEFAULT_NAME) {
+  return blockRe(name).test(content);
+}
+
+export function readBlock(content, name = DEFAULT_NAME) {
+  const m = content.match(blockRe(name));
   return m ? m[1] : null;
 }
 
-export function upsertBlock(content, body) {
-  if (body.includes(BEGIN) || body.includes(END)) {
-    throw new Error(`body must not contain marker strings BEGIN or END (${BEGIN}, ${END})`);
+export function upsertBlock(content, body, name = DEFAULT_NAME) {
+  const { BEGIN: b, END: e } = markersFor(name);
+  if (body.includes(b) || body.includes(e)) {
+    throw new Error(`body must not contain marker strings BEGIN or END (${b}, ${e})`);
   }
-  const block = `${BEGIN}\n${body}\n${END}`;
-  if (hasBlock(content)) {
-    return content.replace(BLOCK_RE, () => block);
+  const block = `${b}\n${body}\n${e}`;
+  if (hasBlock(content, name)) {
+    return content.replace(blockRe(name), () => block);
   }
   if (content.trim() === '') return `${block}\n`;
   return `${content.replace(/\n+$/, '')}\n\n${block}\n`;
 }
 
-export function isFullyManaged(content) {
+export function isFullyManaged(content, name = DEFAULT_NAME) {
+  const { BEGIN: b, END: e } = markersFor(name);
   const trimmed = content.trim();
-  return trimmed.startsWith(BEGIN) && trimmed.endsWith(END);
+  return trimmed.startsWith(b) && trimmed.endsWith(e);
 }
