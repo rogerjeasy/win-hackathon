@@ -11,6 +11,9 @@ async function agentFiles() {
   return (await readdir(agentsDir)).filter((f) => f.endsWith('.md'));
 }
 const read = (f) => readFile(path.join(agentsDir, f), 'utf8');
+async function readAgent(file) {
+  return readFile(path.join(agentsDir, file), 'utf8');
+}
 
 test('the three M2 agents exist', async () => {
   const files = await agentFiles();
@@ -124,4 +127,24 @@ test('the scorer is told ties break on the first-ranked criterion', async () => 
   const content = await read('idea-scorer.md');
   assert.match(content, /rank/i);
   assert.match(content, /tie/i);
+});
+
+// --- solution-architect.md --------------------------------------------------------------
+
+test('solution-architect exists', async () => {
+  const files = await agentFiles();
+  assert.ok(files.includes('solution-architect.md'), 'missing agents/solution-architect.md');
+});
+
+test('solution-architect is told to write only the payload', async () => {
+  const md = await readAgent('solution-architect.md');
+  const top = md.slice(0, md.indexOf('## Read first'));
+  assert.match(top, /only output is/i);
+  assert.ok(/do not write markdown/i.test(md) && /do not draw diagrams/i.test(md));
+});
+
+test('solution-architect is warned against padding the invariants', async () => {
+  const md = await readAgent('solution-architect.md');
+  const dont = md.slice(md.indexOf('## Do not'));
+  assert.match(dont, /invent invariants/i);
 });
