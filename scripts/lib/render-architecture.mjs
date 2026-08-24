@@ -140,13 +140,31 @@ export function renderArchitecture(architecture) {
   return out.join('\n');
 }
 
+/** "A" · "A and B" · "A, B and C" */
+function serial(items) {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+}
+
 function onePara(a) {
   const tiers = [...new Set((a.components ?? []).map((c) => c.tier))].sort((x, y) => x - y);
-  const byTier = tiers.map((t) =>
-    (a.components ?? []).filter((c) => c.tier === t).map((c) => c.label).join(' and '));
-  const chain = byTier.join(' talks to ');
+  const tierComponents = tiers.map((t) => (a.components ?? []).filter((c) => c.tier === t));
+  const rows = tierComponents.map((row) => serial(row.map((c) => c.label)));
+  const counts = tierComponents.map((row) => row.length);
+
+  let chain = '';
+  if (rows.length === 1) {
+    chain = `${rows[0]} ${counts[0] === 1 ? 'is' : 'are'} the whole system.`;
+  } else if (rows.length > 1) {
+    chain = `${rows[0]} ${counts[0] === 1 ? 'talks' : 'talk'} to ${rows[1]}`;
+    for (let i = 2; i < rows.length; i++) {
+      chain += `, which ${counts[i - 1] === 1 ? 'talks' : 'talk'} to ${rows[i]}`;
+    }
+    chain += '.';
+  }
+
   const ac = a.access_control?.model === 'rls'
     ? ` Authorization is enforced in the database through row-level security, keyed on \`${a.access_control.session_context}\`.`
     : '';
-  return `${chain}.${ac} ${a.thesis_line}`;
+  return `${chain}${ac} ${a.thesis_line}`.trim();
 }

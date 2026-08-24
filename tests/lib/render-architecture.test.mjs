@@ -96,3 +96,43 @@ test('empty optional sections are omitted, not emitted blank', () => {
   assert.ok(!md.includes('## Design system'));
   assert.ok(md.includes('## Component legend'), 'the legend is never optional');
 });
+
+function paragraphOf(md) {
+  const body = section(md, '## The system in one paragraph', '## Regenerating');
+  const line = body.split('\n').find((l) => l.trim() && !l.startsWith('#'));
+  return line.trim();
+}
+
+test('a three-component tier renders with a serial comma and the plural verb', () => {
+  const arch = {
+    thesis_line: 'Thesis.',
+    context_bar: {},
+    components: [
+      { id: 'w', label: 'Web', tier: 1, trust_zone: 'public',
+        what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' },
+      { id: 'a', label: 'API', tier: 2, trust_zone: 'public',
+        what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' },
+      { id: 'b', label: 'Worker', tier: 2, trust_zone: 'public',
+        what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' },
+      { id: 'c', label: 'Cache', tier: 2, trust_zone: 'public',
+        what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' },
+      { id: 'd', label: 'DB', tier: 3, trust_zone: 'privileged',
+        what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' },
+    ],
+    access_control: { model: 'none' },
+  };
+  const md = renderArchitecture(arch);
+  assert.equal(paragraphOf(md), 'Web talks to API, Worker and Cache, which talk to DB. Thesis.');
+});
+
+test('a single-tier system renders as "is/are the whole system", not a talks-to chain', () => {
+  const arch = {
+    thesis_line: 'Thesis single.',
+    context_bar: {},
+    components: [{ id: 'a', label: 'Solo App', tier: 1, trust_zone: 'public',
+      what_it_is: 'x', what_it_does: 'y', why_this_choice: 'z' }],
+    access_control: { model: 'none' },
+  };
+  const md = renderArchitecture(arch);
+  assert.equal(paragraphOf(md), 'Solo App is the whole system. Thesis single.');
+});
