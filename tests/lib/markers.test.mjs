@@ -72,3 +72,26 @@ test('upsertBlock throws if body contains END marker', () => {
     upsertBlock('', `text with ${END} in it`);
   }, Error);
 });
+
+test('a named block is independent of the default one', () => {
+  let md = upsertBlock('', 'invariants body');
+  md = upsertBlock(md, 'drift body', 'nextjs-agent-rules');
+  assert.ok(md.includes('<!-- BEGIN:win-hackathon -->'));
+  assert.ok(md.includes('<!-- BEGIN:nextjs-agent-rules -->'));
+  assert.equal(readBlock(md), 'invariants body');
+  assert.equal(readBlock(md, 'nextjs-agent-rules'), 'drift body');
+});
+
+test('updating one named block leaves the other untouched', () => {
+  let md = upsertBlock(upsertBlock('', 'first'), 'drift', 'nextjs-agent-rules');
+  md = upsertBlock(md, 'second');
+  assert.equal(readBlock(md), 'second');
+  assert.equal(readBlock(md, 'nextjs-agent-rules'), 'drift', 'the other block must not move or change');
+});
+
+test('hand-written content outside every block survives', () => {
+  const hand = '# My notes\n\nSomething I wrote by hand.';
+  const md = upsertBlock(hand, 'generated');
+  assert.ok(md.includes('Something I wrote by hand.'));
+  assert.equal(readBlock(md), 'generated');
+});
