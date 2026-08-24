@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "repo_shape": "next-monolith",
+  "shape_rationale": "Server actions cover every write; a second deployable would add a network hop and a deploy target without adding a capability.",
+  "slots": [
+    {
+      "id": "database",
+      "choice": "Amazon Aurora PostgreSQL (Serverless v2, pgvector)",
+      "source": "required",
+      "requirement_ref": "aws-database",
+      "rationale": "The record is relational, transactional and access-controlled; row-level security makes the database the final authorization guarantee rather than the UI.",
+      "thesis_support": "carries"
+    },
+    {
+      "id": "deploy",
+      "choice": "Vercel",
+      "source": "required",
+      "requirement_ref": "vercel-or-v0-app-deployment",
+      "rationale": "Mandated by the rules; server actions and the Next.js runtime are first-class there.",
+      "thesis_support": "supports"
+    },
+    {
+      "id": "frontend",
+      "choice": "Next.js 16 + TypeScript + Tailwind + shadcn/ui",
+      "source": "default",
+      "rationale": "Personal default filling a slot the rules leave open; the App Router's route groups give protected-by-default routing.",
+      "thesis_support": "neutral"
+    }
+  ],
+  "bleeding_edge": [
+    { "slot": "frontend", "package": "next", "pin": "16.x", "docs_path": "node_modules/next/dist/docs/" }
+  ],
+  "rejected": [
+    { "slot": "database", "choice": "DynamoDB", "why_not": "The access pattern is relational and the authorization model is per-row; single-table design would fight both." }
+  ]
+}
