@@ -19,10 +19,20 @@ function slugify(s) {
     .replace(/^-|-$/g, '');
 }
 
+/**
+ * The join key for a recon.tech.required[]/forbidden[] entry. Exported so other tasks
+ * — notably the M4 compliance checker, which seeds compliance.required_tech_verified —
+ * derive the exact same key this validator uses. Two independent derivations would
+ * silently disagree and the checker would end up tracking keys nothing ever sets.
+ */
+export function requirementKey(entry) {
+  if (typeof entry === 'string') return slugify(entry);
+  return isNonEmptyString(entry?.id) ? entry.id : slugify(entry?.name);
+}
+
 function identifyTech(entry) {
-  if (typeof entry === 'string') return { id: slugify(entry), label: entry };
-  const id = isNonEmptyString(entry?.id) ? entry.id : slugify(entry?.name);
-  const label = entry?.label ?? entry?.name ?? id;
+  const id = requirementKey(entry);
+  const label = typeof entry === 'string' ? entry : (entry?.label ?? entry?.name ?? id);
   return { id, label };
 }
 
@@ -150,16 +160,34 @@ function crossCheckRecon(slots, recon, errors, warnings) {
     return;
   }
 
-  const covered = new Set(
-    slots.filter((s) => s?.source === 'required').map((s) => s?.requirement_ref),
-  );
+  const coveringSlot = new Map();
+  for (const s of slots) {
+    if (s?.source === 'required' && isNonEmptyString(s?.requirement_ref)) {
+      coveringSlot.set(s.requirement_ref, s);
+    }
+  }
   for (const req of required) {
     const { id, label } = identifyTech(req);
     if (!isNonEmptyString(id)) continue;
-    if (!covered.has(id)) {
+    const slot = coveringSlot.get(id);
+    if (!slot) {
       errors.push(
         `required tech "${id}" (${label}) is not covered by any slot with source "required" — an uncovered mandate is a Stage One fail`,
       );
+      continue;
+    }
+    // Declaring the requirement_ref isn't enough — the chosen tech must actually be one
+    // of the sponsor's allowed options, or the declaration is decorative.
+    const oneOf = Array.isArray(req?.one_of) ? req.one_of.filter(isNonEmptyString) : [];
+    if (oneOf.length > 0) {
+      const choice = String(slot.choice ?? '').toLowerCase();
+      const satisfied = oneOf.some((opt) => choice.includes(String(opt).toLowerCase()));
+      if (!satisfied) {
+        const slotIndex = slots.indexOf(slot);
+        errors.push(
+          `slots[${slotIndex}].choice "${slot.choice}" does not satisfy required tech "${label}" — it must be one of: ${oneOf.join(', ')}`,
+        );
+      }
     }
   }
 
