@@ -3,6 +3,7 @@ import path from 'node:path';
 import { HACKATHON_DIR, STACK_FILE, statePath } from './paths.mjs';
 import { readState, writeState, migrateStateFile } from './state.mjs';
 import { validateStack } from './stack-schema.mjs';
+import { renderTable } from './render.mjs';
 
 const rel = (name) => `${HACKATHON_DIR}/${name}`;
 
@@ -16,11 +17,10 @@ export function renderStack(stack) {
   out.push('');
   out.push('## Stack');
   out.push('');
-  out.push('| Slot | Choice | Source | Thesis | Why |');
-  out.push('|---|---|---|---|---|');
-  for (const s of stack.slots) {
-    out.push(`| ${s.id} | ${s.choice} | ${s.source} | ${s.thesis_support} | ${s.rationale} |`);
-  }
+  out.push(renderTable(
+    ['Slot', 'Choice', 'Source', 'Thesis', 'Why'],
+    stack.slots.map((s) => [s.id, s.choice, s.source, s.thesis_support, s.rationale]),
+  ));
 
   const pins = stack.bleeding_edge ?? [];
   if (pins.length > 0) {
@@ -30,11 +30,10 @@ export function renderStack(stack) {
     out.push('Pins whose APIs may differ from any agent\'s training data. Read the vendored');
     out.push('docs before writing code against them.');
     out.push('');
-    out.push('| Package | Pin | Docs |');
-    out.push('|---|---|---|');
-    for (const p of pins) {
-      out.push(`| ${p.package} | ${p.pin} | ${p.docs_path ?? '—'} |`);
-    }
+    out.push(renderTable(
+      ['Package', 'Pin', 'Docs'],
+      pins.map((p) => [p.package, p.pin, p.docs_path ?? '—']),
+    ));
   }
 
   const rejected = stack.rejected ?? [];
@@ -44,11 +43,10 @@ export function renderStack(stack) {
     out.push('');
     // :submit draws on this. A rejected option with a stated reason is evidence of a
     // deliberate architectural choice, which is what Technical Implementation asks for.
-    out.push('| Slot | Rejected | Why not |');
-    out.push('|---|---|---|');
-    for (const r of rejected) {
-      out.push(`| ${r.slot ?? '—'} | ${r.choice} | ${r.why_not} |`);
-    }
+    out.push(renderTable(
+      ['Slot', 'Rejected', 'Why not'],
+      rejected.map((r) => [r.slot ?? '—', r.choice, r.why_not]),
+    ));
   }
 
   out.push('');

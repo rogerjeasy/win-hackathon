@@ -68,6 +68,10 @@ test('init plan render says so when nothing needs consent', () => {
   assert.match(out, /nothing pre-existing/i);
 });
 
+function baseState() {
+  return createDefaultState({ pluginVersion: '0.1.0' });
+}
+
 function stateWithDeliverables() {
   const s = createDefaultState({ pluginVersion: '0.1.0' });
   s.hackathon = {
@@ -177,4 +181,22 @@ test('renderTable renders null and undefined cells as an em dash, not "undefined
 
 test('renderTable with no rows returns an empty string, not a headerless table', () => {
   assert.equal(renderTable(['A', 'B'], []), '');
+});
+
+test('the board summarises the stack once :stack has run', () => {
+  const state = baseState();
+  state.project = { name: 'Kintwadi', selected_idea: 'i1',
+    stack: { repo_shape: 'next-monolith', primary_database: 'Aurora PostgreSQL' } };
+  const out = renderStatusBoard({ state, resolution: { outcome: 'start', phase: 'architect', drift: [] } });
+  assert.match(out, /next-monolith/);
+  assert.match(out, /Aurora PostgreSQL/);
+});
+
+test('unverified required tech is shown as outstanding, not hidden', () => {
+  const state = baseState();
+  state.compliance = { last_checked: null, required_tech_verified: { 'aws-database': false, 'vercel-deploy': true } };
+  const out = renderStatusBoard({ state, resolution: { outcome: 'start', phase: 'architect', drift: [] } });
+  assert.match(out, /aws-database/);
+  assert.ok(!/vercel-deploy/.test(out.split('Required tech')[1] ?? ''),
+    'verified items are not worth board space; unverified ones are');
 });
