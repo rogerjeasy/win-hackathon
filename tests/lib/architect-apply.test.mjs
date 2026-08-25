@@ -5,6 +5,7 @@ import path from 'node:path';
 import { applyArchitecture } from '../../scripts/lib/architect-apply.mjs';
 import { createDefaultState } from '../../scripts/lib/schema.mjs';
 import { writeState, readState } from '../../scripts/lib/state.mjs';
+import { statePath } from '../../scripts/lib/paths.mjs';
 import { withTmpDir } from '../helpers/tmp.mjs';
 
 const fx = async (n) =>
@@ -95,6 +96,48 @@ test('--dry-run writes nothing at all', async () => {
     }
     const after = await readState(root);
     assert.equal(after.phases.architect.status, 'not_started', 'state must not move on a dry run');
+  });
+});
+
+// --- Fix 7 (task-18a): a dry run must not migrate state.json to disk --------------------
+//
+// applyArchitecture() used to call migrateStateFile(root) unconditionally, before checking
+// dryRun — so an old-schema state.json got rewritten to the current schema even on a dry
+// run, breaking the "filesystem is exactly as it was" guarantee C1/C2 established. This is
+// that same class of defect (dry-run that writes), pulled forward because Tasks 20 and 23
+// each add their own dryRun path.
+function v1StateWithProject() {
+  const phases = {};
+  for (const p of ['recon', 'brainstorm', 'describe', 'stack', 'architect',
+    'requirements', 'spec', 'build', 'ship', 'review', 'submit']) {
+    phases[p] = { status: 'not_started' };
+  }
+  return {
+    schema_version: 1,
+    plugin_version: '0.1.0',
+    hackathon: null,
+    project: { name: 'Kintwadi', selected_idea: 'i1' },
+    phases,
+    mode: 'solo',
+    team: [],
+    compliance: { last_checked: null, required_tech_verified: {} },
+    budget: { total_hours: null, spent_hours: 0, phase_budget: {} },
+  };
+}
+
+test('--dry-run on an old-schema state.json leaves the file byte-for-byte untouched', async () => {
+  await withTmpDir(async (root) => {
+    await mkdir(path.dirname(statePath(root)), { recursive: true });
+    const rawBefore = JSON.stringify(v1StateWithProject(), null, 2);
+    await writeFile(statePath(root), rawBefore, 'utf8');
+
+    const { artifacts } = await applyArchitecture(root, await fx('h0-architecture.json'),
+      { stack: await fx('h0-stack.json'), dryRun: true });
+    assert.ok(artifacts.length > 0, 'the preview must still be computable from the migrated shape');
+
+    const rawAfter = await readFile(statePath(root), 'utf8');
+    assert.equal(rawAfter, rawBefore,
+      'a dry run must migrate in memory only — the on-disk bytes must not change at all');
   });
 });
 
