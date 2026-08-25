@@ -16,10 +16,14 @@ function section(md, heading, next) {
 test('the context bar and thesis precede the diagram', async () => {
   const md = renderArchitecture(await golden());
   const arch = await golden();
-  assert.ok(md.indexOf(arch.context_bar.primary_database) < md.indexOf('## Diagram'),
-    'a judge reads the context bar first; it must not sit below the picture');
-  assert.ok(md.indexOf(arch.thesis_line) < md.indexOf('## Diagram'),
-    'the thesis is the argument the diagram illustrates, so it comes first');
+  const diagram = md.indexOf('## Diagram');
+  const db = md.indexOf(arch.context_bar.primary_database);
+  const thesis = md.indexOf(arch.thesis_line);
+  assert.ok(diagram !== -1, 'the diagram heading must be present');
+  assert.ok(db !== -1, 'the context bar must name the primary database');
+  assert.ok(thesis !== -1, 'the thesis line must be present');
+  assert.ok(db < diagram, 'a judge reads the context bar first; it must not sit below the picture');
+  assert.ok(thesis < diagram, 'the thesis is the argument the diagram illustrates, so it comes first');
 });
 
 test('the Mermaid diagram is inlined in a fenced block', async () => {
