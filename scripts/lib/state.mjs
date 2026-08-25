@@ -42,6 +42,24 @@ export async function writeState(root, state) {
   }
 }
 
+/**
+ * `:stack` and `:architect` both merge into `state.project` and then call writeState(),
+ * whose schema-v3 validation requires `project.name` and `project.selected_idea`. On a
+ * project where `:describe` has not run — `project: null`, exactly what `:init` creates —
+ * that merge produces an object missing both fields, and writeState() throws only after
+ * every artifact is already on disk. Calling this before any write means the same refusal
+ * happens up front instead, with an actionable message rather than a schema complaint.
+ */
+export function requireDescribedProject(state, root) {
+  const nonEmpty = (v) => typeof v === 'string' && v.trim() !== '';
+  const p = state.project;
+  if (!p || !nonEmpty(p.name) || !nonEmpty(p.selected_idea)) {
+    throw new Error(
+      `no project set in ${statePath(root)} — run /win-hackathon:describe first`,
+    );
+  }
+}
+
 export async function updateState(root, fn) {
   const current = await readState(root);
   if (current === null) throw new Error(`no state at ${statePath(root)}`);

@@ -121,6 +121,53 @@ test('a rerun is idempotent — same payload, same bytes, one backup set', async
   });
 });
 
+// --- C2: an undescribed project must be refused before anything is written --------------
+
+test('applyArchitecture refuses when project is null, and no artifact exists', async () => {
+  await withTmpDir(async (root) => {
+    await writeState(root, createDefaultState({ pluginVersion: '0.1.0' })); // project: null
+    const arch = await fx('h0-architecture.json');
+    const stack = await fx('h0-stack.json');
+    await assert.rejects(() => applyArchitecture(root, arch, { stack }),
+      /win-hackathon:describe/);
+
+    for (const a of [
+      '.hackathon/architecture.json', 'docs/architecture.md', 'docs/data-model.md',
+      'docs/assets/architecture.mmd', 'docs/assets/architecture.svg',
+      'docs/assets/architecture.drawio', 'AGENTS.md', 'CLAUDE.md',
+    ]) {
+      assert.equal(await exists(path.join(root, a)), false, `${a} was written despite the refusal`);
+    }
+    const after = await readState(root);
+    assert.equal(after.phases.architect.status, 'not_started', 'state must not move either');
+  });
+});
+
+// --- I1: a pre-existing docs/ artifact is backed up before it is overwritten -------------
+
+test('a hand-edited docs/architecture.md is recoverable from the backup directory after a re-run', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const arch = await fx('h0-architecture.json');
+    const stack = await fx('h0-stack.json');
+    await applyArchitecture(root, arch, { stack });
+
+    await mkdir(path.join(root, 'docs'), { recursive: true });
+    await writeFile(path.join(root, 'docs', 'architecture.md'), '# Hand-edited\n\nMine.\n', 'utf8');
+
+    const { backedUp } = await applyArchitecture(root, arch, { stack });
+    assert.ok(backedUp.includes('docs/architecture.md'), 'no backup was recorded');
+
+    // timestamp() has one-second resolution, so a fast second run can land in the same
+    // backup directory as the first -- assert on the newest one rather than the count.
+    const backups = (await readdir(path.join(root, '.hackathon', 'backups'))).sort();
+    const latest = backups.at(-1);
+    const saved = await readFile(
+      path.join(root, '.hackathon', 'backups', latest, 'docs', 'architecture.md'), 'utf8');
+    assert.ok(saved.includes('Mine.'), 'the hand-edited content must be recoverable');
+  });
+});
+
 test('an orphaned marker in AGENTS.md makes applyArchitecture reject, and nothing is written', async () => {
   await withTmpDir(async (root) => {
     await seeded(root);

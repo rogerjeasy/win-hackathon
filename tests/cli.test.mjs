@@ -451,6 +451,68 @@ test('stack.mjs with no subcommand exits 2 with usage', async () => {
   );
 });
 
+async function seedForStack(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  const state = await readState(dir);
+  state.project = { name: 'Kintwadi', selected_idea: 'i1' };
+  await writeState(dir, state);
+  await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+  await copyFile(fixture, path.join(dir, '.hackathon', 'recon.json'));
+  await copyFile(stackFixture, path.join(dir, '.hackathon', 'stack.json'));
+}
+
+// C1: on a clean project, `apply . --dry-run` must not write either artifact or advance
+// the phase — it used to write both, silently, because applyStack had no dryRun at all.
+test('stack.mjs apply --dry-run reports without writing', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForStack(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'stack.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(stdout, /Dry run/);
+    await assert.rejects(() => access(path.join(dir, '.hackathon', 'stack.md')), /ENOENT/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.stack.status, 'not_started');
+  });
+});
+
+test('stack.mjs apply writes both artifacts end to end and gates the phase', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForStack(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'stack.mjs'), 'apply', dir]);
+    assert.match(stdout, /Wrote 2 artifact\(s\)/);
+    assert.match(stdout, /awaiting_approval/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.stack.status, 'awaiting_approval');
+  });
+});
+
+test('stack.mjs apply reports a backup when stack.md already exists', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForStack(dir);
+    await run('node', [path.join(scripts, 'stack.mjs'), 'apply', dir]);
+    await writeFile(path.join(dir, '.hackathon', 'stack.md'), '# Mine\n\nHand-written.\n', 'utf8');
+    const { stdout } = await run('node', [path.join(scripts, 'stack.mjs'), 'apply', dir]);
+    assert.match(stdout, /Backed up before overwriting/);
+    assert.match(stdout, /stack\.md/);
+  });
+});
+
+test('stack.mjs apply refuses when project is not set, with exit 1', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await copyFile(fixture, path.join(dir, '.hackathon', 'recon.json'));
+    await copyFile(stackFixture, path.join(dir, '.hackathon', 'stack.json'));
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'stack.mjs'), 'apply', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /win-hackathon:describe/);
+        return true;
+      },
+    );
+  });
+});
+
 // --- architect.mjs --------------------------------------------------------------------
 
 test('architect.mjs validate exits 0 on the golden fixture', async () => {

@@ -10,7 +10,7 @@ const flags = new Set(rest.filter((a) => a.startsWith('--')));
 
 function usage() {
   console.error('usage: stack.mjs validate <path-to-stack.json> [--json]');
-  console.error('       stack.mjs apply <project-root> [--stack <path>]');
+  console.error('       stack.mjs apply <project-root> [--stack <path>] [--dry-run]');
   process.exit(2);
 }
 
@@ -51,12 +51,19 @@ if (subcommand === 'validate') {
   const source = idx === -1 ? stackPath(root) : path.resolve(rest[idx + 1]);
   const stack = await readJson(source);
   const recon = await readJson(reconPath(root), { optional: true });
+  const dryRun = flags.has('--dry-run');
 
   try {
-    const { artifacts } = await applyStack(root, stack, { recon });
-    console.log(`Wrote ${artifacts.length} artifact(s):`);
-    for (const a of artifacts) console.log(`  + ${a}`);
-    console.log('\nPhase "stack" is now awaiting_approval. Present the slot table, then ask.');
+    const { artifacts, backedUp } = await applyStack(root, stack, { recon, dryRun });
+    console.log(dryRun ? 'Dry run — nothing was written. Would write:' : `Wrote ${artifacts.length} artifact(s):`);
+    for (const a of artifacts) console.log(`  ${dryRun ? '?' : '+'} ${a}`);
+    if (backedUp?.length > 0) {
+      console.log('\nBacked up before overwriting:');
+      for (const b of backedUp) console.log(`  ~ ${b}`);
+    }
+    if (!dryRun) {
+      console.log('\nPhase "stack" is now awaiting_approval. Present the slot table, then ask.');
+    }
   } catch (err) {
     console.error(err.message);
     process.exit(1);
