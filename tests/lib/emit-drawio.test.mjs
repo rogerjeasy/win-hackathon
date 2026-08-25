@@ -13,8 +13,7 @@ function tagsBalanced(xml) {
   const re = /<(\/?)([A-Za-z][\w.-]*)([^>]*?)(\/?)>/g;
   let m;
   while ((m = re.exec(xml)) !== null) {
-    const [, closing, name, attrs, selfClose] = m;
-    if (attrs.trim().startsWith('?') || name === 'mxfile' && closing === '' && false) continue;
+    const [, closing, name, , selfClose] = m;
     if (selfClose === '/') continue;
     if (closing === '/') {
       if (stack.pop() !== name) return false;
@@ -24,6 +23,11 @@ function tagsBalanced(xml) {
   }
   return stack.length === 0;
 }
+
+test('tagsBalanced rejects mismatched tags', () => {
+  assert.equal(tagsBalanced('<a><b></a>'), false,
+    'the push/pop logic must still catch a mismatched closing tag after the dead branches were removed');
+});
 
 test('it is a well-formed mxfile with one diagram', async () => {
   const arch = await golden();
