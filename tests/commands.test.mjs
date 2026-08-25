@@ -264,6 +264,17 @@ test('sponsor-wins precedence is ordered, with required tech first', async () =>
   assert.ok(defaults < bonus);
 });
 
+// F23: :stack must preview before it writes, same as :architect.
+test('the stack command dry-runs before it applies', async () => {
+  const md = await readCommand('stack.md');
+  const dryRun = md.indexOf('--dry-run');
+  const apply = md.indexOf('apply .`');
+  assert.ok(dryRun !== -1, 'the dry-run flag must be shown to the user');
+  assert.ok(apply !== -1, 'the real apply command must be shown to the user');
+  assert.ok(dryRun < apply,
+    'the preview must come before the write, or the warning arrives too late');
+});
+
 // --- architect.md ------------------------------------------------------------------------
 
 test('the architect command exists', async () => {

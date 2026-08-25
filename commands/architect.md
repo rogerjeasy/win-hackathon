@@ -43,4 +43,5 @@ plainly if `AGENTS.md` came out short — a project with no tenancy story *shoul
 invariants, and Sonar won first place with a five-line `AGENTS.md`. A padded list is worse
 than a short one.
 
-Ask whether to proceed. **Do not continue to `:requirements` without an explicit yes.**
+Ask whether to proceed. **Do not continue to `:requirements` without an explicit yes.** The
+phase is `awaiting_approval` and `:next` will not advance past it.
