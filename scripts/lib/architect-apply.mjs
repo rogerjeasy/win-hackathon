@@ -21,7 +21,9 @@ import path from 'node:path';
 import {
   HACKATHON_DIR, ARCHITECTURE_FILE, statePath, timestamp,
 } from './paths.mjs';
-import { readState, writeState, migrateStateFile, requireDescribedProject } from './state.mjs';
+import {
+  readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
+} from './state.mjs';
 import { backupFile } from './backup.mjs';
 import { validateArchitecture } from './architecture-schema.mjs';
 import { layout } from './layout.mjs';
@@ -45,8 +47,17 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
     throw new Error(`refusing to apply an invalid architecture payload:\n  ${errors.join('\n  ')}`);
   }
 
-  await migrateStateFile(root);
-  const state = await readState(root);
+  // A dry-run's contract is that the filesystem ends up exactly as it started — including
+  // an old-schema state.json. migrateStateFile() would rewrite it before the preview even
+  // if dryRun is true, so on a dry run the migration happens in memory only (Fix 7,
+  // task-18a-brief.md); the non-dry-run path still migrates on disk, unchanged.
+  let state;
+  if (dryRun) {
+    state = await readMigratedState(root);
+  } else {
+    await migrateStateFile(root);
+    state = await readState(root);
+  }
   if (state === null) {
     throw new Error(`no state at ${statePath(root)} — run /win-hackathon:init first`);
   }

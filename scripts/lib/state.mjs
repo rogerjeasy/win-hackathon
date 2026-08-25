@@ -129,3 +129,22 @@ export async function migrateStateFile(root) {
   if (migrated) await writeState(root, state);
   return { migrated, from };
 }
+
+/**
+ * Read + migrate state WITHOUT writing anything to disk — for a dry-run preview, where the
+ * filesystem must end up exactly as it started. Mirrors what `migrateStateFile()` followed
+ * by `readState()` would hand back, minus the write: parse, migrate in memory, validate the
+ * migrated shape the same way `readState()` does. Returns `null` when there is no state file.
+ */
+export async function readMigratedState(root) {
+  const raw = await readRawState(root);
+  if (raw === null) return null;
+  const { state } = migrateState(raw);
+  const { valid, errors } = validateState(state);
+  if (!valid) {
+    throw new Error(
+      `${statePath(root)} is valid JSON but not a valid win-hackathon state: ${errors.join('; ')}`,
+    );
+  }
+  return state;
+}
