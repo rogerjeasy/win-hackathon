@@ -11,6 +11,13 @@ const ZONE_STYLE = {
   authenticated: 'fill:#FFFFFF,stroke:#0F766E,stroke-width:2px,color:#232F3E',
   privileged: 'fill:#FFF7EC,stroke:#ED7100,stroke-width:2px,color:#232F3E',
   external: 'fill:#F5F5F5,stroke:#5A6C72,stroke-dasharray:3 3,color:#232F3E',
+  // A trust_zone that validateArchitecture would reject (unrecognised or missing) reaches
+  // here only via a direct, unvalidated emitter call — see layout.mjs's precondition
+  // comment. Falling back to `public` would silently understate a component's privilege,
+  // which is worse than an odd-looking box, so this must be visibly its own thing: not a
+  // shade of any real zone, and it must never throw. Kept consistent with the `unknown`
+  // fallback in emit-svg.mjs and emit-drawio.mjs.
+  unknown: 'fill:#FEF2F2,stroke:#B91C1C,stroke-width:2px,stroke-dasharray:4 2,color:#7F1D1D',
 };
 
 /** Mermaid node labels break on quotes, square brackets and pipes. */
@@ -27,7 +34,7 @@ export function emitMermaid(architecture, laidOut) {
 
   const zones = [...new Set((architecture.components ?? []).map((c) => c.trust_zone))];
   for (const z of zones) {
-    out.push(`  classDef ${z} ${ZONE_STYLE[z] ?? ZONE_STYLE.public};`);
+    out.push(`  classDef ${z} ${ZONE_STYLE[z] ?? ZONE_STYLE.unknown};`);
   }
 
   const ordered = [...laidOut.boxes].sort((a, b) => (a.tier - b.tier) || (a.x - b.x));

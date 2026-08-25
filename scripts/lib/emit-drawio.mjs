@@ -11,6 +11,13 @@ const ZONE_STYLE = {
   authenticated: 'rounded=1;fillColor=#FFFFFF;strokeColor=#0F766E;strokeWidth=2;fontColor=#1B231F;',
   privileged: 'rounded=1;fillColor=#FFF7EC;strokeColor=#ED7100;strokeWidth=2;fontColor=#1B231F;',
   external: 'rounded=1;fillColor=#F5F5F5;strokeColor=#5A6C72;dashed=1;fontColor=#1B231F;',
+  // A trust_zone that validateArchitecture would reject (unrecognised or missing) reaches
+  // here only via a direct, unvalidated emitter call — see layout.mjs's precondition
+  // comment. Falling back to `public` would silently understate a component's privilege,
+  // which is worse than an odd-looking box, so this must be visibly its own thing: not a
+  // shade of any real zone, and it must never throw. Kept consistent with the `unknown`
+  // fallback in emit-mermaid.mjs and emit-svg.mjs.
+  unknown: 'rounded=1;fillColor=#FEF2F2;strokeColor=#B91C1C;dashed=1;fontColor=#7F1D1D;',
 };
 
 const BOUNDARY_STYLE =
@@ -57,7 +64,7 @@ export function emitDrawio(architecture, laidOut) {
   }
 
   for (const box of boxes) {
-    const style = ZONE_STYLE[box.zone] ?? ZONE_STYLE.public;
+    const style = ZONE_STYLE[box.zone] ?? ZONE_STYLE.unknown;
     out.push(
       `        <mxCell id="${esc(box.id)}" value="${esc(box.label)}" style="${style}" vertex="1" parent="1">`,
     );

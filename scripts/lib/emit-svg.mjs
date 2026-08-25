@@ -16,6 +16,14 @@ const ZONE_STROKE = {
   privileged: '#ED7100',
   external: '#5A6C72',
 };
+// A trust_zone that validateArchitecture would reject (unrecognised or missing) reaches
+// here only via a direct, unvalidated emitter call — see layout.mjs's precondition comment.
+// Falling back to public's colours would silently understate a component's privilege, which
+// is worse than an odd-looking box, so an unknown zone gets its own visibly distinct style
+// (and a dashed outline, applied where this is used below) instead — never a throw. Kept
+// consistent with the `unknown` fallback in emit-mermaid.mjs and emit-drawio.mjs.
+const UNKNOWN_ZONE_FILL = '#FEF2F2';
+const UNKNOWN_ZONE_STROKE = '#B91C1C';
 
 const FONT = 'system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif';
 const CHARS_PER_LINE = 24;
@@ -90,10 +98,13 @@ export function emitSvg(architecture, laidOut) {
   }
 
   for (const b of boxes) {
+    const zoneKnown = Object.prototype.hasOwnProperty.call(ZONE_FILL, b.zone);
+    const fill = zoneKnown ? ZONE_FILL[b.zone] : UNKNOWN_ZONE_FILL;
+    const stroke = zoneKnown ? ZONE_STROKE[b.zone] : UNKNOWN_ZONE_STROKE;
+    const dash = zoneKnown ? '' : ' stroke-dasharray="4 2"';
     out.push(
       `  <rect class="box" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="8" ` +
-      `fill="${ZONE_FILL[b.zone] ?? '#FFFFFF'}" stroke="${ZONE_STROKE[b.zone] ?? '#5A6C72'}" ` +
-      'stroke-width="1.5"/>',
+      `fill="${fill}" stroke="${stroke}" stroke-width="1.5"${dash}/>`,
     );
     const lines = wrap(b.label);
     const startY = b.y + b.h / 2 - ((lines.length - 1) * 16) / 2 + 5;

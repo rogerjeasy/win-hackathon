@@ -88,3 +88,23 @@ test('nodes are emitted in tier order', async () => {
     cursor = at;
   }
 });
+
+// Fix 5 (task-18a): an unrecognised trust_zone must get its own visibly distinct classDef,
+// never the `public` one — falling back to public silently understates the component's
+// privilege. Reachable only via a direct, unvalidated call (validateArchitecture rejects
+// this zone), which is why the fixture is hand-built rather than the golden one.
+test('an unrecognised trust_zone gets a distinct "unknown" classDef, not the public one', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 't', access_control: { model: 'none' },
+    components: [{ id: 'ghost', label: 'Ghost', tier: 1, trust_zone: 'quarantined',
+      what_it_is: 'x', what_it_does: 'x', why_this_choice: 'x' }],
+  };
+  const src = emitMermaid(arch, layout(arch));
+  const publicDef = src.split('\n').find((l) => l.startsWith('  classDef public '));
+  const unknownDef = src.split('\n').find((l) => l.startsWith('  classDef quarantined '));
+  assert.equal(publicDef, undefined, 'no public classDef should be emitted at all here');
+  assert.ok(unknownDef, 'the unrecognised zone must still get a classDef line');
+  assert.match(unknownDef, /stroke:#B91C1C/, 'must use the distinct unknown style');
+  assert.doesNotMatch(unknownDef, /fill:#FFFFFF,stroke:#5A6C72,color:#232F3E/,
+    'must not silently fall back to the public style');
+});
