@@ -32,7 +32,7 @@ test('the ERD renders as a Mermaid erDiagram with every relationship', async () 
     '## Entity-relationship diagram', '## Entity catalog');
   assert.match(erd, /```mermaid\n\s*erDiagram/);
   const rels = a.entities.flatMap((e) => e.relationships ?? []);
-  assert.equal((erd.match(/\|\|--o\{|\}o--\|\||\}o--o\{/g) ?? []).length, rels.length);
+  assert.equal((erd.match(/\|\|--o\{|\}o--\|\||\}o--o\{|\|\|--\|\|/g) ?? []).length, rels.length);
 });
 
 test('the capability matrix lists every role and its capabilities', async () => {
