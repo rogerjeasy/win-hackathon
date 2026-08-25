@@ -60,8 +60,10 @@ test('a project with no invariants gets a short honest file, not invented ones',
 
 test('renderAgentsMd puts the drift banner above the invariants', async () => {
   const md = renderAgentsMd('', await fx('h0-architecture.json'), await fx('h0-stack.json'));
-  assert.ok(md.indexOf('NOT the Next.js') < md.indexOf('Security invariants'),
-    'read-the-docs comes before the rules that assume you did');
+  const banner = md.indexOf('NOT the Next.js');
+  const invariants = md.indexOf('Security invariants');
+  assert.ok(banner !== -1 && invariants !== -1, 'both sections must be present');
+  assert.ok(banner < invariants, 'read-the-docs comes before the rules that assume you did');
 });
 
 test('renderAgentsMd preserves hand-written content outside the blocks', async () => {

@@ -27,12 +27,11 @@ user.
 
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/architect.mjs apply . --dry-run`
 
-If it reports it would overwrite an existing `AGENTS.md` or `CLAUDE.md`, tell the user which
-files and what is in them **before** applying. Then:
+If it reports it would overwrite any existing file — `AGENTS.md`, `CLAUDE.md`, or a
+hand-edited `docs/architecture.md` — tell the user which files and what is in them
+**before** applying. Then:
 
-```
-node ${CLAUDE_PLUGIN_ROOT}/scripts/architect.mjs apply .
-```
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/architect.mjs apply .`
 
 Everything is backed up under `.hackathon/backups/<timestamp>/` first, and hand-written
 content outside the managed blocks is preserved.

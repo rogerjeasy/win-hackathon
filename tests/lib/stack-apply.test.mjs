@@ -30,8 +30,10 @@ function section(md, heading, nextHeading) {
 
 test('the shape and its rationale come before the slot table', async () => {
   const md = renderStack(await fixture('h0-stack.json'));
-  assert.ok(md.indexOf('next-monolith') < md.indexOf('| Slot |'),
-    'the reader needs the shape before the parts list that assumes it');
+  const shape = md.indexOf('next-monolith');
+  const table = md.indexOf('| Slot |');
+  assert.ok(shape !== -1 && table !== -1, 'both the shape and the slot table must be present');
+  assert.ok(shape < table, 'the reader needs the shape before the parts list that assumes it');
 });
 
 test('every slot appears in the slot table with its source and rationale', async () => {

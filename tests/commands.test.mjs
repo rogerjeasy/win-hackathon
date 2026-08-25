@@ -238,8 +238,10 @@ test('the stack command stops at the approval gate, after showing the table', as
   const md = await readCommand('stack.md');
   const gate = md.slice(md.indexOf('## Step 6'));
   assert.match(gate, /\bawaiting_approval\b/);
-  assert.ok(md.indexOf('## Step 6') > md.indexOf('## Step 5'),
-    'the gate is the last step, not an aside partway through');
+  const step5 = md.indexOf('## Step 5');
+  const step6 = md.indexOf('## Step 6');
+  assert.ok(step5 !== -1 && step6 !== -1, 'both steps must exist');
+  assert.ok(step6 > step5, 'the gate is the last step, not an aside partway through');
   assert.match(gate, /explicit yes/i);
 });
 
@@ -254,9 +256,12 @@ test('the stack command loads its three skills before resolving anything', async
 test('sponsor-wins precedence is ordered, with required tech first', async () => {
   const md = await readCommand('stack.md');
   const step2 = md.slice(md.indexOf('## Step 2'), md.indexOf('## Step 3'));
-  assert.ok(step2.indexOf('Required sponsor tech is fixed') < step2.indexOf('Personal defaults'),
-    'defaults must never be presented as outranking a mandate');
-  assert.ok(step2.indexOf('Personal defaults') < step2.indexOf('Bonus tech'));
+  const required = step2.indexOf('Required sponsor tech is fixed');
+  const defaults = step2.indexOf('Personal defaults');
+  const bonus = step2.indexOf('Bonus tech');
+  assert.ok(required !== -1 && defaults !== -1 && bonus !== -1, 'all three must be named in Step 2');
+  assert.ok(required < defaults, 'defaults must never be presented as outranking a mandate');
+  assert.ok(defaults < bonus);
 });
 
 // --- architect.md ------------------------------------------------------------------------
@@ -268,7 +273,13 @@ test('the architect command exists', async () => {
 
 test('the architect command dry-runs before it applies', async () => {
   const md = await readCommand('architect.md');
-  assert.ok(md.indexOf('--dry-run') < md.indexOf('apply .\n'),
+  const dryRun = md.indexOf('--dry-run');
+  // 'apply .`' (inline-code close) singles out the real apply command, not the
+  // '--dry-run' line above it, which also contains the substring 'apply .'.
+  const apply = md.indexOf('apply .`');
+  assert.ok(dryRun !== -1, 'the dry-run flag must be shown to the user');
+  assert.ok(apply !== -1, 'the real apply command must be shown to the user');
+  assert.ok(dryRun < apply,
     'the preview must come before the write, or the warning arrives too late');
 });
 
