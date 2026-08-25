@@ -96,3 +96,22 @@ test('a single node with no edges renders without error', () => {
   assert.ok(svg.includes('Only'));
   assert.equal((svg.match(/<line[^>]*class="edge"/g) ?? []).length, 0);
 });
+
+// Fix 5 (task-18a): an unrecognised trust_zone must get its own visibly distinct box style,
+// never the `public` one — falling back to public silently understates the component's
+// privilege. Reachable only via a direct, unvalidated call (validateArchitecture rejects
+// this zone), which is why the fixture is hand-built rather than the golden one.
+test('an unrecognised trust_zone gets a distinct, dashed "unknown" style, not the public one', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 't', access_control: { model: 'none' },
+    components: [{ id: 'ghost', label: 'Ghost', tier: 1, trust_zone: 'quarantined',
+      what_it_is: 'x', what_it_does: 'x', why_this_choice: 'x' }],
+  };
+  const svg = emitSvg(arch, layout(arch));
+  const box = svg.split('\n').find((l) => l.includes('class="box"'));
+  assert.ok(box, 'the box must still be drawn — an emitter must never throw on this');
+  assert.match(box, /stroke="#B91C1C"/, 'must use the distinct unknown stroke colour');
+  assert.match(box, /stroke-dasharray="4 2"/, 'must be visibly dashed, unlike any real zone box');
+  assert.doesNotMatch(box, /fill="#FFFFFF" stroke="#5A6C72"/,
+    'must not silently fall back to the public fill/stroke pair');
+});

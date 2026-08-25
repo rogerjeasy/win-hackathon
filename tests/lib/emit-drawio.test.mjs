@@ -114,3 +114,22 @@ test('a single node with no edges emits a valid file', () => {
   assert.ok(tagsBalanced(xml));
   assert.equal((xml.match(/edge="1"/g) ?? []).length, 0);
 });
+
+// Fix 5 (task-18a): an unrecognised trust_zone must get its own visibly distinct box style,
+// never the `public` one — falling back to public silently understates the component's
+// privilege. Reachable only via a direct, unvalidated call (validateArchitecture rejects
+// this zone), which is why the fixture is hand-built rather than the golden one.
+test('an unrecognised trust_zone gets a distinct, dashed "unknown" style, not the public one', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 't', access_control: { model: 'none' },
+    components: [{ id: 'ghost', label: 'Ghost', tier: 1, trust_zone: 'quarantined',
+      what_it_is: 'x', what_it_does: 'x', why_this_choice: 'x' }],
+  };
+  const xml = emitDrawio(arch, layout(arch));
+  const cell = xml.split('\n').find((l) => l.includes('id="ghost"'));
+  assert.ok(cell, 'the cell must still be emitted — an emitter must never throw on this');
+  assert.match(cell, /strokeColor=#B91C1C/, 'must use the distinct unknown stroke colour');
+  assert.match(cell, /dashed=1/, 'must be visibly dashed');
+  assert.doesNotMatch(cell, /fillColor=#FFFFFF;strokeColor=#5A6C72;fontColor=#1B231F;/,
+    'must not silently fall back to the public style');
+});
