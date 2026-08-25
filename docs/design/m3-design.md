@@ -202,7 +202,7 @@ sponsor-wins precedence made mechanical.
       "id": "database",
       "choice": "Amazon Aurora DSQL",
       "source": "required",                    // required | default | bonus | replacement
-      "requirement_ref": "aws-database",       // → recon.tech.required[].id; required only
+      "requirement_ref": "aws-database",       // → requirementKey(recon.tech.required[i]); required only
       "rationale": "Multi-region active-active is the availability claim the thesis rests on.",
       "thesis_support": "carries"              // carries | supports | neutral
     },
@@ -237,8 +237,20 @@ sponsor-wins precedence made mechanical.
 | `repo_shape` is one of the two known shapes | error | `monorepo-structure` only has playbooks for two |
 | Every slot has a non-empty `rationale` | error | A slot with no reason is an undocumented default |
 | `source: "required"` slot has a `requirement_ref` | error | Traceability into `recon.json` |
+| Every `requirement_ref` resolves to an uncovered `recon.tech.required[]` entry, and if that entry carries `one_of`, the slot's `choice` matches one of those options | error | A declared `requirement_ref` that does not resolve, or resolves to a choice outside the sponsor's allowed set, is decorative traceability |
 | `bleeding_edge[]` entry has a `docs_path` | warning | The drift banner needs somewhere to point |
 | `recon.json` absent | warning | Required/forbidden checks skipped; state the reason plainly |
+
+`recon.tech.required[]`/`forbidden[]` entries carry a human `name` (e.g. `"AWS Database"`),
+not a stable `id` — recon extraction never mints one. `requirement_ref` needs something
+short and stable to point at, so `stack-schema.mjs` derives it deterministically:
+`requirementKey(entry)` returns an explicit `entry.id` when present, otherwise a lowercase,
+hyphenated slug of `entry.name` (non-alphanumeric runs collapse to one `-`, trimmed at both
+ends). A `required` entry may also carry `one_of: string[]` — the sponsor's allowed choices
+for that mandate (e.g. multiple acceptable databases). When present, the covering slot's
+`choice` must case-insensitively contain at least one of those options, or validation fails
+even though the `requirement_ref` resolves: naming the mandate is not the same as satisfying
+it.
 
 The thesis check is the one that earns the most. Roger's `sponsor-tech-thesis` skill teaches
 that the failure mode is "a thesis the architecture does not actually support"; this makes
@@ -540,9 +552,15 @@ correct.
 
 All four follow the protocol M1 and M2 established: read upstream state, do the work, validate
 the payload, render, set the phase to `awaiting_approval`, stop. Nothing advances without an
-explicit approval. All writes are non-destructive — per-file prompt before overwriting,
-backup into `.hackathon/backups/<timestamp>/`, and `--dry-run` prints the plan without
-touching disk. There is no `--force`.
+explicit approval. All writes are non-destructive — every pre-existing artifact is backed up
+into `.hackathon/backups/<timestamp>/` before it is overwritten, and `--dry-run` prints the
+plan without touching disk. There is no `--force`.
+
+The CLIs themselves are non-interactive — an agent invokes them, not a human, so a prompt at
+that layer has nobody to answer it. The per-file overwrite consent §7's "Non-destructive
+guarantees" describes for `win-hackathon-plugin.md` therefore lives one layer up, in the
+command file: dry-run first, show the user what would be overwritten, then apply only once
+they have seen that list. Every command file follows this shape.
 
 A phase that cannot produce a valid payload stays `in_progress` with a `resume_note` rather
 than writing a half-artifact. Validation is the gate.
@@ -698,7 +716,7 @@ source rather than trusted.
 |---|---|---|
 | **`security-invariants`** | `:architect` | `references/invariants-corpus.md` — Kintwadi's six numbered invariants with their `enforced_by` anchors; Sonar's banner-only file; HYPE's judge-facing `## Invariants`; Karma's security-as-a-section. Four shapes, and when each is honest |
 | **`framework-drift-guard`** | `:stack`, `:architect` | The canonical marked block verbatim, with the finding that Kintwadi and Sonar shipped it byte-identical |
-| **`monorepo-structure`** | `:stack` | Both shapes as measured: `next-monolith` (Kintwadi — `src/app/(app)` route group, `src/db/dal.ts`, `infra/` Terraform, two workflows) and `multi-service` (Karma — `web/` + `api/` + `agents/`, per-service Dockerfile and `pyproject.toml`, five path-filtered workflows, WIF setup scripts) |
+| **`monorepo-structure`** | `:stack` | Both shapes as measured: `next-monolith` (Kintwadi — `src/app/(app)` route group, `src/db/dal.ts`, `infra/` Terraform, two workflows) and `multi-service` (Karma — `web/` + `api/` + `agents/`, per-service Dockerfile and `pyproject.toml`, four path-filtered deploy workflows plus one release-triggered (`publish-packages.yml`), `setup-wif.ps1`) |
 | **`frontend-architecture`** | `:architect` | Kintwadi's protected-by-default route group, the `proxy.ts` fail-closed edge allowlist, DAL layering |
 | **`backend-architecture`** | `:architect` | Karma's FastAPI gateway / agent-service split, Secret Manager over environment variables, separated token scopes |
 | **`data-modeling`** | `:architect` | Kintwadi's `data-model.md` twelve-section template, including the RLS policy taxonomy and the "why this database *for this model*" section |
