@@ -55,6 +55,25 @@ test('a trust boundary naming an unknown component is an error', async () => {
   assert.equal(validateArchitecture(a, await stack()).valid, false);
 });
 
+// Fix 6 (task-18a): the ledger guessed the schema might already preclude a component id
+// appearing in two boundaries' contains[]. It did not — the loop only checked that contains
+// was non-empty and that each id was declared. A component claimed twice renders into only
+// the later boundary's subgraph (layout.mjs keys its boundary map by component id), so the
+// node silently vanishes from the earlier one.
+test('a component id claimed by two trust boundaries is an error', async () => {
+  const a = await golden();
+  // 'db' is already inside the golden fixture's one boundary ('aws'); add a second boundary
+  // that claims it too.
+  a.trust_boundaries.push({ id: 'second', label: 'Second boundary', contains: ['db'] });
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(
+    errors.some((e) => /trust_boundaries\[1\]\.contains/.test(e) && /"db"/.test(e)
+      && /trust_boundaries\[0\]\.contains/.test(e)),
+    errors.join('; '),
+  );
+});
+
 test('tiers must start at 1 and have no gaps', async () => {
   const a = await golden();
   a.components[1].tier = 5;

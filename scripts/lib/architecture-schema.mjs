@@ -111,6 +111,11 @@ function validateBoundaries(boundaries, ids, errors) {
     errors.push('trust_boundaries must be an array when present');
     return;
   }
+  // A component id claimed by two boundaries' `contains` renders into only the later
+  // subgraph — layout.mjs's boundary map is keyed by component id, so the earlier claim is
+  // silently overwritten. Track first-claimant here so a second claim is an error, not a
+  // vanished node in the diagram.
+  const claimedBy = new Map(); // component id -> index of the boundary that first named it
   for (const [i, b] of boundaries.entries()) {
     const at = `trust_boundaries[${i}]`;
     if (b === null || typeof b !== 'object') {
@@ -124,7 +129,17 @@ function validateBoundaries(boundaries, ids, errors) {
       continue;
     }
     for (const id of b.contains) {
-      if (!ids.has(id)) errors.push(`${at}.contains names "${id}", which is not a declared component`);
+      if (!ids.has(id)) {
+        errors.push(`${at}.contains names "${id}", which is not a declared component`);
+        continue;
+      }
+      if (claimedBy.has(id)) {
+        errors.push(
+          `${at}.contains names "${id}", which is already in trust_boundaries[${claimedBy.get(id)}].contains — a component may appear in at most one trust boundary`,
+        );
+      } else {
+        claimedBy.set(id, i);
+      }
     }
   }
 }
