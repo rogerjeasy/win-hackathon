@@ -73,6 +73,23 @@ test('sections with no content are omitted, not emitted empty', () => {
   assert.ok(!md.includes('## Bleeding edge'));
 });
 
+// Fix 9 (task-18a): validateStack rejects empty slots, so this is unreachable through
+// applyStack — but reachable by a direct caller, and it was untested before and after
+// Task 17's renderTable refactor. Ruling: empty input renders no table (renderTable's own
+// contract, pinned separately in render.test.mjs); this test pins it at the renderStack
+// call site too, so Task 19's render-requirements.mjs inherits a decided contract, not an
+// ambiguous one.
+test('renderStack with no slots keeps the heading but emits no slot table', () => {
+  const bare = {
+    schema_version: 1, repo_shape: 'multi-service', shape_rationale: 'Three deployables.',
+    slots: [],
+  };
+  const md = renderStack(bare);
+  assert.ok(md.includes('## Stack'), 'the section heading must still be present');
+  const section = md.slice(md.indexOf('## Stack'));
+  assert.ok(!section.includes('| Slot |'), 'no slots means no table, not a header-only table');
+});
+
 test('compliance is seeded false for every required slot, and only those', async () => {
   const seed = buildComplianceSeed(await fixture('h0-stack.json'));
   assert.deepEqual(Object.values(seed).filter((v) => v !== false), [],

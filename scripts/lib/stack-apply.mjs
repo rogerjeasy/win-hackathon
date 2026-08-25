@@ -15,6 +15,12 @@ import { renderTable } from './render.mjs';
 
 const rel = (name) => `${HACKATHON_DIR}/${name}`;
 
+// `stack.slots` is validated non-empty by validateStack, so this is unreachable through
+// applyStack; a direct caller can still pass an empty array. Deliberate, documented
+// contract (task-18a-brief.md, Fix 9): the ## Stack section then carries only its heading,
+// because renderTable([...], []) returns '' rather than a headerless table — an empty
+// string composes correctly when a caller concatenates sections, and a header with no rows
+// is not useful output. render-requirements.mjs (Task 19) follows the same contract.
 export function renderStack(stack) {
   const out = [];
   out.push('# Stack');
