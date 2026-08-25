@@ -48,7 +48,12 @@ Write `.hackathon/stack.json`, then run:
 The script prints every problem at once. Fix them all, then re-run. **At most two retries** —
 a third is a loop, not a fix, so stop and show the user the errors.
 
-## Step 5 — Apply
+## Step 5 — Preview, then apply
+
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/stack.mjs apply . --dry-run`
+
+If it reports it would overwrite an existing `.hackathon/stack.json` or `stack.md`, tell
+the user which files **before** applying. Then:
 
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/stack.mjs apply .`
 
