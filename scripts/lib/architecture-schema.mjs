@@ -28,13 +28,13 @@ export function validateArchitecture(doc, stack) {
   validateTiers(components, errors);
   validateEdges(doc.edges, ids, errors);
   validateBoundaries(doc.trust_boundaries, ids, errors);
-  const entityNames = validateEntities(doc.entities, errors);
+  validateEntities(doc.entities, errors);
   validateAccessControl(doc.access_control, doc.entities ?? [], errors);
   validateInvariants(doc.invariants, errors);
+  validateFlows(doc.flows, errors);
   validateDesignSystem(doc.design_system, warnings);
   crossCheckStack(components, stack, errors, warnings);
 
-  void entityNames;
   return { valid: errors.length === 0, errors, warnings };
 }
 
@@ -150,8 +150,66 @@ function validateEntities(entities, errors) {
     if (typeof e.tenant_scoped !== 'boolean') {
       errors.push(`${at}.tenant_scoped must be a boolean — it decides whether a policy is required`);
     }
+    validateEntityFields(e.fields, at, errors);
+  }
+
+  // Second pass: a relationship may point at an entity declared later in the array, so
+  // targets are checked only once every name in this payload is known. Without this, a
+  // typo in `to` renders a phantom box in the judge-facing ERD with no catalog row.
+  for (const [i, e] of entities.entries()) {
+    if (e === null || typeof e !== 'object') continue;
+    const rels = e.relationships;
+    if (rels === undefined) continue;
+    if (!Array.isArray(rels)) {
+      errors.push(`entities[${i}].relationships must be an array when present`);
+      continue;
+    }
+    for (const [j, r] of rels.entries()) {
+      const at = `entities[${i}].relationships[${j}]`;
+      if (r === null || typeof r !== 'object') {
+        errors.push(`${at} must be an object`);
+        continue;
+      }
+      if (!isNonEmptyString(r.to)) errors.push(`${at}.to must be a non-empty string`);
+      else if (!names.has(r.to)) errors.push(`${at}.to "${r.to}" is not a declared entity`);
+    }
   }
   return names;
+}
+
+function validateEntityFields(fields, at, errors) {
+  if (fields === undefined) return;
+  if (!Array.isArray(fields)) {
+    errors.push(`${at}.fields must be an array when present`);
+    return;
+  }
+  for (const [j, f] of fields.entries()) {
+    const fat = `${at}.fields[${j}]`;
+    if (f === null || typeof f !== 'object') {
+      errors.push(`${fat} must be an object`);
+      continue;
+    }
+    if (!isNonEmptyString(f.name)) errors.push(`${fat}.name must be a non-empty string`);
+  }
+}
+
+function validateFlows(flows, errors) {
+  if (flows === undefined) return;
+  if (!Array.isArray(flows)) {
+    errors.push('flows must be an array when present');
+    return;
+  }
+  for (const [i, f] of flows.entries()) {
+    const at = `flows[${i}]`;
+    if (f === null || typeof f !== 'object') {
+      errors.push(`${at} must be an object`);
+      continue;
+    }
+    if (!isNonEmptyString(f.title)) errors.push(`${at}.title must be a non-empty string`);
+    if (!Array.isArray(f.steps) || !f.steps.every(isNonEmptyString)) {
+      errors.push(`${at}.steps must be an array of strings — the renderer enumerates them directly`);
+    }
+  }
 }
 
 function validateAccessControl(ac, entities, errors) {

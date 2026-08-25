@@ -142,3 +142,59 @@ test('design_system missing a dark palette warns', async () => {
   assert.equal(valid, true);
   assert.ok(warnings.some((w) => /dark/i.test(w)), warnings.join('; '));
 });
+
+// --- P1: a relationship target must be a declared entity name ---------------------------
+
+test('a relationship pointing at an undeclared entity is an error', async () => {
+  const a = await golden();
+  a.entities[0].relationships.push({ to: 'phantom_table', kind: 'one-to-many' });
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(
+    errors.some((e) => e.startsWith('entities[0].relationships[') && e.includes('phantom_table')),
+    errors.join('; '),
+  );
+});
+
+test('a relationship pointing at a later-declared entity is not an error', async () => {
+  const a = await golden();
+  // membership is declared after care_circle in the fixture — a forward reference must
+  // not be flagged just because the target hasn't been seen yet.
+  a.entities[0].relationships.push({ to: 'membership', kind: 'one-to-many' });
+  const { valid } = validateArchitecture(a, await stack());
+  assert.equal(valid, true);
+});
+
+// --- I3: flows[].steps and entities[].fields are what the renderers actually consume ----
+
+test('a flow with no steps array is an error, not a raw TypeError from the renderer', async () => {
+  const a = await golden();
+  a.flows[0].steps = 'not an array';
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => e.startsWith('flows[0].steps')), errors.join('; '));
+});
+
+test('a flow with no title is an error', async () => {
+  const a = await golden();
+  delete a.flows[0].title;
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => e.startsWith('flows[0].title')), errors.join('; '));
+});
+
+test('entities[].fields must be an array of objects with a name', async () => {
+  const a = await golden();
+  a.entities[0].fields = 'not an array';
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => e.startsWith('entities[0].fields')), errors.join('; '));
+});
+
+test('a field object with no name is an error', async () => {
+  const a = await golden();
+  a.entities[0].fields = [{ type: 'uuid' }];
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => e.startsWith('entities[0].fields[0].name')), errors.join('; '));
+});
