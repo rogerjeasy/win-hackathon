@@ -84,6 +84,35 @@ test('an existing AGENTS.md is backed up before it is touched', async () => {
   });
 });
 
+// Fix 8 (task-18a): the guarantee is that one timestamp is shared across both files'
+// backups, so a single run produces one coherent backup set. Sound by construction (both
+// go through the same `stamp` in the write loop) — Ruling F22 explicitly refused to weaken
+// the backup promise, so this must not rest on construction alone.
+test('AGENTS.md and CLAUDE.md, both pre-existing, are backed up under the same timestamp', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    await writeFile(path.join(root, 'AGENTS.md'), '# Mine\n\nAgents rule.\n', 'utf8');
+    await writeFile(path.join(root, 'CLAUDE.md'), '# Also mine\n\nClaude rule.\n', 'utf8');
+
+    const { backedUp } = await applyArchitecture(root, await fx('h0-architecture.json'),
+      { stack: await fx('h0-stack.json') });
+
+    assert.ok(backedUp.includes('AGENTS.md'), 'AGENTS.md was not recorded as backed up');
+    assert.ok(backedUp.includes('CLAUDE.md'), 'CLAUDE.md was not recorded as backed up');
+
+    const backups = await readdir(path.join(root, '.hackathon', 'backups'));
+    assert.equal(backups.length, 1,
+      'one apply run must produce exactly one timestamped backup directory');
+
+    const [agentsSaved, claudeSaved] = await Promise.all([
+      readFile(path.join(root, '.hackathon', 'backups', backups[0], 'AGENTS.md'), 'utf8'),
+      readFile(path.join(root, '.hackathon', 'backups', backups[0], 'CLAUDE.md'), 'utf8'),
+    ]);
+    assert.ok(agentsSaved.includes('Agents rule.'), 'AGENTS.md backup has the wrong content');
+    assert.ok(claudeSaved.includes('Claude rule.'), 'CLAUDE.md backup has the wrong content');
+  });
+});
+
 test('--dry-run writes nothing at all', async () => {
   await withTmpDir(async (root) => {
     await seeded(root);
