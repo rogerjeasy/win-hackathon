@@ -1,7 +1,15 @@
+/**
+ * Applies a validated stack.json to the project: renders both artifacts and writes them,
+ * backing up either that already exists on disk first. Same shape as architect-apply.mjs:
+ * compute everything in memory, validate, check the project precondition, then — unless
+ * `dryRun` — back up and write. A `dryRun` call returns what would be written without
+ * touching disk or state at all.
+ */
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { HACKATHON_DIR, STACK_FILE, statePath } from './paths.mjs';
-import { readState, writeState, migrateStateFile } from './state.mjs';
+import { HACKATHON_DIR, STACK_FILE, statePath, timestamp } from './paths.mjs';
+import { readState, writeState, migrateStateFile, requireDescribedProject } from './state.mjs';
+import { backupFile } from './backup.mjs';
 import { validateStack } from './stack-schema.mjs';
 import { renderTable } from './render.mjs';
 
@@ -64,12 +72,12 @@ export function buildComplianceSeed(stack) {
   return seed;
 }
 
-function primaryDatabase(stack) {
+export function primaryDatabase(stack) {
   const dbSlot = (stack.slots ?? []).find((s) => /(^|[-_])db$|database|datastore/i.test(s?.id ?? ''));
   return dbSlot?.choice ?? null;
 }
 
-export async function applyStack(root, stack, { recon } = {}) {
+export async function applyStack(root, stack, { recon, dryRun = false } = {}) {
   const { valid, errors } = validateStack(stack, recon);
   if (!valid) {
     throw new Error(`refusing to apply an invalid stack payload:\n  ${errors.join('\n  ')}`);
@@ -80,18 +88,30 @@ export async function applyStack(root, stack, { recon } = {}) {
   if (state === null) {
     throw new Error(`no state at ${statePath(root)} — run /win-hackathon:init first`);
   }
+  requireDescribedProject(state, root);
 
-  const dir = path.join(root, HACKATHON_DIR);
-  await mkdir(dir, { recursive: true });
-
+  // relPath (repo-relative) -> body. Computed before any write, same shape as
+  // architect-apply.mjs: everything below this point is safe to touch disk with.
   const files = [
     [STACK_FILE, `${JSON.stringify(stack, null, 2)}\n`],
     ['stack.md', renderStack(stack)],
   ];
+  const artifacts = files.map(([name]) => rel(name));
+  if (dryRun) return { artifacts, backedUp: [] };
+
+  const dir = path.join(root, HACKATHON_DIR);
+  await mkdir(dir, { recursive: true });
+
+  const stamp = timestamp();
+  const backedUp = [];
+  for (const [name] of files) {
+    const saved = await backupFile(root, rel(name), stamp);
+    if (saved !== null) backedUp.push(rel(name));
+  }
+
   for (const [name, body] of files) {
     await writeFile(path.join(dir, name), body, 'utf8');
   }
-  const artifacts = files.map(([name]) => rel(name));
 
   const next = {
     ...state,
@@ -119,5 +139,5 @@ export async function applyStack(root, stack, { recon } = {}) {
   };
   await writeState(root, next);
 
-  return { artifacts };
+  return { artifacts, backedUp };
 }

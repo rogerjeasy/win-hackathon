@@ -1,13 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { renderStack, buildComplianceSeed, applyStack }
+import { renderStack, buildComplianceSeed, applyStack, primaryDatabase }
   from '../../scripts/lib/stack-apply.mjs';
 import { createDefaultState } from '../../scripts/lib/schema.mjs';
 import { writeState, readState } from '../../scripts/lib/state.mjs';
 import { requirementKey } from '../../scripts/lib/stack-schema.mjs';
 import { withTmpDir } from '../helpers/tmp.mjs';
+
+const exists = async (p) => !!(await readFile(p, 'utf8').catch(() => null));
+
+async function seeded(root) {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = { name: 'Kintwadi', selected_idea: 'i1' };
+  await writeState(root, state);
+  return state;
+}
 
 const fixture = async (n) =>
   JSON.parse(await readFile(new URL(`../fixtures/${n}`, import.meta.url), 'utf8'));
@@ -133,4 +142,100 @@ test('applyStack fails clearly when :init has not run', async () => {
     await assert.rejects(() => applyStack(root, stack),
       /run \/win-hackathon:init/);
   });
+});
+
+// --- C1: --dry-run must not touch disk or state -----------------------------------------
+
+test('applyStack with dryRun writes nothing at all', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const stack = await fixture('h0-stack.json');
+    const { artifacts } = await applyStack(root, stack,
+      { recon: await fixture('h0-recon.json'), dryRun: true });
+
+    assert.ok(artifacts.length > 0, 'it still reports what it would write');
+    for (const a of artifacts) {
+      assert.equal(await exists(path.join(root, a)), false, `${a} was written during a dry run`);
+    }
+    const after = await readState(root);
+    assert.equal(after.phases.stack.status, 'not_started', 'state must not move on a dry run');
+  });
+});
+
+// --- C2: an undescribed project must be refused before anything is written --------------
+
+test('applyStack refuses when project is null, and no artifact exists', async () => {
+  await withTmpDir(async (root) => {
+    await writeState(root, createDefaultState({ pluginVersion: '0.1.0' })); // project: null
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+    await assert.rejects(() => applyStack(root, stack, { recon }),
+      /win-hackathon:describe/);
+
+    assert.equal(await exists(path.join(root, '.hackathon', 'stack.json')), false);
+    assert.equal(await exists(path.join(root, '.hackathon', 'stack.md')), false);
+    const after = await readState(root);
+    assert.equal(after.phases.stack.status, 'not_started', 'state must not move either');
+  });
+});
+
+// --- I1: a pre-existing artifact is backed up before it is overwritten ------------------
+
+test('a hand-edited stack.md is recoverable from the backup directory after a re-run', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+    await applyStack(root, stack, { recon });
+
+    await writeFile(path.join(root, '.hackathon', 'stack.md'), '# Hand-edited\n\nMine.\n', 'utf8');
+
+    const { backedUp } = await applyStack(root, stack, { recon });
+    assert.ok(backedUp.includes('.hackathon/stack.md'), 'no backup was recorded');
+
+    // timestamp() has one-second resolution, so a fast second run can land in the same
+    // backup directory as the first -- assert on the newest one rather than the count.
+    const backups = (await readdir(path.join(root, '.hackathon', 'backups'))).sort();
+    const latest = backups.at(-1);
+    const saved = await readFile(
+      path.join(root, '.hackathon', 'backups', latest, '.hackathon', 'stack.md'), 'utf8');
+    assert.ok(saved.includes('Mine.'), 'the hand-edited content must be recoverable');
+  });
+});
+
+// --- P3: the required_tech_verified merge must survive a re-run -------------------------
+
+test('a required_tech_verified entry already true survives a re-run of applyStack', async () => {
+  await withTmpDir(async (root) => {
+    const state = await seeded(root);
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+    const seed = buildComplianceSeed(stack);
+    const someKey = Object.keys(seed)[0];
+    state.compliance = { last_checked: null, required_tech_verified: { [someKey]: true } };
+    await writeState(root, state);
+
+    await applyStack(root, stack, { recon });
+
+    const after = await readState(root);
+    assert.equal(after.compliance.required_tech_verified[someKey], true,
+      'a re-run of :stack must not un-verify something :check already confirmed');
+  });
+});
+
+// --- Ledger 5: primaryDatabase() is a user-visible regex ---------------------------------
+
+test('primaryDatabase matches a slot id of "database"', () => {
+  const stack = { slots: [{ id: 'database', choice: 'Aurora PostgreSQL' }] };
+  assert.equal(primaryDatabase(stack), 'Aurora PostgreSQL');
+});
+
+test('primaryDatabase matches a slot id of "db"', () => {
+  const stack = { slots: [{ id: 'db', choice: 'SQLite' }] };
+  assert.equal(primaryDatabase(stack), 'SQLite');
+});
+
+test('primaryDatabase does not match an unrelated slot', () => {
+  const stack = { slots: [{ id: 'frontend', choice: 'Next.js' }] };
+  assert.equal(primaryDatabase(stack), null);
 });

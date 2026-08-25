@@ -1,6 +1,9 @@
 /**
  * Applies a validated architecture.json to the project: renders all eight artifacts and
- * writes them, backing up any user-owned file (AGENTS.md, CLAUDE.md) first.
+ * writes them, backing up any of them that already exists on disk first — not just the
+ * two that are conventionally hand-edited. `docs/architecture.md` and its siblings are
+ * judge-facing and the architecture-diagramming skill explicitly anticipates users editing
+ * them, so a hand edit there deserves the same protection as a hand-edited AGENTS.md.
  *
  * Ordering is deliberate and load-bearing. renderAgentsMd() can throw — upsertBlock()
  * refuses to touch a hand-mangled AGENTS.md with an orphaned marker rather than silently
@@ -8,14 +11,17 @@
  * everything in memory" phase, before the write loop and before any backup is taken. If it
  * throws, the error propagates unchanged and the filesystem is exactly as it was: no
  * artifact written, no backup made, no state moved. Validation runs first for the same
- * reason — an invalid payload must be refused before a single byte is written.
+ * reason — an invalid payload must be refused before a single byte is written. The
+ * project precondition is checked there too — writeState() would eventually refuse a
+ * `state.project` that :describe never populated, but only after every artifact is
+ * already on disk, which is exactly the half-written state this ordering avoids.
  */
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
   HACKATHON_DIR, ARCHITECTURE_FILE, statePath, timestamp,
 } from './paths.mjs';
-import { readState, writeState, migrateStateFile } from './state.mjs';
+import { readState, writeState, migrateStateFile, requireDescribedProject } from './state.mjs';
 import { backupFile } from './backup.mjs';
 import { validateArchitecture } from './architecture-schema.mjs';
 import { layout } from './layout.mjs';
@@ -25,9 +31,6 @@ import { emitDrawio } from './emit-drawio.mjs';
 import { renderArchitecture } from './render-architecture.mjs';
 import { renderDataModel } from './render-data-model.mjs';
 import { renderAgentsMd, renderClaudeMd } from './render-agents.mjs';
-
-/** Files that may already exist in the user's repo and must be backed up before writing. */
-const USER_OWNED = new Set(['AGENTS.md', 'CLAUDE.md']);
 
 async function readIfPresent(p) {
   return readFile(p, 'utf8').catch((err) => {
@@ -47,6 +50,7 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
   if (state === null) {
     throw new Error(`no state at ${statePath(root)} — run /win-hackathon:init first`);
   }
+  requireDescribedProject(state, root);
 
   // --- Compute every artifact body in memory first. Nothing below this point touches the
   // filesystem for a write; if any render call throws (renderAgentsMd on an orphaned
@@ -77,7 +81,6 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
   const stamp = timestamp();
   const backedUp = [];
   for (const rel of artifacts) {
-    if (!USER_OWNED.has(rel)) continue;
     const saved = await backupFile(root, rel, stamp);
     if (saved !== null) backedUp.push(rel);
   }
