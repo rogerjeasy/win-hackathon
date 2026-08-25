@@ -108,6 +108,8 @@ test('applyStack writes both artifacts and parks the phase at the gate', async (
     assert.equal(after.project.stack.repo_shape, 'next-monolith');
     assert.equal(after.project.stack.ref, '.hackathon/stack.json');
     assert.ok(Object.keys(after.compliance.required_tech_verified).length >= 1);
+    assert.equal(after.project.stack.primary_database, 'Amazon Aurora PostgreSQL (Serverless v2, pgvector)',
+      'the heuristic result must actually land in state, not just be computable');
   });
 });
 
@@ -240,4 +242,24 @@ test('primaryDatabase matches a slot id of "db"', () => {
 test('primaryDatabase does not match an unrelated slot', () => {
   const stack = { slots: [{ id: 'frontend', choice: 'Next.js' }] };
   assert.equal(primaryDatabase(stack), null);
+});
+
+// The heuristic's edge: it is a plain substring/suffix regex, not a semantic check, so it
+// has both a false-positive and a false-negative shape. Documented here rather than fixed —
+// changing it is a bigger change than this batch (task-18a-brief.md, Fix 2).
+
+test('primaryDatabase edge: "db" must be its own segment (preceded by "-", "_" or start of ' +
+  'string) — a slot id that merely ends in the letters "db" with no separator is not matched, ' +
+  'a real false negative in the current regex', () => {
+  const stack = { slots: [{ id: 'authdb', choice: 'Aurora PostgreSQL' }] };
+  assert.equal(primaryDatabase(stack), null,
+    'documents the heuristic as written; a semantic fix is out of scope for this batch');
+});
+
+test('primaryDatabase edge: "database" matches anywhere in the id, so an unrelated slot whose ' +
+  'id merely contains the substring is a false positive', () => {
+  const stack = { slots: [{ id: 'user-database-admin-ui', choice: 'Next.js admin page' }] };
+  assert.equal(primaryDatabase(stack), 'Next.js admin page',
+    'the regex is not anchored to the whole id, so a slot about a database admin UI, not a ' +
+    'database itself, is still picked as the "primary database"');
 });
