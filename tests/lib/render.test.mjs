@@ -192,6 +192,22 @@ test('the board summarises the stack once :stack has run', () => {
   assert.match(out, /Aurora PostgreSQL/);
 });
 
+// F24: spec §9 says :status renders stack and architecture summaries; only the stack one existed.
+test('the board summarises the architecture once :architect has run', () => {
+  const state = baseState();
+  state.project = { name: 'Kintwadi', selected_idea: 'i1', architecture_ref: '.hackathon/architecture.json' };
+  const out = renderStatusBoard({ state, resolution: { outcome: 'start', phase: 'requirements', drift: [] } });
+  assert.match(out, /Architecture/);
+  assert.match(out, /docs\/architecture\.md/);
+});
+
+test('the board omits the architecture summary before :architect has run', () => {
+  const state = baseState();
+  state.project = { name: 'Kintwadi', selected_idea: 'i1' };
+  const out = renderStatusBoard({ state, resolution: { outcome: 'start', phase: 'architect', drift: [] } });
+  assert.doesNotMatch(out, /Architecture:/);
+});
+
 test('unverified required tech is shown as outstanding, not hidden', () => {
   const state = baseState();
   state.compliance = { last_checked: null, required_tech_verified: { 'aws-database': false, 'vercel-deploy': true } };

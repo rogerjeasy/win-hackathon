@@ -42,6 +42,14 @@ export function renderStatusBoard({ state, resolution, tools }) {
     lines.push(`Stack: ${stack.repo_shape}${stack.primary_database ? ` · ${stack.primary_database}` : ''}`);
   }
 
+  // state.json stores only the ref, not a copy of the payload — :architect writes no
+  // summary object onto project the way :stack does — so presence of the ref is all the
+  // board can report on without reading architecture.json off disk.
+  if (state.project?.architecture_ref) {
+    lines.push('');
+    lines.push('Architecture: designed — see docs/architecture.md');
+  }
+
   // Only the unverified ones. A board that lists everything verified is a board nobody reads.
   const verified = state.compliance?.required_tech_verified ?? {};
   const outstanding = Object.entries(verified).filter(([, ok]) => !ok).map(([id]) => id);
