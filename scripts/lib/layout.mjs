@@ -19,6 +19,19 @@ export const LAYOUT = {
   BOUNDARY_PAD: 18,
 };
 
+/**
+ * Precondition: `architecture` must already have passed `validateArchitecture()`. This
+ * function does no validation of its own, and two malformed shapes it does not catch:
+ *   - a duplicate `components[].id`: `byId` below is keyed by id, so the later component
+ *     silently overwrites the earlier one and an edge or trust boundary that meant to
+ *     reference the first one is laid out against the second instead — no error, wrong
+ *     picture.
+ *   - an edge endpoint that names no declared component: `byId.get(e.from/e.to)` returns
+ *     `undefined`, and reading `.x`/`.w`/etc. off it throws a generic `TypeError`, not a
+ *     message that names the bad edge.
+ * The three emitters (emit-mermaid.mjs, emit-svg.mjs, emit-drawio.mjs) call this directly,
+ * so they inherit both failure modes on unvalidated input.
+ */
 export function layout(architecture) {
   const components = [...(architecture?.components ?? [])];
 
