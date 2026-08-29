@@ -300,3 +300,22 @@ test('the architect command stops at the gate', async () => {
   assert.match(gate, /explicit yes/i);
   assert.match(gate, /\bshort\b/, 'it must tell the user a short AGENTS.md is legitimate');
 });
+
+// --- requirements.md ---------------------------------------------------------------------
+
+test('the requirements command exists', async () => {
+  const files = await commandFiles();
+  assert.ok(files.includes('requirements.md'), 'missing commands/requirements.md');
+});
+
+test('the requirements command warns that an unclaimed criterion scores zero', async () => {
+  const md = await readCommand('requirements.md');
+  assert.match(md, /score zero|scores zero/i);
+  assert.ok(md.indexOf('both ways') !== -1 || /each direction/i.test(md),
+    'two-way rubric coverage is the rule this command exists to enforce');
+});
+
+test('the requirements command stops at the gate', async () => {
+  const md = await readCommand('requirements.md');
+  assert.match(md.slice(md.lastIndexOf('## Step')), /explicit yes/i);
+});
