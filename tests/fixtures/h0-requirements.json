@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "id": "F1", "slug": "shared-care-record", "title": "One shared care record",
+      "priority": "must",
+      "criterion_refs": ["technical-implementation", "impact"],
+      "component_refs": ["web", "dal", "db"],
+      "user_story": {
+        "as_a": "an adult child coordinating care from another city",
+        "i_want": "one record every family member and caregiver sees",
+        "so_that": "nobody acts on a stale copy"
+      },
+      "requirements": [
+        { "id": "FR-1.1", "statement": "A member sees only the circles they belong to.",
+          "invariant_refs": ["dal-only-tenant-access"] },
+        { "id": "FR-1.2", "statement": "An unauthenticated visitor cannot reach any record page.",
+          "invariant_refs": ["protected-by-default"] }
+      ],
+      "scenarios": [
+        { "id": "FR-1.1-S1", "name": "A non-member cannot read the record",
+          "requirement_ref": "FR-1.1",
+          "given": ["a circle owned by another family"],
+          "when": ["I request that circle's timeline"],
+          "then": ["the response is empty", "an audit row records the attempt"],
+          "tags": ["@must", "@security"] },
+        { "id": "FR-1.2-S1", "name": "Signed-out visitors are redirected",
+          "requirement_ref": "FR-1.2",
+          "given": ["I am signed out"],
+          "when": ["I open a record page directly"],
+          "then": ["I am redirected to the sign-in page"],
+          "tags": ["@must", "@security"] }
+      ],
+      "demo_moment": true
+    },
+    {
+      "id": "F2", "slug": "medication-safety", "title": "Medication schedule and dose log",
+      "priority": "must",
+      "criterion_refs": ["design", "originality"],
+      "component_refs": ["web", "db"],
+      "user_story": {
+        "as_a": "a caregiver arriving for a shift",
+        "i_want": "to see what has already been given today",
+        "so_that": "I do not double-dose"
+      },
+      "requirements": [
+        { "id": "FR-2.1", "statement": "Recording a dose and its audit row commit atomically.",
+          "invariant_refs": ["dal-only-tenant-access"] }
+      ],
+      "scenarios": [
+        { "id": "FR-2.1-S1", "name": "A failed dose write leaves no audit row",
+          "requirement_ref": "FR-2.1",
+          "given": ["a medication with a schedule"],
+          "when": ["the dose write fails mid-transaction"],
+          "then": ["no dose row exists", "no audit row exists"],
+          "tags": ["@must"] }
+      ],
+      "demo_moment": false
+    }
+  ],
+  "non_functional": [
+    { "id": "NFR-1", "statement": "First contentful paint under 2s on the demo path.",
+      "verify": "Lighthouse run recorded in the runbook" }
+  ]
+}
