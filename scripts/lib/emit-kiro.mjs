@@ -41,7 +41,9 @@ function kiroRequirements(f) {
   out.push('');
   out.push('## User story');
   out.push('');
-  out.push(`As a ${f.user_story.as_a}`);
+  // f.user_story.as_a already reads as a complete noun phrase ("a caregiver...", "an adult
+  // child...") — prefixing a literal "a " here doubles the article ("As a a caregiver").
+  out.push(`As ${f.user_story.as_a}`);
   out.push(`I want ${f.user_story.i_want}`);
   out.push(`So that ${f.user_story.so_that}`);
   out.push('');
@@ -63,6 +65,19 @@ function kiroRequirements(f) {
   return out.join('\n');
 }
 
+/**
+ * Heuristic match of a flow step's free text against a component. The schema carries no field
+ * linking a flow to the components it passes through — flows have only prose `steps` — so this
+ * guesses relevance from the text instead of reading it off structured data. It is not a
+ * guarantee: a step naming a component only by a synonym is missed, and a step that mentions an
+ * id or label coincidentally would be included.
+ */
+function stepMentionsComponent(step, component) {
+  if (step.includes(component.label)) return true;
+  const escapedId = component.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escapedId}\\b`, 'i').test(step);
+}
+
 function kiroDesign(f, architecture) {
   const a = architecture ?? {};
   const refs = new Set(f.component_refs ?? []);
@@ -71,23 +86,31 @@ function kiroDesign(f, architecture) {
   const invariants = (a.invariants ?? []).filter((i) => invRefs.has(i.id));
   const entities = (a.entities ?? []).filter((e) => e.tenant_scoped);
   const flows = (a.flows ?? []).filter((fl) =>
-    (fl.steps ?? []).some((s) => components.some((c) => s.includes(c.label))));
+    (fl.steps ?? []).some((s) => components.some((c) => stepMentionsComponent(s, c))));
 
   const out = [];
   out.push(`# ${f.title} — Design`);
   out.push('');
-  out.push('The slice of the architecture this feature lives in. The full picture is in');
-  out.push('`docs/architecture.md`; what is below is what this feature touches.');
+  out.push('The full architecture lives in `docs/architecture.md`.');
   out.push('');
 
   out.push('## Components');
   out.push('');
-  for (const c of components) {
-    out.push(`### ${c.label}`);
+  if (components.length > 0) {
+    // This is the slice claim, and it only holds here — Components is the one section below
+    // that is actually filtered down to what this feature touches.
+    out.push('The slice of the architecture this feature touches.');
     out.push('');
-    out.push(`${c.what_it_is} ${c.what_it_does}`);
-    out.push('');
-    out.push(`*Why this choice:* ${c.why_this_choice}`);
+    for (const c of components) {
+      out.push(`### ${c.label}`);
+      out.push('');
+      out.push(`${c.what_it_is} ${c.what_it_does}`);
+      out.push('');
+      out.push(`*Why this choice:* ${c.why_this_choice}`);
+      out.push('');
+    }
+  } else {
+    out.push('This feature declares no component references.');
     out.push('');
   }
 
@@ -105,6 +128,11 @@ function kiroDesign(f, architecture) {
 
   if (entities.length > 0 && a.access_control?.model === 'rls') {
     out.push('## Data');
+    out.push('');
+    // Unlike Components, entities carry nothing that connects one to a feature — this section
+    // is the same for every feature's folder, not a slice.
+    out.push('Every tenant-scoped entity in the system — relevant whenever this feature reads or');
+    out.push('writes persisted data.');
     out.push('');
     out.push(`Every query runs inside a transaction with \`${a.access_control.session_context}\` set.`);
     out.push('');
