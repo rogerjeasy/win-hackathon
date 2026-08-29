@@ -359,3 +359,32 @@ test('ui-design-principles names all four breakpoints', async () => {
   const md = await readSkill('ui-design-principles');
   for (const bp of ['375', '820', '1024', '1440']) assert.ok(md.includes(bp), `missing ${bp}px`);
 });
+
+test('both unevidenced skills say so, near the top', async () => {
+  for (const name of ['gherkin-requirements', 'openspec-workflow']) {
+    const md = await readSkill(name);
+    const top = md.slice(0, Math.floor(md.length / 3));
+    assert.match(top, /no (project|winner)[^.]*corpus|not evidence|craft, not evidence/i,
+      `${name} must disclose that the corpus does not back it, and do it near the top`);
+  }
+});
+
+test('gherkin-requirements forbids hand-editing the generated feature files', async () => {
+  const md = await readSkill('gherkin-requirements');
+  assert.match(md, /requirements\.json/);
+  assert.match(md, /never hand-edit|do not (hand-)?edit/i);
+});
+
+test('openspec-workflow names the real package and the squatted one', async () => {
+  const md = await readSkill('openspec-workflow');
+  assert.ok(md.includes('@fission-ai/openspec'));
+  assert.match(md, /\bsquat/i);
+  assert.ok(md.indexOf('@fission-ai/openspec') < md.indexOf('## Proposal'),
+    'the trap comes before the mechanics — reading it late is reading it too late');
+});
+
+test('openspec-workflow explains why a deferred phase is not a failed phase', async () => {
+  const md = await readSkill('openspec-workflow');
+  const deferred = md.slice(md.indexOf('## The deferred path'));
+  assert.match(deferred, /optional|must not fail|own outputs/i);
+});
