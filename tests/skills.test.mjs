@@ -379,7 +379,16 @@ test('openspec-workflow names the real package and the squatted one', async () =
   const md = await readSkill('openspec-workflow');
   assert.ok(md.includes('@fission-ai/openspec'));
   assert.match(md, /\bsquat/i);
-  assert.ok(md.indexOf('@fission-ai/openspec') < md.indexOf('## Proposal'),
+  // Compare the trap SECTION's heading position against the mechanics section's heading
+  // position, not a bare indexOf on the package name -- the frontmatter description is
+  // mandated by the brief to contain '@fission-ai/openspec' too, which pins that bare
+  // string's first occurrence near the top of the file regardless of where the body's
+  // trap section actually sits. Heading positions aren't polluted by the frontmatter.
+  const trapAt = md.indexOf('## The package trap');
+  const proposalAt = md.indexOf('## Proposal');
+  assert.ok(trapAt !== -1, 'the package trap needs its own heading');
+  assert.ok(proposalAt !== -1, 'the proposal mechanics need their own heading');
+  assert.ok(trapAt < proposalAt,
     'the trap comes before the mechanics — reading it late is reading it too late');
 });
 
