@@ -55,6 +55,20 @@ function validateFeature(f, at, frIds, slugs, scenarioIds, errors) {
     errors.push(`${at}.priority "${f.priority}" is not one of ${PRIORITIES.join(', ')}`);
   }
 
+  // A malformed ref list (present, but not an array) is a structural defect in *this*
+  // document, distinct from an upstream payload being unavailable for cross-checking.
+  // Silently falling back to an empty list here — the way the cross-check functions below
+  // do, because they must tolerate an absent upstream payload — would validate a doc clean
+  // while handing Task 19/21's renderers a number where an array belongs. Absent stays
+  // optional (checked by the cross-checks only when an upstream payload can say what's
+  // valid); present-but-wrong-type is always an error, upstream payload or not.
+  if (f.criterion_refs !== undefined && !Array.isArray(f.criterion_refs)) {
+    errors.push(`${at}.criterion_refs must be an array of criterion ids`);
+  }
+  if (f.component_refs !== undefined && !Array.isArray(f.component_refs)) {
+    errors.push(`${at}.component_refs must be an array of component ids`);
+  }
+
   // The slug becomes features/<slug>.feature, specs/NNNN-<slug>/ and openspec/changes/<slug>/.
   if (!isNonEmptyString(f.slug) || !SLUG_RE.test(f.slug)) {
     errors.push(`${at}.slug "${f.slug}" must be lower-kebab-case — it becomes a filename in three places`);
@@ -94,6 +108,9 @@ function validateFeature(f, at, frIds, slugs, scenarioIds, errors) {
       own.add(r.id);
     }
     if (!isNonEmptyString(r.statement)) errors.push(`${rat}.statement must be a non-empty string`);
+    if (r.invariant_refs !== undefined && !Array.isArray(r.invariant_refs)) {
+      errors.push(`${rat}.invariant_refs must be an array of invariant ids`);
+    }
   }
 
   const scenarios = Array.isArray(f.scenarios) ? f.scenarios : [];
