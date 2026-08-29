@@ -6,7 +6,10 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const isNonEmptyString = (v) => typeof v === 'string' && v.trim() !== '';
 const isNonEmptyStringArray = (v) => Array.isArray(v) && v.length > 0 && v.every(isNonEmptyString);
 
-export function validateRequirements(doc, { recon, architecture } = {}) {
+export function validateRequirements(doc, options = {}) {
+  // `options` may arrive as `null` (a caller forwarding an absent optional payload literally
+  // as null rather than omitting it) — `= {}` only fires on `undefined`, so guard here too.
+  const { recon, architecture } = options ?? {};
   const errors = [];
   const warnings = [];
 
@@ -25,7 +28,10 @@ export function validateRequirements(doc, { recon, architecture } = {}) {
 
   const frIds = new Set();
   const slugs = new Set();
-  for (const [i, f] of features.entries()) validateFeature(f, `features[${i}]`, frIds, slugs, errors);
+  const scenarioIds = new Set();
+  for (const [i, f] of features.entries()) {
+    validateFeature(f, `features[${i}]`, frIds, slugs, scenarioIds, errors);
+  }
 
   validateNonFunctional(doc.non_functional, errors);
   crossCheckRecon(features, recon, errors, warnings);
@@ -38,7 +44,7 @@ export function validateRequirements(doc, { recon, architecture } = {}) {
   return { valid: errors.length === 0, errors, warnings };
 }
 
-function validateFeature(f, at, frIds, slugs, errors) {
+function validateFeature(f, at, frIds, slugs, scenarioIds, errors) {
   if (f === null || typeof f !== 'object') {
     errors.push(`${at} must be an object`);
     return;
@@ -76,9 +82,17 @@ function validateFeature(f, at, frIds, slugs, errors) {
       errors.push(`${rat} must be an object`);
       continue;
     }
-    if (!FR_ID_RE.test(r.id ?? '')) errors.push(`${rat}.id "${r.id}" must match FR-<n>.<n>`);
-    else if (frIds.has(r.id)) errors.push(`${rat}.id "${r.id}" is a duplicate FR id`);
-    else { frIds.add(r.id); own.add(r.id); }
+    if (!FR_ID_RE.test(r.id ?? '')) {
+      errors.push(`${rat}.id "${r.id}" must match FR-<n>.<n>`);
+    } else {
+      // A duplicate id is still an error, but this feature still declares it — record it in
+      // `own` regardless, so this feature's own scenarios aren't *also* flagged as pointing
+      // at an FR the feature doesn't declare. That second error would be true only by
+      // coincidence of bookkeeping order and would mislead whoever reads it.
+      if (frIds.has(r.id)) errors.push(`${rat}.id "${r.id}" is a duplicate FR id`);
+      frIds.add(r.id);
+      own.add(r.id);
+    }
     if (!isNonEmptyString(r.statement)) errors.push(`${rat}.statement must be a non-empty string`);
   }
 
@@ -91,6 +105,16 @@ function validateFeature(f, at, frIds, slugs, errors) {
     if (s === null || typeof s !== 'object') {
       errors.push(`${sat} must be an object`);
       continue;
+    }
+    // Scenario identity is one level down from feature slug: Task 19 renders scenarios into
+    // .feature files and Task 21 emits the EARS triad, both keyed on scenario id. A doc with
+    // a missing or duplicate scenario id validates clean here and breaks downstream.
+    if (!isNonEmptyString(s.id)) {
+      errors.push(`${sat}.id must be a non-empty string`);
+    } else if (scenarioIds.has(s.id)) {
+      errors.push(`${sat}.id "${s.id}" is a duplicate scenario id`);
+    } else {
+      scenarioIds.add(s.id);
     }
     if (!isNonEmptyString(s.name)) errors.push(`${sat}.name must be a non-empty string`);
     if (!own.has(s.requirement_ref)) {
@@ -171,16 +195,34 @@ function crossCheckArchitecture(features, architecture, errors, warnings) {
   }
 
   const componentIds = new Set(components.map((c) => c?.id));
-  const invariantIds = new Set((architecture.invariants ?? []).map((i) => i?.id));
+
+  // Every list read from the untrusted `architecture` or `features` payloads is guarded with
+  // `Array.isArray(x) ? x : ...` before iterating — a bare `?? []` on a value that is present
+  // but the wrong type (a string, a number, a plain object) does not fall through to the
+  // default and throws when iterated. `validateIdeas` was fixed for exactly this bug; every
+  // sibling cross-check guards this way (see crossCheckStack in architecture-schema.mjs) and
+  // this function must too.
+  const invariants = Array.isArray(architecture.invariants) ? architecture.invariants : null;
+  if (invariants === null) {
+    // Consistent with the components-absent branch above: an architecture that simply
+    // doesn't carry invariants yet degrades to "not checked", not to every invariant_ref
+    // being a hard error against an empty set.
+    warnings.push('architecture supplied but invariants is missing or malformed — invariant_refs were not checked');
+  }
+  const invariantIds = invariants === null ? null : new Set(invariants.map((i) => i?.id));
 
   for (const [i, f] of features.entries()) {
-    for (const ref of f?.component_refs ?? []) {
+    const componentRefs = Array.isArray(f?.component_refs) ? f.component_refs : [];
+    for (const ref of componentRefs) {
       if (!componentIds.has(ref)) {
         errors.push(`features[${i}].component_refs "${ref}" is not a component in architecture.json`);
       }
     }
-    for (const [j, r] of (f?.requirements ?? []).entries()) {
-      for (const ref of r?.invariant_refs ?? []) {
+    const requirements = Array.isArray(f?.requirements) ? f.requirements : [];
+    for (const [j, r] of requirements.entries()) {
+      if (invariantIds === null) continue;
+      const invariantRefs = Array.isArray(r?.invariant_refs) ? r.invariant_refs : [];
+      for (const ref of invariantRefs) {
         if (!invariantIds.has(ref)) {
           errors.push(`features[${i}].requirements[${j}].invariant_refs "${ref}" is not an invariant in architecture.json`);
         }
