@@ -112,9 +112,15 @@ function validateBoundaries(boundaries, ids, errors) {
     return;
   }
   // A component id claimed by two boundaries' `contains` renders into only the later
-  // subgraph — layout.mjs's boundary map is keyed by component id, so the earlier claim is
-  // silently overwritten. Track first-claimant here so a second claim is an error, not a
-  // vanished node in the diagram.
+  // subgraph. Correction (review round 1, M1): the earlier comment/commit blamed
+  // layout.mjs for this, but layout.mjs's `boundaries` is a plain array — each boundary
+  // computes its own bounding rect independently, so a double claim there would just draw
+  // two overlapping rects, not drop a node. The actual mechanism is emit-mermaid.mjs's
+  // `for (const id of b.contains) inBoundary.set(id, b.id)`: a later boundary's claim
+  // overwrites an earlier one's entry for the same id, so when the earlier boundary's
+  // subgraph is emitted, `inBoundary.get(box.id) !== b.id` is now true and the box is
+  // skipped from it — it only ever renders inside the later boundary's subgraph. Track
+  // first-claimant here so a second claim is an error, not a vanished node in the diagram.
   const claimedBy = new Map(); // component id -> index of the boundary that first named it
   for (const [i, b] of boundaries.entries()) {
     const at = `trust_boundaries[${i}]`;
@@ -134,9 +140,13 @@ function validateBoundaries(boundaries, ids, errors) {
         continue;
       }
       if (claimedBy.has(id)) {
-        errors.push(
-          `${at}.contains names "${id}", which is already in trust_boundaries[${claimedBy.get(id)}].contains — a component may appear in at most one trust boundary`,
-        );
+        const firstIndex = claimedBy.get(id);
+        // M2 (review round 1): claimedBy.get(id) === i is the same boundary repeating an
+        // id in its own `contains` array, not a cross-boundary claim -- word it as such,
+        // rather than the confusing "already in trust_boundaries[0].contains" when i is 0.
+        errors.push(firstIndex === i
+          ? `${at}.contains lists "${id}" more than once`
+          : `${at}.contains names "${id}", which is already in trust_boundaries[${firstIndex}].contains — a component may appear in at most one trust boundary`);
       } else {
         claimedBy.set(id, i);
       }
