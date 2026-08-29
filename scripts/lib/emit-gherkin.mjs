@@ -12,7 +12,7 @@ function steps(keyword, lines) {
 export function emitGherkin(feature) {
   const out = [];
   out.push(`Feature: ${feature.title}`);
-  out.push(`${INDENT}As a ${feature.user_story.as_a}`);
+  out.push(`${INDENT}As ${feature.user_story.as_a}`);
   out.push(`${INDENT}I want ${feature.user_story.i_want}`);
   out.push(`${INDENT}So that ${feature.user_story.so_that}`);
   out.push('');

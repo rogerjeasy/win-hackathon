@@ -50,7 +50,7 @@ export function renderRequirements(requirements, architecture) {
     // identifier that ties this row back to architecture.json's component list.
     const comps = (f.component_refs ?? [])
       .map((id) => (labels.has(id) ? `\`${id}\` ${labels.get(id)}` : `\`${id}\``))
-      .join(', ');
+      .join(', ') || '—';
     return [`**${f.id}** ${f.title}`, f.priority, comps, f.demo_moment ? 'yes' : '—'];
   });
   out.push(renderTable(['Feature', 'Priority', 'Components', 'Demo moment'], inventoryRows));
@@ -61,7 +61,7 @@ export function renderRequirements(requirements, architecture) {
   for (const f of features) {
     out.push(`### ${f.id} — ${f.title} *(${f.priority})*`);
     out.push('');
-    out.push(`As a ${f.user_story.as_a}, I want ${f.user_story.i_want}, so that ${f.user_story.so_that}.`);
+    out.push(`As ${f.user_story.as_a}, I want ${f.user_story.i_want}, so that ${f.user_story.so_that}.`);
     out.push('');
     for (const r of f.requirements ?? []) {
       const inv = (r.invariant_refs ?? []).length > 0

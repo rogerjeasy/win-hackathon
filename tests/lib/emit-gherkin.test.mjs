@@ -11,7 +11,9 @@ test('the user story becomes the feature description block', async () => {
   const f = r.features[0];
   const out = emitGherkin(f);
   assert.match(out, new RegExp(`^Feature: ${f.title}`, 'm'));
-  assert.ok(out.includes(`As a ${f.user_story.as_a}`));
+  assert.ok(out.includes(`As ${f.user_story.as_a}`));
+  assert.ok(!out.includes(`As a ${f.user_story.as_a}`),
+    'no double article -- the fixture value already carries its own "a"');
   assert.ok(out.includes(`I want ${f.user_story.i_want}`));
   assert.ok(out.includes(`So that ${f.user_story.so_that}`));
 });
