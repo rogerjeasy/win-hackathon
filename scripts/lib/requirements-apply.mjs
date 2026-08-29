@@ -1,13 +1,26 @@
 /**
  * Applies a validated requirements.json to the project: writes the JSON payload, renders
  * `.hackathon/requirements.md`, and emits one `features/<slug>.feature` file per feature.
- * Same shape as stack-apply.mjs and architect-apply.mjs: validate, load state, compute
- * every artifact body in memory, then — unless `dryRun` — write.
+ * Same shape as stack-apply.mjs and architect-apply.mjs: validate, load state, check the
+ * project precondition, compute every artifact body in memory, then — unless `dryRun` —
+ * back up and write.
+ *
+ * `.hackathon/requirements.json` and `.hackathon/requirements.md` are backed up before being
+ * overwritten, same treatment stack-apply.mjs gives `stack.json`/`stack.md`. The
+ * `features/<slug>.feature` files are deliberately NOT backed up: regenerating them on every
+ * run is the intended contract (the gherkin-requirements skill tells the user never to
+ * hand-edit one, because the next :requirements run overwrites it), so there is nothing to
+ * protect a hand edit from.
  */
 import { mkdir, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { HACKATHON_DIR, REQUIREMENTS_FILE, FEATURES_DIR, statePath } from './paths.mjs';
-import { readState, writeState, migrateStateFile, readMigratedState } from './state.mjs';
+import {
+  HACKATHON_DIR, REQUIREMENTS_FILE, FEATURES_DIR, statePath, timestamp,
+} from './paths.mjs';
+import {
+  readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
+} from './state.mjs';
+import { backupFile } from './backup.mjs';
 import { validateRequirements } from './requirements-schema.mjs';
 import { renderRequirements } from './render-requirements.mjs';
 import { emitAllGherkin } from './emit-gherkin.mjs';
@@ -33,18 +46,29 @@ export async function applyRequirements(root, requirements, { recon, architectur
   if (state === null) {
     throw new Error(`no state at ${statePath(root)} — run /win-hackathon:init first`);
   }
+  requireDescribedProject(state, root);
 
-  const gherkin = emitAllGherkin(requirements);
-  const files = new Map([
+  // relPath -> body, for the two artifacts that get backed up on overwrite.
+  const backedUpFiles = new Map([
     [`${HACKATHON_DIR}/${REQUIREMENTS_FILE}`, `${JSON.stringify(requirements, null, 2)}\n`],
     [`${HACKATHON_DIR}/requirements.md`, renderRequirements(requirements, architecture)],
   ]);
-  for (const [slug, body] of gherkin) files.set(`${FEATURES_DIR}/${slug}.feature`, body);
+
+  // relPath -> body, for the Gherkin files. Kept separate from backedUpFiles because these
+  // are never backed up (see file header) even though both sets are written the same way.
+  const gherkin = emitAllGherkin(requirements);
+  const featureFiles = new Map();
+  for (const [slug, body] of gherkin) featureFiles.set(`${FEATURES_DIR}/${slug}.feature`, body);
+
+  const files = new Map([...backedUpFiles, ...featureFiles]);
 
   // A .feature file from a previous run whose feature has since been dropped. Report it;
   // deleting a file the user may have edited is worse than leaving it.
   const skipped = [];
-  const existing = await readdir(path.join(root, FEATURES_DIR)).catch(() => []);
+  const existing = await readdir(path.join(root, FEATURES_DIR)).catch((err) => {
+    if (err.code === 'ENOENT') return [];
+    throw err;
+  });
   const current = new Set([...gherkin.keys()].map((s) => `${s}.feature`));
   for (const name of existing) {
     if (name.endsWith('.feature') && !current.has(name)) {
@@ -54,6 +78,13 @@ export async function applyRequirements(root, requirements, { recon, architectur
 
   const artifacts = [...files.keys()];
   if (dryRun) return { artifacts, backedUp: [], skipped };
+
+  const stamp = timestamp();
+  const backedUp = [];
+  for (const rel of backedUpFiles.keys()) {
+    const saved = await backupFile(root, rel, stamp);
+    if (saved !== null) backedUp.push(rel);
+  }
 
   for (const [rel, body] of files) {
     const target = path.join(root, rel);
@@ -75,5 +106,5 @@ export async function applyRequirements(root, requirements, { recon, architectur
   };
   await writeState(root, next);
 
-  return { artifacts, backedUp: [], skipped };
+  return { artifacts, backedUp, skipped };
 }

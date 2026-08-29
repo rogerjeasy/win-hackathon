@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { readFile, access, copyFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, access, copyFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from './helpers/tmp.mjs';
 import { writeV1State } from './helpers/v1-state.mjs';
@@ -680,6 +680,23 @@ test('requirements.mjs apply reports a stale feature file as left in place', asy
     assert.match(stdout, /removed-feature/);
     const still = await readFile(path.join(dir, 'features', 'removed-feature.feature'), 'utf8');
     assert.match(still, /old/);
+  });
+});
+
+test('requirements.mjs apply reports a backup when requirements.md already exists', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForRequirements(dir);
+    await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir]);
+    await writeFile(path.join(dir, '.hackathon', 'requirements.md'), '# Mine\n\nHand-written.\n', 'utf8');
+    const { stdout } = await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir]);
+    assert.match(stdout, /Backed up before overwriting/);
+    assert.match(stdout, /requirements\.md/);
+    const backups = await readdir(path.join(dir, '.hackathon', 'backups'));
+    assert.equal(backups.length, 1);
+    const saved = await readFile(
+      path.join(dir, '.hackathon', 'backups', backups[0], '.hackathon', 'requirements.md'), 'utf8',
+    );
+    assert.match(saved, /Hand-written\./);
   });
 });
 
