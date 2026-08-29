@@ -800,3 +800,16 @@ test('spec.mjs apply refuses an invalid payload with exit 1', async () => {
     );
   });
 });
+
+// --- Round-1 review findings -----------------------------------------------------------
+
+test('spec.mjs apply prints validateRequirements warnings — :spec has no validate subcommand of its own', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSpec(dir);
+    // applySpec() never forwards `recon` to validateRequirements(), so this warning is
+    // reliably present on every run — the point being proved is that apply's stdout is where
+    // it now surfaces, since :spec has no separate `validate` subcommand to print it from.
+    const { stdout } = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(stdout, /warning:.*recon/i);
+  });
+});

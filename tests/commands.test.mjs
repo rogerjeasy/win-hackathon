@@ -354,7 +354,11 @@ test('the spec command dry-runs before it applies', async () => {
 test('the spec command treats a deferred OpenSpec as finishable, not blocked', async () => {
   const md = await readCommand('spec.md');
   const deferred = md.slice(md.indexOf('DEFERRED'));
-  assert.match(deferred, /\bnot blocked\b|finishable|complete/i);
+  // Round-1 review: the original alternation's `|complete` branch matched "the triad is
+  // complete" even inside prose that says the phase itself is blocked, and the negative
+  // check only caught the literal string "fail the phase" — blocking prose need not contain
+  // it. Anchor on the specific phrase this file actually uses instead of a broad alternation.
+  assert.match(deferred, /treat\s+the\s+phase\s+as\s+finishable/i);
   assert.ok(!/\bfail the phase\b/i.test(deferred));
 });
 
