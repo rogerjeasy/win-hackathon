@@ -33,14 +33,25 @@ if (subcommand === 'apply') {
   const dryRun = flags.has('--dry-run');
 
   try {
-    const { artifacts, openspec, skipped } = await applySpec(root, { requirements, architecture, dryRun });
+    const {
+      artifacts, openspec, skipped, backedUp, warnings,
+    } = await applySpec(root, { requirements, architecture, dryRun });
 
-    // Two labelled groups, not one flat list: the Kiro triad is certain — it depends on no
-    // external tool — while the OpenSpec proposals are contingent on the CLI being reachable.
-    // A single flat list would make a dry run's proposal paths (which may never materialise
-    // if the CLI is unreachable) read as just as sure a thing as the triad's.
-    const proposals = artifacts.filter((a) => a.includes('openspec/changes'));
-    const kiro = artifacts.filter((a) => !proposals.includes(a));
+    // :spec has no `validate` subcommand of its own (it validates the requirements payload
+    // :requirements already produced), so `apply` is the only place these warnings can ever
+    // surface — unlike stack/architect/requirements, where a separate `validate` subcommand
+    // prints them. Without this, an absent architecture.json degrades every design.md to a
+    // stub with no signal to the user, even though Step 3 of the command promises design.md
+    // IS the architecture slice.
+    for (const w of warnings ?? []) console.log(`warning: ${w}`);
+
+    // The certain/contingent split uses openspec.artifacts directly — it is already the
+    // exact structural list runOpenspec() returns — rather than re-deriving it by filtering
+    // the flat array on a path-substring convention that would silently stop matching if
+    // CHANGES_DIR were ever renamed.
+    const proposals = openspec.artifacts;
+    const proposalSet = new Set(proposals);
+    const kiro = artifacts.filter((a) => !proposalSet.has(a));
 
     console.log(dryRun ? 'Dry run — nothing was written. Would write:' : `Wrote ${artifacts.length} artifact(s):`);
     console.log('\nKiro spec triad (certain — independent of any external tool):');
@@ -50,6 +61,11 @@ if (subcommand === 'apply') {
       for (const a of proposals) console.log(`  ${dryRun ? '?' : '+'} ${a}`);
     } else {
       console.log('  (none written — see OpenSpec status below)');
+    }
+
+    if (backedUp?.length > 0) {
+      console.log('\nBacked up before overwriting:');
+      for (const b of backedUp) console.log(`  ~ ${b}`);
     }
 
     if (skipped.length > 0) {
