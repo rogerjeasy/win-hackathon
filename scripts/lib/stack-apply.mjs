@@ -8,7 +8,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HACKATHON_DIR, STACK_FILE, statePath, timestamp } from './paths.mjs';
-import { readState, writeState, migrateStateFile, requireDescribedProject } from './state.mjs';
+import {
+  readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
+} from './state.mjs';
 import { backupFile } from './backup.mjs';
 import { validateStack } from './stack-schema.mjs';
 import { renderTable } from './render.mjs';
@@ -89,8 +91,20 @@ export async function applyStack(root, stack, { recon, dryRun = false } = {}) {
     throw new Error(`refusing to apply an invalid stack payload:\n  ${errors.join('\n  ')}`);
   }
 
-  await migrateStateFile(root);
-  const state = await readState(root);
+  // A dry-run's contract is that the filesystem ends up exactly as it started —
+  // including an old-schema state.json. migrateStateFile() would rewrite it before the
+  // preview even if dryRun is true, so on a dry run the migration happens in memory only
+  // (same defect and fix as applyArchitecture's, task-18a-brief.md Fix 7 / review round 1
+  // I2): the :stack dry-run preview is where this plugin's per-file overwrite consent
+  // actually happens, so a dry run with a side effect undermines that consent gate. The
+  // non-dry-run path still migrates on disk, unchanged.
+  let state;
+  if (dryRun) {
+    state = await readMigratedState(root);
+  } else {
+    await migrateStateFile(root);
+    state = await readState(root);
+  }
   if (state === null) {
     throw new Error(`no state at ${statePath(root)} — run /win-hackathon:init first`);
   }

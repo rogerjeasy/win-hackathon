@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { renderStack, buildComplianceSeed, applyStack, primaryDatabase }
   from '../../scripts/lib/stack-apply.mjs';
 import { createDefaultState } from '../../scripts/lib/schema.mjs';
 import { writeState, readState } from '../../scripts/lib/state.mjs';
+import { statePath } from '../../scripts/lib/paths.mjs';
 import { requirementKey } from '../../scripts/lib/stack-schema.mjs';
 import { withTmpDir } from '../helpers/tmp.mjs';
 
@@ -180,6 +181,48 @@ test('applyStack with dryRun writes nothing at all', async () => {
     }
     const after = await readState(root);
     assert.equal(after.phases.stack.status, 'not_started', 'state must not move on a dry run');
+  });
+});
+
+// --- I2 (review round 1): a dry run must not migrate state.json to disk -----------------
+//
+// applyStack() used to call migrateStateFile(root) unconditionally, before checking
+// dryRun -- the same class of defect Fix 7 corrected in applyArchitecture(). It matters
+// here specifically because the :stack dry-run preview is where this plugin's per-file
+// overwrite consent actually happens; a dry run with a side effect undermines that gate.
+function v1StateWithProject() {
+  const phases = {};
+  for (const p of ['recon', 'brainstorm', 'describe', 'stack', 'architect',
+    'requirements', 'spec', 'build', 'ship', 'review', 'submit']) {
+    phases[p] = { status: 'not_started' };
+  }
+  return {
+    schema_version: 1,
+    plugin_version: '0.1.0',
+    hackathon: null,
+    project: { name: 'Kintwadi', selected_idea: 'i1' },
+    phases,
+    mode: 'solo',
+    team: [],
+    compliance: { last_checked: null, required_tech_verified: {} },
+    budget: { total_hours: null, spent_hours: 0, phase_budget: {} },
+  };
+}
+
+test('applyStack --dry-run on an old-schema state.json leaves the file byte-for-byte untouched', async () => {
+  await withTmpDir(async (root) => {
+    await mkdir(path.dirname(statePath(root)), { recursive: true });
+    const rawBefore = JSON.stringify(v1StateWithProject(), null, 2);
+    await writeFile(statePath(root), rawBefore, 'utf8');
+
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+    const { artifacts } = await applyStack(root, stack, { recon, dryRun: true });
+    assert.ok(artifacts.length > 0, 'the preview must still be computable from the migrated shape');
+
+    const rawAfter = await readFile(statePath(root), 'utf8');
+    assert.equal(rawAfter, rawBefore,
+      'a dry run must migrate in memory only -- the on-disk bytes must not change at all');
   });
 });
 
