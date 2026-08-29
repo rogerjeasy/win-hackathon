@@ -70,6 +70,10 @@ The git root is the plugin root deliberately: `/plugin marketplace add` expects
 | `/win-hackathon:recon <devpost-url>` | Reads the hackathon end to end — rules, rubric, deadlines, panel, bonus points — and writes the brief. |
 | `/win-hackathon:brainstorm [--fresh] [--angle <name>]` | Generates ten ideas from four angles, gates them on Stage One, and scores the survivors against the real rubric. |
 | `/win-hackathon:describe [--idea <id>] [--track <id>]` | Turns the chosen idea into the product case and the win strategy. |
+| `/win-hackathon:stack` | Resolves the technology stack under sponsor-wins precedence — required tech first, personal defaults filling the gaps, every slot with a reason. |
+| `/win-hackathon:architect` | Designs the system — architecture, data model, three diagram formats, and the `AGENTS.md` invariants — all rendered from one validated payload. |
+| `/win-hackathon:requirements` | Turns the architecture into FR ids with acceptance criteria, a test matrix, and executable Gherkin scenarios. |
+| `/win-hackathon:spec` | Turns requirements into per-feature specs — the Kiro triad, plus OpenSpec change proposals when the CLI is reachable. |
 
 Each command ends at an approval gate and stops.
 

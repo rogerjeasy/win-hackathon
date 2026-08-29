@@ -47,7 +47,7 @@ Eleven phases, numbered 0–10. Each has one command, defined inputs, defined ou
 | 1 | **Brainstorm** — 10 ideas, gated on Stage One, then scored against the real judging criteria | `:brainstorm` | `.hackathon/ideas.json`, `ideas.md` (`--fresh` starts a clean round, prior rounds kept) |
 | 2 | **Describe** — the product case and the win strategy for the chosen idea | `:describe` | `.hackathon/project.md`, `strategy.md` |
 | 3 | **Stack** — sponsor tech wins, defaults fill gaps | `:stack` | `.hackathon/stack.md` |
-| 4 | **Architect** — architecture + data model + diagrams | `:architect` | `docs/architecture.md`, `docs/data-model.md`, `docs/assets/*.drawio` + `.png` |
+| 4 | **Architect** — architecture + data model + diagrams | `:architect` | `docs/architecture.md`, `docs/data-model.md`, `docs/assets/architecture.{mmd,svg,drawio}` |
 | 5 | **Requirements** — features, acceptance criteria, Gherkin | `:requirements` | `.hackathon/requirements.md`, `features/*.feature` |
 | 6 | **OpenSpec** — change proposals | `:spec` | `openspec/changes/*` |
 | 7 | **Build** — implementation via superpowers SDD | `:build` | the application |
@@ -123,7 +123,7 @@ infra/                       Terraform
 
 ```jsonc
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "plugin_version": "0.1.0",
 
   // A digest only. The full extraction lives in .hackathon/recon.json — state.json is
@@ -149,14 +149,11 @@ infra/                       Terraform
     "name": "…",
     "selected_idea": "idea-07",
     "selected_at": "2026-08-21T14:02:00Z",
-    "stack": {
-      "frontend": { "choice": "Next.js 16 + TS + Tailwind + shadcn", "source": "default" },
-      "backend":  { "choice": "FastAPI + Poetry",                    "source": "default" },
-      "ai":       { "choice": "Amazon Bedrock",                      "source": "required" },
-      "db":       { "choice": "Aurora Postgres + pgvector",          "source": "bonus" },
-      "deploy":   { "choice": "Vercel + Cloud Run",                  "source": "default" }
-    },
-    "shape": "multi-service"      // or "next-monolith"
+    // Validated as of v3 — see §4 field notes. The rationale behind the choice lives in
+    // stack.json's rendered slot table, not here; state.json stays a digest.
+    "stack": { "repo_shape": "multi-service" },  // or "next-monolith"
+    "architecture_ref": ".hackathon/architecture.json",
+    "requirements_ref": ".hackathon/requirements.json"
   },
 
   "phases": {
@@ -191,11 +188,12 @@ infra/                       Terraform
 
 **Field notes**
 
-- `stack[*].source` is one of `required` / `bonus` / `default` / `user`. It records *why* each choice was made, which feeds the README's "why this tech" section and defends the choice to judges.
+- `stack.json`'s own slot table (per-slot choice and `source: required | bonus | default | user`) records *why* each choice was made, which feeds the README's "why this tech" section and defends the choice to judges. `state.json` only digests the repo shape.
 - `resume_note` is written when a phase is interrupted. The `SessionStart` hook surfaces it verbatim so a `/clear` mid-phase is recoverable.
 - `compliance.required_tech_verified[].evidence` is a `file:line` citation. A claim without a citation is treated as unverified.
 - `schema_version` gates migrations. On mismatch, `:init` migrates and backs up first.
 - **v1 → v2** adds `deliverables` and reshapes `hackathon` into a digest with `recon_ref`. The migration is additive and idempotent. Full M2 schemas live in `m2-front-half.md`.
+- **v2 → v3** validates `project` for the first time (it was previously defaulted to `null` and never checked) and adds `project.stack.repo_shape`, `project.architecture_ref` and `project.requirements_ref`. Full M3 schemas live in `m3-design.md`.
 
 ---
 
@@ -345,22 +343,43 @@ Also selects the repository shape:
 | `next-monolith` | Next.js full-stack, server actions, no separate API surface | `kintwadi` |
 | `multi-service` | separate `web/`, `api/`, `agents/`, each independently deployable | `karma` |
 
-Writes `stack.md` and `state.json.project.stack`. Triggers the `framework-drift-guard` skill for any bleeding-edge pin.
+**Emits a validated `stack.json`**; `stack.md` renders from it, so the two cannot drift.
+Writes `state.json.project.stack` and **seeds `compliance.required_tech_verified`** — one
+unverified entry per required-source slot, so `:check` in M4 has something concrete to flip
+to `true` rather than starting from nothing. Triggers the `framework-drift-guard` skill for
+any bleeding-edge pin.
 
 #### `:architect`
 
-- **Dispatches:** `solution-architect`.
-- **Writes:** `docs/architecture.md` (components, boundaries, data flow, trust boundaries, failure modes), `docs/data-model.md` (entities, relationships, multi-tenancy and row-level security strategy, migrations), and `docs/assets/architecture.drawio` + rendered `.png`.
+- **Dispatches:** `solution-architect`, which returns only a validated `architecture.json`
+  — components, entities, access control, invariants, and a `design_system` block from the
+  `ui-design-principles` skill. **Every other surface renders from that one payload.**
+- **Writes:** `docs/architecture.md` (components, boundaries, data flow, trust boundaries, failure modes), `docs/data-model.md` (entities, relationships, multi-tenancy and row-level security strategy, migrations), and three diagram formats — Mermaid, SVG and drawio — laid out from the same graph once, so they cannot disagree with each other. **There is no automated `.png` export.** Nothing in the winner corpus this plugin draws its evidence from automated one either — every rendered PNG in that evidence base was exported by hand — so promising one here would be a capability the plugin does not have.
 - **Writes `AGENTS.md`** via the `security-invariants` skill: numbered, non-negotiable invariants ending in an explicit instruction to stop and flag rather than ship a violation. `CLAUDE.md` becomes a single `@AGENTS.md` line.
 - Diagrams are treated as a deliverable, not a nicety — they are a visible part of design scoring.
 
 #### `:requirements`
 
-Turns features into verifiable statements: `requirements.md` with acceptance criteria, and `features/*.feature` in Gherkin. Every must-have feature gets at least one scenario. Gherkin scenarios become the acceptance tests phase 7 must satisfy, so they are written to be executable, not decorative.
+**Emits a validated `requirements.json`** — FR-IDs with acceptance criteria and a test
+matrix, rendered as `.hackathon/requirements.md`, **alongside** `features/*.feature` in
+Gherkin rendered from the same payload. Every must-have feature gets at least one scenario.
+Gherkin scenarios become the acceptance tests phase 7 must satisfy, so they are written to be
+executable, not decorative. A judging criterion no feature claims fails validation before
+either surface is written — a criterion nothing is built for is a guaranteed zero on a
+weighted axis, and the pipeline refuses to carry that forward silently.
 
 #### `:spec`
 
-Drives `@fission-ai/openspec`. Verifies the CLI, runs `openspec init` if the directory is absent, and creates one change proposal per must-have feature, seeded from `requirements.md` and the Gherkin scenarios. Validates proposals before the gate.
+Reads no payload of its own — everything it writes is derived from `architecture.json` and
+`requirements.json`. Writes the **Kiro triad** — `requirements.md`, `design.md`, `tasks.md`
+— in `.hackathon/specs/NNNN-<slug>/` for every must-have feature; `design.md` is the slice
+of the architecture M4's build agent reads for that feature, not the full
+`docs/architecture.md`. **Alongside** the triad it drives `@fission-ai/openspec`: verifies
+the CLI, runs `openspec init` if the directory is absent, and creates one change proposal
+per must-have feature in `openspec/changes/<slug>/`, seeded from the same two payloads. **An
+unreachable CLI defers that half rather than failing the phase** — the triad has no external
+dependency, so a missing `openspec` install leaves three of the four surfaces complete and
+the phase still finishable; only the fourth is deferred until the CLI is reachable.
 
 #### `:build [--feature <id>]`
 
@@ -417,7 +436,7 @@ Drives `@fission-ai/openspec`. Verifies the CLI, runs `openspec init` if the dir
 | `hackathon-recon` | Opus | WebFetch, Playwright MCP, Read, Write | Raw Devpost HTML is very large; returns only a structured brief |
 | `idea-generator` | Opus | Read, Write | Spawned ×4 in parallel with different angles. One agent producing ten ideas converges; four agents diverge |
 | `idea-scorer` | Opus | Read, Write | Scores in a fresh context, unanchored by the generator's framing |
-| `solution-architect` | Opus | Read, Write, Bash, WebFetch | Deep design exploration plus diagram generation |
+| `solution-architect` | Opus | Read, Write, Bash, WebFetch | Deep design exploration; **returns `architecture.json` only** — every document, diagram, and `AGENTS.md` renders from that one payload by code, not by the agent |
 | `deploy-engineer` | Opus | Read, Write, Edit, Bash | Dockerfiles, Terraform, CI — one large focused chunk |
 | `quality-reviewer` | Opus | Read, Grep, Glob, Bash | Reads broadly; must not carry implementation bias |
 | `compliance-checker` | Sonnet | Read, Grep, Glob, Bash | Mechanical, evidence-gathering, high-volume search |
@@ -445,12 +464,12 @@ Drives `@fission-ai/openspec`. Verifies the CLI, runs `openspec init` if the dir
 
 | Skill | Content |
 |---|---|
-| **`ui-design-principles`** | The principles behind the best-design win: visual hierarchy, restraint, motion, empty states, responsive behavior, accessibility as table stakes |
+| **`ui-design-principles`** | The principles behind the best-design win: visual hierarchy, restraint, motion, empty states, responsive behavior, accessibility as table stakes. **Loads at `:architect`**, where `solution-architect` uses it to produce the `design_system` block in `architecture.json` |
 | **`monorepo-structure`** | Both shapes — `next-monolith` and `multi-service` — with the criteria for choosing |
 | **`frontend-architecture`** | Next.js App Router: route groups, server vs. client components, protected-by-default route groups, data-access layering |
 | **`backend-architecture`** | FastAPI layering, dependency injection, DAL boundaries, error contracts, config management |
 | `data-modeling` | Entity design, multi-tenancy, row-level security, migrations under time pressure |
-| `architecture-diagramming` | drawio + PNG generation, layered views, what judges actually read |
+| `architecture-diagramming` | Mermaid, SVG and drawio generation from one laid-out graph — **no automated PNG export**, layered views, what judges actually read |
 
 ### Engineering
 
@@ -458,8 +477,8 @@ Drives `@fission-ai/openspec`. Verifies the CLI, runs `openspec init` if the dir
 |---|---|
 | **`security-invariants`** | Generates the fail-closed, defense-in-depth `AGENTS.md` contract: protected-by-default routing, DAL-enforced tenancy, dual audit + operational logging, secret hygiene, and the closing "stop and flag rather than ship" instruction |
 | **`framework-drift-guard`** | Generates the "This is NOT the *framework* you know" banner for any bleeding-edge pin, directing agents to read vendored docs before writing code. Prevents training-data drift on fast-moving frameworks |
-| `gherkin-requirements` | Writing executable scenarios; the acceptance-criteria-to-test pipeline |
-| `openspec-workflow` | Driving `@fission-ai/openspec`: proposal structure, validation, archiving |
+| `gherkin-requirements` | Writing executable scenarios; the acceptance-criteria-to-test pipeline. **Unevidenced** — no project in the winner corpus used Gherkin; this is craft, not a proven pattern |
+| `openspec-workflow` | Driving `@fission-ai/openspec`: proposal structure, validation, the unreachable-CLI path. **Unevidenced** — no project in the winner corpus used OpenSpec; this is craft, not a proven pattern |
 
 ### Ship
 
@@ -606,6 +625,13 @@ win-hackathon/
 
 **Distribution:** own git repository with a `.claude-plugin/marketplace.json`, installed via `/plugin marketplace add rogerjeasy/win-hackathon`. Local development uses a filesystem marketplace pointing at the working copy.
 
+**M3's contribution to the counts above:** four commands (`:stack`, `:architect`,
+`:requirements`, `:spec`), one agent (`solution-architect`), and ten skills — eight loaded
+across `:stack` and `:architect`, plus `gherkin-requirements` and `openspec-workflow` at
+`:requirements` and `:spec`. It also adds a `scripts/lib/` directory of pure, dependency-free
+modules (schema validators, renderers, and the three diagram emitters) that this layout
+sketch predates and does not yet itemize.
+
 ### Dependencies
 
 | Dependency | Type | Notes |
@@ -631,6 +657,11 @@ Too large for a single pass. Five milestones; the plugin is genuinely useful fro
 
 **Validation:** each milestone is exercised against a real archived Devpost hackathon, and M4–M5 are validated by reproducing a `kintwadi`- or `karma`-shaped project from a clean directory.
 
+**M3 delivers in two stages, specified in `m3-design.md`.** Stage 1 ships `:stack` and
+`:architect`; Stage 2 ships `:requirements` and `:spec`. The split is a review boundary, not
+a scope cut — M3 is not done until both stages have landed, which is what this amendment
+records.
+
 ---
 
 ## 15. Open questions
@@ -654,3 +685,12 @@ Deferred deliberately; none blocks M1–M3.
 | Devpost URL as brainstorming input | §8 `:recon` |
 | Same setup across devices | `.hackathon/` committed; state schema §4; marketplace install §13 |
 | Plugin loads the right skill per phase | §8 per-command skill invocation; §10 skill library |
+| Sponsor requirements outrank personal defaults | §8 `:stack` sponsor-wins precedence — required tech is fixed, defaults fill only the open slots |
+| Reuse, don't reimplement — specs to `@fission-ai/openspec` | §8 `:spec` drives the real CLI directly; the Kiro triad it also writes has no external dependency and is not a reimplementation of OpenSpec |
+
+---
+
+**Amended 2026-08-24 by `m3-design.md`** — §4, §8, §9, §10, §13 and §14. The substantive
+changes: the diagram pipeline emits Mermaid, SVG and drawio from one graph and no longer
+promises an automated PNG; `:requirements` and `:spec` produce four surfaces from one
+payload rather than Gherkin and OpenSpec alone.
