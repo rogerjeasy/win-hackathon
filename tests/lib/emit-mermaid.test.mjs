@@ -108,3 +108,19 @@ test('an unrecognised trust_zone gets a distinct "unknown" classDef, not the pub
   assert.doesNotMatch(unknownDef, /fill:#FFFFFF,stroke:#5A6C72,color:#232F3E/,
     'must not silently fall back to the public style');
 });
+
+// Review round 1, I3/M8: ZONE_STYLE[z] ?? ZONE_STYLE.unknown never falls through for an
+// inherited Object.prototype key -- ZONE_STYLE['toString'] resolves to the inherited
+// function itself (truthy), not undefined, so `??` never reaches the unknown fallback.
+test('a trust_zone matching an inherited Object.prototype key still gets the unknown style, not [object Object] or a thrown error', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 't', access_control: { model: 'none' },
+    components: [{ id: 'ghost', label: 'Ghost', tier: 1, trust_zone: 'toString',
+      what_it_is: 'x', what_it_does: 'x', why_this_choice: 'x' }],
+  };
+  const src = emitMermaid(arch, layout(arch));
+  const def = src.split('\n').find((l) => l.startsWith('  classDef toString '));
+  assert.ok(def, 'a classDef line must still be emitted for this zone');
+  assert.match(def, /stroke:#B91C1C/, 'must use the unknown style');
+  assert.doesNotMatch(def, /native code/, 'must not stringify the inherited Function.prototype.toString');
+});
