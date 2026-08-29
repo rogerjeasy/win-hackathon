@@ -58,8 +58,9 @@ test('a trust boundary naming an unknown component is an error', async () => {
 // Fix 6 (task-18a): the ledger guessed the schema might already preclude a component id
 // appearing in two boundaries' contains[]. It did not — the loop only checked that contains
 // was non-empty and that each id was declared. A component claimed twice renders into only
-// the later boundary's subgraph (layout.mjs keys its boundary map by component id), so the
-// node silently vanishes from the earlier one.
+// the later boundary's subgraph — emit-mermaid.mjs's `inBoundary.set(id, b.id)` lets the
+// later claim overwrite the earlier one for that id (correction, review round 1, M1: not
+// layout.mjs, whose `boundaries` array has no such shared map).
 test('a component id claimed by two trust boundaries is an error', async () => {
   const a = await golden();
   // 'db' is already inside the golden fixture's one boundary ('aws'); add a second boundary
@@ -71,6 +72,24 @@ test('a component id claimed by two trust boundaries is an error', async () => {
     errors.some((e) => /trust_boundaries\[1\]\.contains/.test(e) && /"db"/.test(e)
       && /trust_boundaries\[0\]\.contains/.test(e)),
     errors.join('; '),
+  );
+});
+
+// M2 (review round 1): the same id repeated within one boundary's own contains[] is a
+// different shape of mistake than a cross-boundary claim, and must read as such -- not as
+// the confusing "already in trust_boundaries[0].contains" when it's boundary 0 both times.
+test('the same component id repeated within one boundary\'s own contains[] is an error, worded as a repeat, not a cross-boundary claim', async () => {
+  const a = await golden();
+  a.trust_boundaries[0].contains.push('db');
+  const { valid, errors } = validateArchitecture(a, await stack());
+  assert.equal(valid, false);
+  assert.ok(
+    errors.some((e) => /trust_boundaries\[0\]\.contains/.test(e) && /"db"/.test(e) && /more than once/.test(e)),
+    errors.join('; '),
+  );
+  assert.ok(
+    !errors.some((e) => /already in trust_boundaries/.test(e)),
+    'a same-boundary repeat must not be worded as a cross-boundary claim',
   );
 });
 
