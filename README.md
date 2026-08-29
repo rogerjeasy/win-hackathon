@@ -102,7 +102,9 @@ Two rules the schemas enforce because they lose hackathons outright:
 These are requirements of the *workflow*, not of the plugin's own code:
 
 - [`superpowers`](https://github.com/obra/superpowers) — `:build` invokes its SDD and TDD skills
-- [`@fission-ai/openspec`](https://github.com/Fission-AI/OpenSpec) — required for `:spec`.
+- [`@fission-ai/openspec`](https://github.com/Fission-AI/OpenSpec) — optional for `:spec`.
+  When the CLI is reachable it also gets one change proposal per must-have feature; when it
+  isn't, `:spec` defers that step and still finishes with the Kiro triad it writes either way.
   Install the scoped name; the bare `openspec` package on npm is an unrelated stub.
 - No Playwright/MCP dependency. `:recon` uses `WebFetch`; when a page is JS-gated or
   comes back thin it records the gap in `unresolved` and asks you to paste the page,
