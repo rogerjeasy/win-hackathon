@@ -15,6 +15,7 @@ const fixture = fileURLToPath(new URL('./fixtures/h0-recon.json', import.meta.ur
 const ideasFixture = fileURLToPath(new URL('./fixtures/h0-ideas.json', import.meta.url));
 const stackFixture = fileURLToPath(new URL('./fixtures/h0-stack.json', import.meta.url));
 const architectureFixture = fileURLToPath(new URL('./fixtures/h0-architecture.json', import.meta.url));
+const requirementsFixture = fileURLToPath(new URL('./fixtures/h0-requirements.json', import.meta.url));
 
 test('init --dry-run writes nothing', async () => {
   await withTmpDir(async (dir) => {
@@ -595,6 +596,101 @@ test('architect.mjs apply refuses an invalid payload with exit 1', async () => {
     await writeFile(path.join(dir, '.hackathon', 'architecture.json'), JSON.stringify(bad), 'utf8');
     await assert.rejects(
       () => run('node', [path.join(scripts, 'architect.mjs'), 'apply', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /refusing to apply/);
+        return true;
+      },
+    );
+  });
+});
+
+// --- requirements.mjs ------------------------------------------------------------------
+
+test('requirements.mjs validate exits 0 on the golden fixture', async () => {
+  const { stdout } = await run('node', [path.join(scripts, 'requirements.mjs'), 'validate', requirementsFixture]);
+  assert.match(stdout, /valid/i);
+});
+
+test('requirements.mjs validate lists every problem at once on stderr', async () => {
+  await withTmpDir(async (dir) => {
+    const bad = JSON.parse(await readFile(requirementsFixture, 'utf8'));
+    bad.features[0].priority = 'critical';
+    delete bad.features[0].user_story;
+    const p = path.join(dir, 'bad.json');
+    await writeFile(p, JSON.stringify(bad), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'requirements.mjs'), 'validate', p]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /priority/);
+        assert.match(err.stderr, /user_story/);
+        return true;
+      },
+    );
+  });
+});
+
+async function seedForRequirements(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  const state = await readState(dir);
+  state.project = { name: 'Kintwadi', selected_idea: 'i1' };
+  await writeState(dir, state);
+  await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+  await copyFile(fixture, path.join(dir, '.hackathon', 'recon.json'));
+  await copyFile(architectureFixture, path.join(dir, '.hackathon', 'architecture.json'));
+  await copyFile(requirementsFixture, path.join(dir, '.hackathon', 'requirements.json'));
+}
+
+test('requirements.mjs apply --dry-run reports without writing', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForRequirements(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(stdout, /Dry run/);
+    assert.match(stdout, /requirements\.md/);
+    // features/*.feature exist only once :requirements actually writes; a dry run must
+    // not create them.
+    await assert.rejects(() => access(path.join(dir, 'features', 'shared-care-record.feature')), /ENOENT/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.requirements.status, 'not_started');
+  });
+});
+
+test('requirements.mjs apply writes the artifacts end to end and gates the phase', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForRequirements(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir]);
+    assert.match(stdout, /Wrote 4 artifact\(s\)/);
+    assert.match(stdout, /awaiting_approval/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.requirements.status, 'awaiting_approval');
+    assert.equal(state.project.requirements_ref, '.hackathon/requirements.json');
+    const feature = await readFile(path.join(dir, 'features', 'shared-care-record.feature'), 'utf8');
+    assert.match(feature, /^Feature: /);
+  });
+});
+
+test('requirements.mjs apply reports a stale feature file as left in place', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForRequirements(dir);
+    await mkdir(path.join(dir, 'features'), { recursive: true });
+    await writeFile(path.join(dir, 'features', 'removed-feature.feature'), 'Feature: old\n', 'utf8');
+    const { stdout } = await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir]);
+    assert.match(stdout, /Left in place/);
+    assert.match(stdout, /removed-feature/);
+    const still = await readFile(path.join(dir, 'features', 'removed-feature.feature'), 'utf8');
+    assert.match(still, /old/);
+  });
+});
+
+test('requirements.mjs apply refuses an invalid payload with exit 1', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForRequirements(dir);
+    const bad = JSON.parse(await readFile(requirementsFixture, 'utf8'));
+    bad.features[0].priority = 'critical';
+    await writeFile(path.join(dir, '.hackathon', 'requirements.json'), JSON.stringify(bad), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir]),
       (err) => {
         assert.equal(err.code, 1);
         assert.match(err.stderr, /refusing to apply/);
