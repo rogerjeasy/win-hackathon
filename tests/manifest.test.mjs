@@ -34,18 +34,18 @@ test('manifest and marketplace agree on the plugin name', async () => {
   assert.equal(JSON.parse(pluginRaw).name, JSON.parse(marketRaw).plugins[0].name);
 });
 
-// Stage 1 scope. A later Stage 2 task widens these three lists (to four commands and
-// ten skills) as the source of truth grows — that widening should be an edit to the
-// lists below, not a second, parallel test.
-const EXPECTED_COMMANDS = ['stack.md', 'architect.md'];
+// Full M3 scope: all four commands, the one M3 agent, and all ten M3 skills. Widening
+// this surface as the plugin grows should be an edit to the lists below, not a second,
+// parallel test.
+const EXPECTED_COMMANDS = ['stack.md', 'architect.md', 'requirements.md', 'spec.md'];
 const EXPECTED_AGENTS = ['solution-architect.md'];
 const EXPECTED_SKILLS = [
   'framework-drift-guard', 'security-invariants', 'monorepo-structure',
   'architecture-diagramming', 'frontend-architecture', 'backend-architecture',
-  'data-modeling', 'ui-design-principles',
+  'data-modeling', 'ui-design-principles', 'gherkin-requirements', 'openspec-workflow',
 ];
 
-test('every Stage 1 command, agent and skill exists on disk', async () => {
+test('every M3 command, agent and skill exists on disk', async () => {
   const { readdir } = await import('node:fs/promises');
   const commands = await readdir(new URL('../commands', import.meta.url));
   for (const c of EXPECTED_COMMANDS) {
@@ -69,5 +69,16 @@ test('every skill directory has a SKILL.md with frontmatter', async () => {
     const md = await readFile(new URL(`../skills/${d.name}/SKILL.md`, import.meta.url), 'utf8');
     assert.match(md, /^---\nname: /, `skills/${d.name}/SKILL.md has no frontmatter`);
     assert.match(md, /\ndescription: .{20,}/, `skills/${d.name} needs a real description`);
+  }
+});
+
+test('every command file that runs a script points at a script that exists', async () => {
+  const { readdir, readFile, access } = await import('node:fs/promises');
+  const dir = new URL('../commands', import.meta.url);
+  for (const name of await readdir(dir)) {
+    const md = await readFile(new URL(name, `${dir}/`), 'utf8');
+    for (const m of md.matchAll(/scripts\/([a-z-]+\.mjs)/g)) {
+      await access(new URL(`../scripts/${m[1]}`, import.meta.url));
+    }
   }
 });
