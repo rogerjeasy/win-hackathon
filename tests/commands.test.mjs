@@ -331,3 +331,46 @@ test('the requirements command dry-runs before it applies', async () => {
   assert.ok(dryRun < apply,
     'the preview must come before the write, or the warning arrives too late');
 });
+
+// --- spec.md ------------------------------------------------------------------------------
+
+test('the spec command exists', async () => {
+  const files = await commandFiles();
+  assert.ok(files.includes('spec.md'), 'missing commands/spec.md');
+});
+
+test('the spec command dry-runs before it applies', async () => {
+  const md = await readCommand('spec.md');
+  const dryRun = md.indexOf('--dry-run');
+  // 'apply .`' (inline-code close) singles out the real apply command, not the
+  // '--dry-run' line above it, which also contains the substring 'apply .'.
+  const apply = md.indexOf('apply .`');
+  assert.ok(dryRun !== -1, 'the dry-run flag must be shown to the user');
+  assert.ok(apply !== -1, 'the real apply command must be shown to the user');
+  assert.ok(dryRun < apply,
+    'the preview must come before the write, or the warning arrives too late');
+});
+
+test('the spec command treats a deferred OpenSpec as finishable, not blocked', async () => {
+  const md = await readCommand('spec.md');
+  const deferred = md.slice(md.indexOf('DEFERRED'));
+  assert.match(deferred, /\bnot blocked\b|finishable|complete/i);
+  assert.ok(!/\bfail the phase\b/i.test(deferred));
+});
+
+test('the spec command names the real OpenSpec package and warns about the stub', async () => {
+  const md = await readCommand('spec.md');
+  assert.ok(md.includes('@fission-ai/openspec'));
+  assert.match(md, /squat|stub/i);
+});
+
+test('the spec command explains that the OpenSpec proposal depends on the CLI, unlike the triad', async () => {
+  const md = await readCommand('spec.md');
+  assert.match(md, /depends on|contingent on|dependent on/i);
+  assert.match(md, /\bCLI\b/);
+});
+
+test('the spec command stops at the gate', async () => {
+  const md = await readCommand('spec.md');
+  assert.match(md.slice(md.lastIndexOf('## Step')), /explicit yes/i);
+});
