@@ -94,19 +94,26 @@ test('AGENTS.md and CLAUDE.md, both pre-existing, are backed up under the same t
     await writeFile(path.join(root, 'AGENTS.md'), '# Mine\n\nAgents rule.\n', 'utf8');
     await writeFile(path.join(root, 'CLAUDE.md'), '# Also mine\n\nClaude rule.\n', 'utf8');
 
-    const { backedUp } = await applyArchitecture(root, await fx('h0-architecture.json'),
-      { stack: await fx('h0-stack.json') });
+    // timestamp() has one-second resolution, so two calls microseconds apart -- e.g. one
+    // per file instead of one shared value -- can still land in the same wall-clock
+    // second and produce indistinguishable directory names. Counting backup directories
+    // can't tell a shared stamp from a coincidence, so inject a stamp neither call could
+    // produce on its own and check on disk that BOTH files actually landed under it.
+    const fixedStamp = 'fix8-shared-stamp-check';
+    const { backedUp, backupStamp } = await applyArchitecture(root, await fx('h0-architecture.json'),
+      { stack: await fx('h0-stack.json'), stamp: fixedStamp });
 
+    assert.equal(backupStamp, fixedStamp, 'the stamp actually used must be the one passed in');
     assert.ok(backedUp.includes('AGENTS.md'), 'AGENTS.md was not recorded as backed up');
     assert.ok(backedUp.includes('CLAUDE.md'), 'CLAUDE.md was not recorded as backed up');
 
     const backups = await readdir(path.join(root, '.hackathon', 'backups'));
-    assert.equal(backups.length, 1,
-      'one apply run must produce exactly one timestamped backup directory');
+    assert.deepEqual(backups, [fixedStamp],
+      'one apply run must produce exactly one backup directory, and it must be the injected stamp');
 
     const [agentsSaved, claudeSaved] = await Promise.all([
-      readFile(path.join(root, '.hackathon', 'backups', backups[0], 'AGENTS.md'), 'utf8'),
-      readFile(path.join(root, '.hackathon', 'backups', backups[0], 'CLAUDE.md'), 'utf8'),
+      readFile(path.join(root, '.hackathon', 'backups', fixedStamp, 'AGENTS.md'), 'utf8'),
+      readFile(path.join(root, '.hackathon', 'backups', fixedStamp, 'CLAUDE.md'), 'utf8'),
     ]);
     assert.ok(agentsSaved.includes('Agents rule.'), 'AGENTS.md backup has the wrong content');
     assert.ok(claudeSaved.includes('Claude rule.'), 'CLAUDE.md backup has the wrong content');

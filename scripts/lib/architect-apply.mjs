@@ -41,7 +41,7 @@ async function readIfPresent(p) {
   });
 }
 
-export async function applyArchitecture(root, architecture, { stack, dryRun = false } = {}) {
+export async function applyArchitecture(root, architecture, { stack, dryRun = false, stamp: stampOverride } = {}) {
   const { valid, errors } = validateArchitecture(architecture, stack);
   if (!valid) {
     throw new Error(`refusing to apply an invalid architecture payload:\n  ${errors.join('\n  ')}`);
@@ -89,7 +89,12 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
 
   // --- Everything below is the write phase. Every body above rendered successfully, so
   // it is now safe to touch disk. ---
-  const stamp = timestamp();
+  // One stamp, computed once, shared by every backupFile() call below -- that sharing is
+  // the whole backup promise (Fix 8, task-18a-brief.md): a single apply run must produce
+  // one coherent, co-timestamped backup set, not one directory per file. `stampOverride`
+  // exists so a test can inject a known value and observe on disk that this call actually
+  // used it, rather than each backupFile() call minting its own via timestamp().
+  const stamp = stampOverride ?? timestamp();
   const backedUp = [];
   for (const rel of artifacts) {
     const saved = await backupFile(root, rel, stamp);
@@ -115,5 +120,5 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
   };
   await writeState(root, next);
 
-  return { artifacts, backedUp, skipped: [] };
+  return { artifacts, backedUp, skipped: [], backupStamp: backedUp.length > 0 ? stamp : null };
 }
