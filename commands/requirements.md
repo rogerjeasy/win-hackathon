@@ -31,21 +31,33 @@ description of intent.
 Exactly one feature is the demo moment `strategy.md` names — set `demo_moment: true` on it,
 and nowhere else.
 
-## Step 5 — Validate and apply
+## Step 5 — Write and validate
+
+Write `.hackathon/requirements.json`, then run:
 
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/requirements.mjs validate .hackathon/requirements.json`
 
 The script prints every problem at once. Fix them all, then re-run. **At most two retries** —
 a third is a loop, not a fix, so stop and show the user the errors.
 
+## Step 6 — Preview, then apply
+
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/requirements.mjs apply . --dry-run`
+
+If it reports it would overwrite an existing `.hackathon/requirements.md` or
+`.hackathon/requirements.json`, tell the user **before** applying. Then:
+
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/requirements.mjs apply .`
 
 This writes `.hackathon/requirements.json`, `.hackathon/requirements.md`, and one
-`features/<slug>.feature` per feature. If a `.feature` file from a previous run is no longer
-in the requirements, the script reports it under `Left in place:` rather than deleting it —
-the user may have hand-edited it.
+`features/<slug>.feature` per feature. The first two are backed up under
+`.hackathon/backups/<timestamp>/` before being overwritten; the `.feature` files are not —
+regenerating them on every run is the intended contract, so never hand-edit one. If a
+`.feature` file from a previous run is no longer in the requirements, the script reports it
+under `Left in place:` rather than deleting it — the user may have hand-edited it before it
+was dropped.
 
-## Step 6 — Stop at the gate
+## Step 7 — Stop at the gate
 
 Show the user the criteria-coverage table and the Definition of Done from
 `requirements.md`. Ask whether to proceed. **Do not continue to `:spec` without an

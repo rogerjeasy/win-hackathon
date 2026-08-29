@@ -319,3 +319,15 @@ test('the requirements command stops at the gate', async () => {
   const md = await readCommand('requirements.md');
   assert.match(md.slice(md.lastIndexOf('## Step')), /explicit yes/i);
 });
+
+test('the requirements command dry-runs before it applies', async () => {
+  const md = await readCommand('requirements.md');
+  const dryRun = md.indexOf('--dry-run');
+  // 'apply .`' (inline-code close) singles out the real apply command, not the
+  // '--dry-run' line above it, which also contains the substring 'apply .'.
+  const apply = md.indexOf('apply .`');
+  assert.ok(dryRun !== -1, 'the dry-run flag must be shown to the user');
+  assert.ok(apply !== -1, 'the real apply command must be shown to the user');
+  assert.ok(dryRun < apply,
+    'the preview must come before the write, or the warning arrives too late');
+});
