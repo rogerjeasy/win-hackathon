@@ -716,3 +716,87 @@ test('requirements.mjs apply refuses an invalid payload with exit 1', async () =
     );
   });
 });
+
+// --- spec.mjs ----------------------------------------------------------------------------
+//
+// These tests use --dry-run exclusively (except the invalid-payload case, which throws
+// before either code path reaches OpenSpec). applySpec's non-dry-run apply calls
+// runOpenspec()'s real default exec, which shells out to `npx @fission-ai/openspec` — a real
+// network-dependent process spawn with no injection point through the CLI. That end-to-end
+// write path (with both a live and a stubbed-dead exec) is already covered without any real
+// process spawn by tests/lib/spec-apply.test.mjs, which calls applySpec() directly and
+// injects okExec/deadExec. --dry-run never reaches exec at all (runOpenspec returns before
+// checking for the CLI when dryRun is true), so it is the only apply path safe to drive
+// through the actual CLI binary here.
+
+async function seedForSpec(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  const state = await readState(dir);
+  state.project = { name: 'Kintwadi', selected_idea: 'i1' };
+  await writeState(dir, state);
+  await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+  await copyFile(architectureFixture, path.join(dir, '.hackathon', 'architecture.json'));
+  await copyFile(requirementsFixture, path.join(dir, '.hackathon', 'requirements.json'));
+}
+
+test('spec.mjs apply --dry-run labels the Kiro triad and the OpenSpec proposals as two separate groups', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSpec(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(stdout, /Dry run/);
+    const kiroAt = stdout.indexOf('Kiro spec triad');
+    const proposalsAt = stdout.indexOf('OpenSpec change proposals');
+    assert.ok(kiroAt !== -1, 'the Kiro triad group must be labelled');
+    assert.ok(proposalsAt !== -1, 'the OpenSpec proposals group must be labelled');
+    assert.ok(kiroAt < proposalsAt, 'the certain group is listed before the contingent one');
+    assert.match(stdout.slice(kiroAt, proposalsAt), /0001-shared-care-record.*tasks\.md/s);
+    assert.match(stdout.slice(proposalsAt), /openspec\/changes/);
+    await assert.rejects(() => access(path.join(dir, '.hackathon', 'specs')), /ENOENT/);
+    const state = JSON.parse(await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8'));
+    assert.equal(state.phases.spec.status, 'not_started');
+  });
+});
+
+test('spec.mjs apply --dry-run surfaces the OpenSpec reason even though status is not deferred', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSpec(dir);
+    const { stdout } = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
+    // Task 22's interface only permits status 'written' | 'deferred', and a dry run is not a
+    // failure, so status reads 'written' here — but the reason still carries the "nothing has
+    // been written yet" caveat. Gating the print to the deferred branch alone (as the original
+    // brief sample did) would silently drop that caveat from every dry run.
+    assert.match(stdout, /OpenSpec: DRY RUN/);
+    assert.match(stdout, /nothing has been written yet/);
+    assert.doesNotMatch(stdout, /OpenSpec: DEFERRED/);
+  });
+});
+
+test('spec.mjs apply --dry-run reports a stale spec folder as left in place', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSpec(dir);
+    await mkdir(path.join(dir, '.hackathon', 'specs', '0009-dropped-feature'), { recursive: true });
+    await writeFile(
+      path.join(dir, '.hackathon', 'specs', '0009-dropped-feature', 'tasks.md'), '# old\n', 'utf8',
+    );
+    const { stdout } = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(stdout, /Left in place/);
+    assert.match(stdout, /0009-dropped-feature/);
+  });
+});
+
+test('spec.mjs apply refuses an invalid payload with exit 1', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSpec(dir);
+    const bad = JSON.parse(await readFile(requirementsFixture, 'utf8'));
+    bad.features[0].scenarios = [];
+    await writeFile(path.join(dir, '.hackathon', 'requirements.json'), JSON.stringify(bad), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /refusing to apply/);
+        return true;
+      },
+    );
+  });
+});
