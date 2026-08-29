@@ -57,6 +57,15 @@ test('an absent recon degrades rubric coverage to a warning, not an error', asyn
   assert.ok(warnings.some((w) => /recon/.test(w)), warnings.join('; '));
 });
 
+test('a recon that is present but has a malformed criteria.items also degrades to a warning', async () => {
+  // Sibling of the absent-recon case above: recon is truthy here, so the branch must say
+  // "supplied but malformed", not silently behave as if recon were absent altogether.
+  const r = await golden();
+  const { valid, warnings } = validateRequirements(r, { recon: { criteria: { items: 'nope' } } });
+  assert.equal(valid, true);
+  assert.ok(warnings.some((w) => /recon supplied but criteria\.items/.test(w)), warnings.join('; '));
+});
+
 test('a criterion covered only by a should-feature is a WARNING, not an error', async () => {
   const r = await golden();
   const up = await upstream();
@@ -143,6 +152,60 @@ test('an unknown invariant_ref is an error when the architecture is present', as
   assert.equal(validateRequirements(r, await upstream()).valid, false);
 });
 
+test('a malformed features[].criterion_refs is a structural type error, not a silent empty list', async () => {
+  // Round-1's `Array.isArray(x) ? x : []` guard stopped the throw but also stopped the
+  // report: a number here fell back to an empty list and the doc validated clean, with the
+  // only sign of trouble being an unrelated-looking "criterion not claimed" message. This
+  // asserts the real fault is named at the field, independent of recon being supplied.
+  const r = await golden();
+  r.features[0].criterion_refs = 42;
+  const { valid, errors } = validateRequirements(r, await upstream());
+  assert.equal(valid, false);
+  assert.ok(errors.includes('features[0].criterion_refs must be an array of criterion ids'), errors.join('; '));
+});
+
+test('a malformed features[].component_refs is a structural type error, not a silent empty list', async () => {
+  const r = await golden();
+  r.features[0].component_refs = {};
+  const { valid, errors } = validateRequirements(r, await upstream());
+  assert.equal(valid, false);
+  assert.ok(errors.includes('features[0].component_refs must be an array of component ids'), errors.join('; '));
+});
+
+test('a malformed requirements[].invariant_refs is a structural type error, not a silent empty list', async () => {
+  const r = await golden();
+  r.features[0].requirements[0].invariant_refs = 42;
+  const { valid, errors } = validateRequirements(r, await upstream());
+  assert.equal(valid, false);
+  assert.ok(
+    errors.includes('features[0].requirements[0].invariant_refs must be an array of invariant ids'),
+    errors.join('; '),
+  );
+});
+
+test('these type errors fire even without an upstream payload — they are about this document, not cross-checking', async () => {
+  const r = await golden();
+  r.features[0].component_refs = 42;
+  const { valid, errors } = validateRequirements(r, {});
+  assert.equal(valid, false);
+  assert.ok(errors.includes('features[0].component_refs must be an array of component ids'), errors.join('; '));
+});
+
+test('an absent criterion_refs, component_refs or invariant_refs is not a type error — only malformed ones are', async () => {
+  const r = await golden();
+  delete r.features[0].component_refs;
+  delete r.features[0].requirements[0].invariant_refs;
+  const { errors } = validateRequirements(r, await upstream());
+  assert.deepEqual(errors.filter((e) => /must be an array of/.test(e)), []);
+});
+
+test('an absent criterion_refs is not a type error, even though it breaks rubric coverage separately', async () => {
+  const r = await golden();
+  delete r.features[0].criterion_refs;
+  const { errors } = validateRequirements(r, await upstream());
+  assert.deepEqual(errors.filter((e) => /criterion_refs must be an array/.test(e)), []);
+});
+
 test('a malformed architecture.invariants does not throw and does not blanket-error every invariant_ref', async () => {
   // A bare `?? []` on a present-but-wrong-typed value doesn't fall through to the default —
   // it throws when iterated. Each of these shapes is "present" (not undefined/null), so the
@@ -177,14 +240,19 @@ test('a malformed component_refs or requirements on a feature does not throw', a
   }
 });
 
-test('a non-array component_refs is not iterated character by character', async () => {
-  // Before the guard, a string `component_refs` would be iterated as individual characters
-  // (each one failing the "is not a component" check). Guarded, it is treated as an absent
-  // list — no component_refs-related error at all.
+test('a non-array component_refs is a single type error, not per-character noise', async () => {
+  // Before the C1 guard, a string `component_refs` would be iterated as individual
+  // characters in the cross-check (each one failing the "is not a component" check) — a
+  // pile of misleading per-character errors. After C1 alone (round-1 fix), the guard made
+  // it silently fall back to an empty list instead — no error at all, which is worse: a
+  // malformed field validated clean. The round-2 fix reports it once, at the field, with a
+  // message that names the actual fault.
   const r = await golden();
   r.features[0].component_refs = 'web';
-  const { errors } = validateRequirements(r, await upstream());
-  assert.deepEqual(errors.filter((e) => /component_refs/.test(e)), []);
+  const { valid, errors } = validateRequirements(r, await upstream());
+  assert.equal(valid, false);
+  const componentRefsErrors = errors.filter((e) => /component_refs/.test(e));
+  assert.deepEqual(componentRefsErrors, ['features[0].component_refs must be an array of component ids']);
 });
 
 test('a missing scenario id is an error', async () => {
