@@ -31,9 +31,9 @@ re-run — never the rendered file.
 
 ## `init` runs only when needed
 
-`openspec init` runs only when `openspec/` is not already present in the project. If it's
-already there — from an earlier `:spec` run, or from before this plugin touched the project
-— `init` is skipped and the existing directory is left alone.
+`npx --yes @fission-ai/openspec init` runs only when `openspec/` is not already present in
+the project. If it's already there — from an earlier `:spec` run, or from before this plugin
+touched the project — `init` is skipped and the existing directory is left alone.
 
 ## The deferred path
 
@@ -42,7 +42,7 @@ couldn't be reached. If OpenSpec is unreachable — offline, registry failure, i
 — `:spec` still writes everything that doesn't depend on the CLI, reports what it could not
 do, names the exact command to run later, and lets the phase finish rather than blocking it.
 
-The shipped output, verbatim:
+The shipped output, with both branches shown:
 
 ```
 OpenSpec: DEFERRED          (or "OpenSpec: DRY RUN" during a dry run)
