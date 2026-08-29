@@ -6,7 +6,7 @@ import { withTmpDir } from '../helpers/tmp.mjs';
 import { statePath } from '../../scripts/lib/paths.mjs';
 import { createDefaultState, CURRENT_SCHEMA_VERSION } from '../../scripts/lib/schema.mjs';
 import { readState, writeState, updateState, migrateState } from '../../scripts/lib/state.mjs';
-import { readRawState, migrateStateFile } from '../../scripts/lib/state.mjs';
+import { readRawState, migrateStateFile, readMigratedState } from '../../scripts/lib/state.mjs';
 
 test('readState returns null when there is no state file', async () => {
   await withTmpDir(async (dir) => {
@@ -196,6 +196,42 @@ test('migrateStateFile is a no-op on a current-version file', async () => {
 test('migrateStateFile reports nothing to do when there is no state file', async () => {
   await withTmpDir(async (dir) => {
     assert.deepEqual(await migrateStateFile(dir), { migrated: false, from: null });
+  });
+});
+
+// M5 (review round 1): readMigratedState is newly exported (Fix 7/I2) with no unit test of
+// its own -- only exercised indirectly through applyArchitecture/applyStack's dry-run path.
+
+test('readMigratedState returns null when there is no state file', async () => {
+  await withTmpDir(async (dir) => {
+    assert.equal(await readMigratedState(dir), null);
+  });
+});
+
+test('readMigratedState migrates a v1 file in memory without writing to disk', async () => {
+  await withTmpDir(async (dir) => {
+    await mkdir(path.dirname(statePath(dir)), { recursive: true });
+    const raw = JSON.stringify(v1State());
+    await writeFile(statePath(dir), raw, 'utf8');
+
+    const state = await readMigratedState(dir);
+    assert.equal(state.schema_version, CURRENT_SCHEMA_VERSION);
+    assert.deepEqual(state.deliverables, { submission_requirements: [], bonus_content: [] });
+
+    const stillOnDisk = await readFile(statePath(dir), 'utf8');
+    assert.equal(stillOnDisk, raw, 'readMigratedState must not touch the file at all');
+  });
+});
+
+test('readMigratedState throws when the migrated shape is still invalid', async () => {
+  await withTmpDir(async (dir) => {
+    const bad = v1State();
+    bad.mode = 'not-a-real-mode'; // migration adds schema_version/deliverables; it does not
+                                  // repair a pre-existing invalid field like this one
+    await mkdir(path.dirname(statePath(dir)), { recursive: true });
+    await writeFile(statePath(dir), JSON.stringify(bad), 'utf8');
+
+    await assert.rejects(() => readMigratedState(dir), /valid win-hackathon state/i);
   });
 });
 
