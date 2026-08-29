@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createDefaultState } from '../scripts/lib/schema.mjs';
 import { writeState, readState } from '../scripts/lib/state.mjs';
@@ -17,11 +17,12 @@ const okExec = async () => ({ code: 0, stdout: '', stderr: '' });
 // `body.includes('FR-1.1')` alone is fooled by the scenario id `FR-1.1-S1`, which every
 // surface also prints and which carries the FR id as a mere prefix — that would pass even
 // if a surface silently stopped rendering the FR id itself. The negative lookahead refuses
-// a match immediately followed by `-`, so only the FR id rendered on its own (as every real
-// call site renders it — `**FR-1.1**`, `satisfies FR-1.1`) counts.
+// a match immediately followed by `-` or another digit, so only the FR id rendered on its
+// own (as every real call site renders it — `**FR-1.1**`, `satisfies FR-1.1`) counts, and
+// `FR-1.10` cannot be mistaken for a match on `FR-1.1`.
 function carriesFrId(body, id) {
   const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`${escaped}(?!-)`).test(body);
+  return new RegExp(`${escaped}(?![-\\d])`).test(body);
 }
 
 async function approve(root, phase) {
@@ -51,7 +52,7 @@ async function walk(root, { exec = okExec } = {}) {
   return spec;
 }
 
-test('all four phases run in order from a clean project', async () => {
+test('with all four phases approved, :next resolves cleanly to :build with no drift', async () => {
   await withTmpDir(async (root) => {
     await walk(root);
     const next = await resolveNext(root);

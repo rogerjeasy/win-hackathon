@@ -3,6 +3,7 @@
 **Status:** Approved design, ready for implementation planning
 **Date:** 2026-08-21
 **Amended:** 2026-08-22 — §3, §4, §8, §10, §12, §15 revised after reviewing twelve winning Devpost submissions and the two reference repositories. Detail in `m2-front-half.md`.
+**Amended:** 2026-08-24 — §2, §3, §4, §8, §9, §10, §13, §14 and Appendix A revised for M3 — the design and requirements phases, three diagram formats replacing a promised PNG export, and a validated payload behind every rendered surface. Detail in `m3-design.md`.
 **Author:** Roger Jeasy Bavibidila
 **Supersedes:** `project-idea.md`
 
@@ -46,10 +47,10 @@ Eleven phases, numbered 0–10. Each has one command, defined inputs, defined ou
 | 0 | **Recon** — ingest Devpost: rules, judging rubric, sponsor tech, panel, deadlines, bonus mechanics | `:recon <url>` | `.hackathon/recon.json`, `brief.md`, `rules.md`, `criteria.md` |
 | 1 | **Brainstorm** — 10 ideas, gated on Stage One, then scored against the real judging criteria | `:brainstorm` | `.hackathon/ideas.json`, `ideas.md` (`--fresh` starts a clean round, prior rounds kept) |
 | 2 | **Describe** — the product case and the win strategy for the chosen idea | `:describe` | `.hackathon/project.md`, `strategy.md` |
-| 3 | **Stack** — sponsor tech wins, defaults fill gaps | `:stack` | `.hackathon/stack.md` |
+| 3 | **Stack** — sponsor tech wins, defaults fill gaps | `:stack` | `.hackathon/stack.json`, `stack.md` |
 | 4 | **Architect** — architecture + data model + diagrams | `:architect` | `docs/architecture.md`, `docs/data-model.md`, `docs/assets/architecture.{mmd,svg,drawio}` |
-| 5 | **Requirements** — features, acceptance criteria, Gherkin | `:requirements` | `.hackathon/requirements.md`, `features/*.feature` |
-| 6 | **OpenSpec** — change proposals | `:spec` | `openspec/changes/*` |
+| 5 | **Requirements** — features, acceptance criteria, Gherkin | `:requirements` | `.hackathon/requirements.json`, `requirements.md`, `features/*.feature` |
+| 6 | **OpenSpec** — change proposals | `:spec` | `.hackathon/specs/NNNN-<slug>/*` (the Kiro triad — always written), `openspec/changes/*` (written when the CLI is reachable, deferred otherwise) |
 | 7 | **Build** — implementation via superpowers SDD | `:build` | the application |
 | 8 | **Ship** — Docker + IaC + CI/CD + deploy | `:ship` | `infra/`, `.github/workflows/`, live URL |
 | 9 | **Review** — code + architecture quality | `:review` | `.hackathon/review.md` |
@@ -88,8 +89,12 @@ Two zones. `.hackathon/` is where the work happens; `docs/` and the repo root ar
   ideas-round-N.md             every prior round, preserved
   project.md                   selected project description (the stable product case)
   strategy.md                  how we win: criteria map, track EV, heading plan, bonus plan
+  stack.json                   validated stack payload — stack.md renders from it
   stack.md                     stack decisions + rationale
+  architecture.json            validated architecture payload — every architect surface renders from it
+  requirements.json            validated requirements payload — requirements.md and the Gherkin render from it
   requirements.md              features + acceptance criteria
+  specs/NNNN-<slug>/           rendered Kiro triad, one directory per must-have feature
   challenges.md                running issues log  ← Rule 2
   decisions.md                 ADR-lite: chosen, rejected, why
   review.md                    quality review findings
@@ -100,7 +105,7 @@ docs/                        ← showroom (judge-facing)
   architecture.md
   data-model.md
   DEMO_RUNBOOK.md
-  assets/architecture.drawio, architecture.png
+  assets/architecture.mmd, architecture.svg, architecture.drawio
 
 README.md                    judge landing page — live demo link first
 AGENTS.md                    hard invariants for agents
@@ -151,7 +156,11 @@ infra/                       Terraform
     "selected_at": "2026-08-21T14:02:00Z",
     // Validated as of v3 — see §4 field notes. The rationale behind the choice lives in
     // stack.json's rendered slot table, not here; state.json stays a digest.
-    "stack": { "repo_shape": "multi-service" },  // or "next-monolith"
+    "stack": {
+      "repo_shape": "multi-service",      // or "next-monolith"
+      "primary_database": "Aurora Postgres + pgvector",   // null when no db-like slot exists
+      "ref": ".hackathon/stack.json"
+    },
     "architecture_ref": ".hackathon/architecture.json",
     "requirements_ref": ".hackathon/requirements.json"
   },
@@ -188,7 +197,7 @@ infra/                       Terraform
 
 **Field notes**
 
-- `stack.json`'s own slot table (per-slot choice and `source: required | bonus | default | user`) records *why* each choice was made, which feeds the README's "why this tech" section and defends the choice to judges. `state.json` only digests the repo shape.
+- `stack.json`'s own slot table (per-slot choice and `source: required | bonus | default | user`) records *why* each choice was made, which feeds the README's "why this tech" section and defends the choice to judges. `state.json` only digests `repo_shape`, `primary_database`, and a `ref` back to `stack.json` — not the rationale itself.
 - `resume_note` is written when a phase is interrupted. The `SessionStart` hook surfaces it verbatim so a `/clear` mid-phase is recoverable.
 - `compliance.required_tech_verified[].evidence` is a `file:line` citation. A claim without a citation is treated as unverified.
 - `schema_version` gates migrations. On mismatch, `:init` migrates and backs up first.
@@ -690,7 +699,11 @@ Deferred deliberately; none blocks M1–M3.
 
 ---
 
-**Amended 2026-08-24 by `m3-design.md`** — §4, §8, §9, §10, §13 and §14. The substantive
-changes: the diagram pipeline emits Mermaid, SVG and drawio from one graph and no longer
-promises an automated PNG; `:requirements` and `:spec` produce four surfaces from one
-payload rather than Gherkin and OpenSpec alone.
+**Amended 2026-08-24 by `m3-design.md`** — §2, §3, §4, §8, §9, §10, §13, §14 and
+Appendix A. The substantive changes: the diagram pipeline emits Mermaid, SVG and drawio from
+one graph and no longer promises an automated PNG (§2's phase table, §3's repository layout,
+and §8's `:architect` prose all said so before this amendment); `:requirements` and `:spec`
+produce four surfaces from one payload rather than Gherkin and OpenSpec alone, and §2's
+phase-3/5/6 rows and §3's `.hackathon/` tree now name the validated JSON payloads and the
+Kiro triad those phases actually write; Appendix A gains two traceability rows for the
+sponsor-wins and reuse-not-reimplement principles M3 is the first milestone to implement.
