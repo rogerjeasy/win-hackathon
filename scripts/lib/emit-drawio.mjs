@@ -16,8 +16,12 @@ const ZONE_STYLE = {
   // comment. Falling back to `public` would silently understate a component's privilege,
   // which is worse than an odd-looking box, so this must be visibly its own thing: not a
   // shade of any real zone, and it must never throw. Kept consistent with the `unknown`
-  // fallback in emit-mermaid.mjs and emit-svg.mjs.
-  unknown: 'rounded=1;fillColor=#FEF2F2;strokeColor=#B91C1C;dashed=1;fontColor=#7F1D1D;',
+  // fallback in emit-mermaid.mjs and emit-svg.mjs. strokeWidth=2 to match
+  // authenticated/privileged, not just external's plain 1px (review round 1, I3/M8).
+  // Looked up via a hasOwnProperty guard below, not `??` — `ZONE_STYLE['toString']` would
+  // resolve to the inherited Object.prototype.toString function (truthy), never falling
+  // through.
+  unknown: 'rounded=1;fillColor=#FEF2F2;strokeColor=#B91C1C;strokeWidth=2;dashed=1;fontColor=#7F1D1D;',
 };
 
 const BOUNDARY_STYLE =
@@ -64,7 +68,8 @@ export function emitDrawio(architecture, laidOut) {
   }
 
   for (const box of boxes) {
-    const style = ZONE_STYLE[box.zone] ?? ZONE_STYLE.unknown;
+    const zoneKnown = Object.prototype.hasOwnProperty.call(ZONE_STYLE, box.zone);
+    const style = zoneKnown ? ZONE_STYLE[box.zone] : ZONE_STYLE.unknown;
     out.push(
       `        <mxCell id="${esc(box.id)}" value="${esc(box.label)}" style="${style}" vertex="1" parent="1">`,
     );

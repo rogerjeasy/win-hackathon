@@ -16,7 +16,10 @@ const ZONE_STYLE = {
   // comment. Falling back to `public` would silently understate a component's privilege,
   // which is worse than an odd-looking box, so this must be visibly its own thing: not a
   // shade of any real zone, and it must never throw. Kept consistent with the `unknown`
-  // fallback in emit-svg.mjs and emit-drawio.mjs.
+  // fallback in emit-svg.mjs and emit-drawio.mjs. Looked up via a hasOwnProperty guard,
+  // not `??` — `ZONE_STYLE['toString'] ?? ZONE_STYLE.unknown` would resolve to the
+  // inherited Object.prototype.toString function (truthy), never falling through
+  // (review round 1, I3/M8).
   unknown: 'fill:#FEF2F2,stroke:#B91C1C,stroke-width:2px,stroke-dasharray:4 2,color:#7F1D1D',
 };
 
@@ -34,7 +37,8 @@ export function emitMermaid(architecture, laidOut) {
 
   const zones = [...new Set((architecture.components ?? []).map((c) => c.trust_zone))];
   for (const z of zones) {
-    out.push(`  classDef ${z} ${ZONE_STYLE[z] ?? ZONE_STYLE.unknown};`);
+    const zoneKnown = Object.prototype.hasOwnProperty.call(ZONE_STYLE, z);
+    out.push(`  classDef ${z} ${zoneKnown ? ZONE_STYLE[z] : ZONE_STYLE.unknown};`);
   }
 
   const ordered = [...laidOut.boxes].sort((a, b) => (a.tier - b.tier) || (a.x - b.x));

@@ -133,3 +133,18 @@ test('an unrecognised trust_zone gets a distinct, dashed "unknown" style, not th
   assert.doesNotMatch(cell, /fillColor=#FFFFFF;strokeColor=#5A6C72;fontColor=#1B231F;/,
     'must not silently fall back to the public style');
 });
+
+// Review round 1, I3/M8: ZONE_STYLE[box.zone] ?? ZONE_STYLE.unknown never falls through
+// for an inherited Object.prototype key.
+test('a trust_zone matching an inherited Object.prototype key still gets the unknown style', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 't', access_control: { model: 'none' },
+    components: [{ id: 'ghost', label: 'Ghost', tier: 1, trust_zone: 'toString',
+      what_it_is: 'x', what_it_does: 'x', why_this_choice: 'x' }],
+  };
+  const xml = emitDrawio(arch, layout(arch));
+  const cell = xml.split('\n').find((l) => l.includes('id="ghost"'));
+  assert.match(cell, /strokeColor=#B91C1C/, 'must use the unknown stroke colour');
+  assert.match(cell, /strokeWidth=2/, 'unknown must match authenticated/privileged strokeWidth, not be plain 1px');
+  assert.doesNotMatch(cell, /native code/, 'must not stringify the inherited Function.prototype.toString');
+});

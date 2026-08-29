@@ -115,3 +115,18 @@ test('an unrecognised trust_zone gets a distinct, dashed "unknown" style, not th
   assert.doesNotMatch(box, /fill="#FFFFFF" stroke="#5A6C72"/,
     'must not silently fall back to the public fill/stroke pair');
 });
+
+// Review round 1, I3/M8: emit-svg.mjs already guards with hasOwnProperty (unlike the
+// other two emitters before this round), so this is a same-shape regression test rather
+// than a new fix -- confirms the guard actually covers this exact input.
+test('a trust_zone matching an inherited Object.prototype key still gets the unknown style', () => {
+  const arch = {
+    schema_version: 1, thesis_line: 't', access_control: { model: 'none' },
+    components: [{ id: 'ghost', label: 'Ghost', tier: 1, trust_zone: 'toString',
+      what_it_is: 'x', what_it_does: 'x', why_this_choice: 'x' }],
+  };
+  const svg = emitSvg(arch, layout(arch));
+  const box = svg.split('\n').find((l) => l.includes('class="box"'));
+  assert.match(box, /stroke="#B91C1C"/, 'must use the unknown stroke colour');
+  assert.doesNotMatch(box, /native code/, 'must not stringify the inherited Function.prototype.toString');
+});
