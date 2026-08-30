@@ -378,3 +378,13 @@ test('the spec command stops at the gate', async () => {
   const md = await readCommand('spec.md');
   assert.match(md.slice(md.lastIndexOf('## Step')), /explicit yes/i);
 });
+
+// --- build.md ------------------------------------------------------------------------
+
+test(':build command file names the tasks.md-is-the-plan contract and never re-reads openspec', async () => {
+  const content = await readCommand('build.md');
+  assert.match(content, /subagent-driven-development/);
+  assert.match(content, /tasks\.md/);
+  assert.doesNotMatch(content, /openspec\/changes/,
+    'M4 deliberately does not read the OpenSpec proposals -- see m4-design.md §5');
+});
