@@ -43,6 +43,7 @@ export function buildHackathonDigest(recon, { now = new Date() } = {}) {
     bonus_points_available: recon.bonus?.available ? (recon.bonus.max_points ?? 0) : 0,
     selected_track: null,
     recon_ref: rel(RECON_FILE),
+    started_at: now.toISOString(),
   };
 }
 

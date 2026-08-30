@@ -118,6 +118,29 @@ export function migrateState(state) {
     migrated = true;
   }
 
+  // v3 -> v4: adds hackathon.started_at, project.cut_features, project.deploy, and
+  // budget.last_commit. Also the first version where compliance and budget are
+  // validated -- every v3 state that was legal already satisfies the new checks
+  // (booleans, non-negative numbers), so no reshaping happens, only new fields.
+  if (next.schema_version === 3) {
+    next = {
+      ...next,
+      schema_version: 4,
+      hackathon: next.hackathon === null || next.hackathon === undefined
+        ? next.hackathon
+        : { ...next.hackathon, started_at: next.hackathon.started_at ?? null },
+      project: next.project === null || next.project === undefined
+        ? next.project
+        : {
+          ...next.project,
+          cut_features: next.project.cut_features ?? [],
+          deploy: next.project.deploy ?? { primary_url: null, ref: null },
+        },
+      budget: { ...next.budget, last_commit: next.budget?.last_commit ?? null },
+    };
+    migrated = true;
+  }
+
   return { state: next, migrated, from };
 }
 

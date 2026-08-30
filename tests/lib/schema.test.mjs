@@ -97,8 +97,8 @@ test('validateState accepts a phase with a proper artifacts array', () => {
 
 import { DELIVERABLE_STATUSES } from '../../scripts/lib/schema.mjs';
 
-test('the current schema version is 3', () => {
-  assert.equal(CURRENT_SCHEMA_VERSION, 3);
+test('the current schema version is 4', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 4);
 });
 
 test('a default state carries an empty deliverables block', () => {
@@ -171,10 +171,6 @@ test('validateState rejects an unknown tiebreak when one is present', () => {
   assert.ok(errors.some((e) => /tiebreak/.test(e)));
 });
 
-test('schema version is 3', () => {
-  assert.equal(CURRENT_SCHEMA_VERSION, 3);
-});
-
 test('a null project is still valid — :describe has not run yet', () => {
   const s = createDefaultState({ pluginVersion: '0.1.0' });
   assert.equal(validateState(s).valid, true);
@@ -223,4 +219,70 @@ test('validateState accepts a fully populated hackathon digest', () => {
     recon_ref: '.hackathon/recon.json',
   };
   assert.equal(validateState(s).valid, true);
+});
+
+test('schema version is 4', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 4);
+});
+
+test('compliance.required_tech_verified must be a boolean map', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.compliance = { required_tech_verified: { 'aws-bedrock': 'yes' } };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /required_tech_verified.*must be a boolean/.test(e)));
+});
+
+test('compliance.forbidden_tech_found must be an array of strings', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.compliance = { forbidden_tech_found: 'DynamoDB' };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /forbidden_tech_found must be an array/.test(e)));
+});
+
+test('budget.total_hours must be a non-negative number or null', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.budget = { ...state.budget, total_hours: -1 };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /budget.total_hours must be a non-negative number/.test(e)));
+});
+
+test('budget.last_commit needs sha and an offset-qualified at', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.budget = { ...state.budget, last_commit: { sha: '', at: 'not-a-date' } };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /last_commit.sha must be a non-empty string/.test(e)));
+  assert.ok(errors.some((e) => /last_commit.at must be ISO 8601/.test(e)));
+});
+
+test('project.cut_features must be an array of non-empty strings', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = { name: 'x', selected_idea: 'idea-1', cut_features: ['', 'FR-01'] };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /cut_features must be an array of non-empty strings/.test(e)));
+});
+
+test('project.deploy.primary_url and .ref must be non-empty strings when present', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = { name: 'x', selected_idea: 'idea-1', deploy: { primary_url: '', ref: null } };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /project.deploy.primary_url must be a non-empty string or null/.test(e)));
+});
+
+test('a fully v4-shaped state validates clean', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = {
+    name: 'x', selected_idea: 'idea-1',
+    cut_features: ['FR-05'], deploy: { primary_url: 'https://x.example', ref: '.hackathon/deploy.json' },
+  };
+  state.compliance = { last_checked: '2026-08-30T09:00:00Z', required_tech_verified: { 'aws-bedrock': true }, forbidden_tech_found: [] };
+  state.budget = { total_hours: 48, spent_hours: 12.5, phase_budget: { build: 20 }, last_commit: { sha: 'abc1234', at: '2026-08-30T20:00:00Z' } };
+  const { valid, errors } = validateState(state);
+  assert.deepEqual(errors, []);
+  assert.equal(valid, true);
 });
