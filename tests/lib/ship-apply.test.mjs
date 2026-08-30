@@ -79,3 +79,15 @@ test('applyShip refuses an invalid deploy payload', async () => {
     await assert.rejects(() => applyShip(root, { services: [] }, {}), /refusing to apply/);
   });
 });
+
+test('applyShip validates before checking the :stack precondition', async () => {
+  await withTmpDir(async (root) => {
+    // Both conditions are wrong at once: the deploy payload is invalid AND :stack is not
+    // approved. If validation runs first (matching stack-apply.mjs's order), the thrown
+    // error is the validation error, not the precondition error.
+    const state = createDefaultState({ pluginVersion: '0.1.0' });
+    state.project = { name: 'x', selected_idea: 'i-1' }; // stack.status stays not_started
+    await writeState(root, state);
+    await assert.rejects(() => applyShip(root, { services: [] }, {}), /refusing to apply/);
+  });
+});
