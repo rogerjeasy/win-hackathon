@@ -3,16 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createDefaultState } from '../scripts/lib/schema.mjs';
-import { writeState, readState } from '../scripts/lib/state.mjs';
-import { applyStack } from '../scripts/lib/stack-apply.mjs';
-import { applyArchitecture } from '../scripts/lib/architect-apply.mjs';
+import { writeState } from '../scripts/lib/state.mjs';
 import { applyRequirements } from '../scripts/lib/requirements-apply.mjs';
-import { applySpec } from '../scripts/lib/spec-apply.mjs';
 import { resolveNext } from '../scripts/lib/resolve-next.mjs';
 import { withTmpDir } from './helpers/tmp.mjs';
+import { scaffoldStage2Project } from './helpers/scaffold.mjs';
 
 const fx = async (n) => JSON.parse(await readFile(new URL(`fixtures/${n}`, import.meta.url), 'utf8'));
-const okExec = async () => ({ code: 0, stdout: '', stderr: '' });
 
 // `body.includes('FR-1.1')` alone is fooled by the scenario id `FR-1.1-S1`, which every
 // surface also prints and which carries the FR id as a mere prefix — that would pass even
@@ -25,36 +22,9 @@ function carriesFrId(body, id) {
   return new RegExp(`${escaped}(?![-\\d])`).test(body);
 }
 
-async function approve(root, phase) {
-  const s = await readState(root);
-  s.phases[phase].status = 'approved';
-  await writeState(root, s);
-}
-
-async function walk(root, { exec = okExec } = {}) {
-  const s = createDefaultState({ pluginVersion: '0.1.0' });
-  s.project = { name: 'Kintwadi', selected_idea: 'i1' };
-  for (const p of ['recon', 'brainstorm', 'describe']) s.phases[p].status = 'approved';
-  await writeState(root, s);
-
-  const [recon, stack, architecture, requirements] = await Promise.all([
-    fx('h0-recon.json'), fx('h0-stack.json'), fx('h0-architecture.json'), fx('h0-requirements.json'),
-  ]);
-
-  await applyStack(root, stack, { recon });
-  await approve(root, 'stack');
-  await applyArchitecture(root, architecture, { stack });
-  await approve(root, 'architect');
-  await applyRequirements(root, requirements, { recon, architecture });
-  await approve(root, 'requirements');
-  const spec = await applySpec(root, { requirements, architecture, exec });
-  await approve(root, 'spec');
-  return spec;
-}
-
 test('with all four phases approved, :next resolves cleanly to :build with no drift', async () => {
   await withTmpDir(async (root) => {
-    await walk(root);
+    await scaffoldStage2Project(root);
     const next = await resolveNext(root);
     assert.equal(next.outcome, 'start');
     assert.equal(next.phase, 'build', 'M3 ends exactly where M4 begins');
@@ -64,7 +34,7 @@ test('with all four phases approved, :next resolves cleanly to :build with no dr
 
 test('one FR id travels intact into all four spec surfaces', async () => {
   await withTmpDir(async (root) => {
-    await walk(root);
+    await scaffoldStage2Project(root);
     const target = 'FR-1.1';
     const [frTable, gherkin, kiro, proposal] = await Promise.all([
       readFile(path.join(root, '.hackathon/requirements.md'), 'utf8'),
@@ -82,8 +52,16 @@ test('one FR id travels intact into all four spec surfaces', async () => {
 test('an unreachable OpenSpec leaves the other three surfaces complete', async () => {
   await withTmpDir(async (root) => {
     const architecture = await fx('h0-architecture.json');
-    const spec = await walk(root, { exec: async () => ({ code: 127, stdout: '', stderr: 'not found' }) });
-    assert.equal(spec.openspec.status, 'deferred');
+    await scaffoldStage2Project(root, { exec: async () => ({ code: 127, stdout: '', stderr: 'not found' }) });
+    // scaffoldStage2Project returns requirements.json (shared with the Stage 3 tests), not
+    // applySpec's own return value, so "deferred" — already unit-tested directly against
+    // applySpec's return value in spec-apply.test.mjs — is checked here via its observable
+    // effect instead: an unreachable OpenSpec CLI never gets past `init`, so no proposal is
+    // ever written to disk.
+    const proposalWritten = await readFile(
+      path.join(root, 'openspec/changes/shared-care-record/proposal.md'), 'utf8',
+    ).then(() => true, () => false);
+    assert.equal(proposalWritten, false, 'a deferred OpenSpec must not have written a proposal');
 
     const target = 'FR-1.1';
     const [frTable, gherkin, design] = await Promise.all([

@@ -37,8 +37,10 @@ test('manifest and marketplace agree on the plugin name', async () => {
 // Full M3 scope: all four commands, the one M3 agent, and all ten M3 skills. Widening
 // this surface as the plugin grows should be an edit to the lists below, not a second,
 // parallel test.
-const EXPECTED_COMMANDS = ['stack.md', 'architect.md', 'requirements.md', 'spec.md'];
-const EXPECTED_AGENTS = ['solution-architect.md'];
+const EXPECTED_COMMANDS = [
+  'stack.md', 'architect.md', 'requirements.md', 'spec.md', 'build.md', 'check.md',
+];
+const EXPECTED_AGENTS = ['solution-architect.md', 'compliance-checker.md'];
 const EXPECTED_SKILLS = [
   'framework-drift-guard', 'security-invariants', 'monorepo-structure',
   'architecture-diagramming', 'frontend-architecture', 'backend-architecture',
