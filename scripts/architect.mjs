@@ -52,9 +52,15 @@ if (subcommand === 'validate') {
   const dryRun = flags.has('--dry-run');
 
   try {
-    const { artifacts, backedUp } = await applyArchitecture(root, arch, { stack, dryRun });
+    const { artifacts, backedUp, wouldOverwrite } = await applyArchitecture(root, arch, { stack, dryRun });
     console.log(dryRun ? 'Dry run — nothing was written. Would write:' : `Wrote ${artifacts.length} artifact(s):`);
     for (const a of artifacts) console.log(`  ${dryRun ? '?' : '+'} ${a}`);
+    // The consent gate: commands/architect.md tells the agent to name these to the user
+    // before applying, which it can only do if the preview actually reports them.
+    if (wouldOverwrite?.length > 0) {
+      console.log('\nWould overwrite:');
+      for (const w of wouldOverwrite) console.log(`  ! ${w}`);
+    }
     if (backedUp.length > 0) {
       console.log('\nBacked up before overwriting:');
       for (const b of backedUp) console.log(`  ~ ${b}`);

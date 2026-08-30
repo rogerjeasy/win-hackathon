@@ -323,3 +323,106 @@ test('primaryDatabase edge: "database" matches anywhere in the id, so an unrelat
     'the regex is not anchored to the whole id, so a slot about a database admin UI, not a ' +
     'database itself, is still picked as the "primary database"');
 });
+
+// --- Stage 2 review: the backup stamp must be injectable, and actually used ---------------
+//
+// This closes the Stage 1 deferred minor on stack-apply.mjs: applyStack() computed its own
+// timestamp() with no injection point, so nothing could prove the "one coherent,
+// co-timestamped backup set" claim — replacing the shared stamp with a per-file timestamp()
+// left the suite green. Inject a value timestamp() could never mint and check on disk.
+
+test('both stack artifacts are backed up under the one injected stamp', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    await mkdir(path.join(root, '.hackathon'), { recursive: true });
+    await writeFile(path.join(root, '.hackathon', 'stack.json'), '{"mine":true}\n', 'utf8');
+    await writeFile(path.join(root, '.hackathon', 'stack.md'), '# Mine\n\nStack rule.\n', 'utf8');
+
+    const fixedStamp = 'stack-shared-stamp-check';
+    const { backedUp, backupStamp } = await applyStack(root, await fixture('h0-stack.json'), {
+      recon: await fixture('h0-recon.json'), stamp: fixedStamp,
+    });
+
+    assert.equal(backupStamp, fixedStamp, 'the stamp actually used must be the one passed in');
+    assert.deepEqual(backedUp.sort(), ['.hackathon/stack.json', '.hackathon/stack.md']);
+
+    const backups = await readdir(path.join(root, '.hackathon', 'backups'));
+    assert.deepEqual(backups, [fixedStamp],
+      'one apply run must produce exactly one backup directory, and it must be the injected stamp');
+    const [json, md] = await Promise.all([
+      readFile(path.join(root, '.hackathon', 'backups', fixedStamp, '.hackathon', 'stack.json'), 'utf8'),
+      readFile(path.join(root, '.hackathon', 'backups', fixedStamp, '.hackathon', 'stack.md'), 'utf8'),
+    ]);
+    assert.match(json, /"mine"/, 'stack.json backup has the wrong content');
+    assert.match(md, /Stack rule\./, 'stack.md backup has the wrong content');
+  });
+});
+
+// --- Stage 2 review: two applies in one second must not share a backup directory ----------
+//
+// timestamp() has one-second resolution. Two applies of the same command inside one second
+// used to land in the same backups/<stamp>/ directory, and the second run's copyFile
+// silently overwrote what the first had preserved — the user's hand-authored file was then
+// gone from the working tree AND from its own backup. A finer clock only narrows that
+// window; a suffixed directory closes it.
+
+test('two applies sharing a stamp each get their own intact backup directory', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+    const mdPath = path.join(root, '.hackathon', 'stack.md');
+
+    // Injecting one stamp for both runs is exactly the same-wall-clock-second collision,
+    // made deterministic rather than dependent on how fast the machine is.
+    const collide = 'same-second';
+    await mkdir(path.join(root, '.hackathon'), { recursive: true });
+    await writeFile(mdPath, '# Hand-authored\n\nFirst edit — do not lose me.\n', 'utf8');
+    const first = await applyStack(root, stack, { recon, stamp: collide });
+
+    await writeFile(mdPath, '# Hand-authored\n\nSecond edit — do not lose me either.\n', 'utf8');
+    const second = await applyStack(root, stack, { recon, stamp: collide });
+
+    assert.equal(first.backupStamp, collide);
+    assert.equal(second.backupStamp, `${collide}-2`,
+      'the second run must claim a directory of its own, not reuse the first run\'s');
+
+    const backups = (await readdir(path.join(root, '.hackathon', 'backups'))).sort();
+    assert.deepEqual(backups, [collide, `${collide}-2`]);
+
+    const savedFirst = await readFile(
+      path.join(root, '.hackathon', 'backups', collide, '.hackathon', 'stack.md'), 'utf8');
+    const savedSecond = await readFile(
+      path.join(root, '.hackathon', 'backups', `${collide}-2`, '.hackathon', 'stack.md'), 'utf8');
+    assert.match(savedFirst, /First edit/, 'the first run\'s backup was destroyed by the second');
+    assert.match(savedSecond, /Second edit/);
+  });
+});
+
+// --- Stage 2 review: a dry run must say what it would overwrite ---------------------------
+
+test('--dry-run reports the stack artifacts that already exist, and only those', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+
+    const fresh = await applyStack(root, stack, { recon, dryRun: true });
+    assert.deepEqual(fresh.wouldOverwrite, [],
+      'nothing is on disk yet, so a preview must not claim it would overwrite anything');
+
+    await mkdir(path.join(root, '.hackathon'), { recursive: true });
+    await writeFile(path.join(root, '.hackathon', 'stack.md'), '# Mine\n', 'utf8');
+    const partial = await applyStack(root, stack, { recon, dryRun: true });
+    assert.deepEqual(partial.wouldOverwrite, ['.hackathon/stack.md'],
+      'only the file that exists is named — stack.json is not on disk yet');
+
+    // A preview must not have created any of it along the way. `exists` reads the file, so
+    // the backups directory is checked with readdir instead — readFile on a directory fails
+    // either way and would pass this vacuously.
+    assert.equal(await exists(path.join(root, '.hackathon', 'stack.json')), false);
+    const noBackups = await readdir(path.join(root, '.hackathon', 'backups'))
+      .then(() => false).catch((err) => err.code === 'ENOENT');
+    assert.equal(noBackups, true, 'a dry run must not create a backups directory');
+  });
+});

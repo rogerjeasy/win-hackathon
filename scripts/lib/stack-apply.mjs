@@ -11,7 +11,7 @@ import { HACKATHON_DIR, STACK_FILE, statePath, timestamp } from './paths.mjs';
 import {
   readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
 } from './state.mjs';
-import { backupFile } from './backup.mjs';
+import { openBackupSet, existingPaths } from './backup.mjs';
 import { validateStack } from './stack-schema.mjs';
 import { renderTable } from './render.mjs';
 
@@ -85,7 +85,7 @@ export function primaryDatabase(stack) {
   return dbSlot?.choice ?? null;
 }
 
-export async function applyStack(root, stack, { recon, dryRun = false } = {}) {
+export async function applyStack(root, stack, { recon, dryRun = false, stamp: stampOverride } = {}) {
   const { valid, errors } = validateStack(stack, recon);
   if (!valid) {
     throw new Error(`refusing to apply an invalid stack payload:\n  ${errors.join('\n  ')}`);
@@ -117,15 +117,21 @@ export async function applyStack(root, stack, { recon, dryRun = false } = {}) {
     ['stack.md', renderStack(stack)],
   ];
   const artifacts = files.map(([name]) => rel(name));
-  if (dryRun) return { artifacts, backedUp: [] };
+  // A preview must say what it would destroy, or the command file's "tell the user before
+  // applying if it would overwrite something" step has no output to act on. Read-only.
+  if (dryRun) return { artifacts, backedUp: [], wouldOverwrite: await existingPaths(root, artifacts) };
 
   const dir = path.join(root, HACKATHON_DIR);
   await mkdir(dir, { recursive: true });
 
-  const stamp = timestamp();
+  // One backup set, opened once, shared by every backup below -- that sharing is the whole
+  // backup promise: a single apply run must produce one coherent, co-timestamped backup set,
+  // not one directory per file, and no other run may write into it. `stampOverride` exists so
+  // a test can inject a known value and observe on disk that this call actually used it.
+  const set = openBackupSet(root, stampOverride ?? timestamp());
   const backedUp = [];
   for (const [name] of files) {
-    const saved = await backupFile(root, rel(name), stamp);
+    const saved = await set.backup(rel(name));
     if (saved !== null) backedUp.push(rel(name));
   }
 
@@ -159,5 +165,5 @@ export async function applyStack(root, stack, { recon, dryRun = false } = {}) {
   };
   await writeState(root, next);
 
-  return { artifacts, backedUp };
+  return { artifacts, backedUp, backupStamp: set.stamp };
 }

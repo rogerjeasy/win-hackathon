@@ -285,3 +285,28 @@ test('an orphaned marker in AGENTS.md makes applyArchitecture reject, and nothin
     assert.equal(after.phases.architect.status, 'not_started', 'state must not move either');
   });
 });
+
+// --- Stage 2 review: a dry run must say what it would overwrite ---------------------------
+//
+// The dry-run branch returned backedUp: [] unconditionally and nothing else, so no CLI ever
+// had anything to print — commands/architect.md's "tell the user which files before applying"
+// step was asking the agent to relay output that did not exist.
+
+test('--dry-run reports the architecture artifacts that already exist, and only those', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const arch = await fx('h0-architecture.json');
+    const stack = await fx('h0-stack.json');
+
+    const fresh = await applyArchitecture(root, arch, { stack, dryRun: true });
+    assert.deepEqual(fresh.wouldOverwrite, [],
+      'nothing is on disk yet, so a preview must not claim it would overwrite anything');
+
+    await writeFile(path.join(root, 'AGENTS.md'), '# Mine\n', 'utf8');
+    const { wouldOverwrite } = await applyArchitecture(root, arch, { stack, dryRun: true });
+    assert.deepEqual(wouldOverwrite, ['AGENTS.md'],
+      'only the file that exists is named — the other seven are not on disk yet');
+    assert.equal(await exists(path.join(root, 'CLAUDE.md')), false,
+      'the preview itself must still write nothing');
+  });
+});

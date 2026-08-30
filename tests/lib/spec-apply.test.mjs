@@ -235,3 +235,126 @@ test('applySpec surfaces validateRequirements warnings for the CLI to print', as
       'validateRequirements warns when no recon was supplied — applySpec must forward it, not swallow it');
   });
 });
+
+// --- Stage 2 review: the backup stamp must be injectable, and actually used ---------------
+//
+// applySpec() used to mint its own timestamp() with no injection point, so nothing tested
+// that its "one coherent, co-timestamped backup set" comment was true — swapping in a
+// per-file timestamp() left the whole suite green. Inject a value timestamp() could never
+// produce and check on disk that every triad file landed under exactly it.
+
+test('applySpec backs every triad file up under the one injected stamp', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const p = await payloads();
+    await applySpec(root, { ...p, exec: okExec });
+
+    const fixedStamp = 'spec-shared-stamp-check';
+    const { backedUp, backupStamp } = await applySpec(root, { ...p, exec: okExec, stamp: fixedStamp });
+
+    assert.equal(backupStamp, fixedStamp, 'the stamp actually used must be the one passed in');
+    assert.equal(backedUp.length, 6, 'both features\' three triad files were already on disk');
+
+    const backups = await readdir(path.join(root, '.hackathon/backups'));
+    assert.deepEqual(backups, [fixedStamp],
+      'one apply run must produce exactly one backup directory, and it must be the injected stamp');
+    for (const rel of backedUp) {
+      assert.ok(await readFile(path.join(root, '.hackathon/backups', fixedStamp, rel), 'utf8'),
+        `${rel} did not land under the injected stamp`);
+    }
+  });
+});
+
+// --- Stage 2 review: reprioritising must not orphan a feature's folder --------------------
+//
+// emitKiro() numbers folders by position in the must-have list, so demoting the first
+// must-have used to renumber every later feature's folder. That stranded a build agent's
+// ticked-off tasks.md under a name nothing reads again, and reported the renumbered feature
+// — still a must-have — as "no longer a must-have feature". Folders are matched by slug now.
+
+test('demoting a must-have reuses the later features\' folders instead of renumbering them', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const { requirements, architecture } = await payloads();
+    await applySpec(root, { requirements, architecture, exec: okExec });
+
+    const kept = path.join(root, '.hackathon/specs/0002-medication-safety');
+    const tasksPath = path.join(kept, 'tasks.md');
+    const original = await readFile(tasksPath, 'utf8');
+    const checked = original.replaceAll('- [ ]', '- [x]');
+    assert.notEqual(checked, original, 'the fixture must actually contain checkboxes to flip');
+    await writeFile(tasksPath, checked, 'utf8');
+    // A build agent's own working note, in the same folder. Nothing regenerates this, so it
+    // is the cleanest proof the folder itself survived rather than being abandoned.
+    await writeFile(path.join(kept, 'notes.md'), 'build agent scratch\n', 'utf8');
+
+    // Demote the FIRST must-have. medication-safety is unchanged and still a must.
+    const demoted = JSON.parse(JSON.stringify(requirements));
+    demoted.features[0].priority = 'should';
+
+    const { skipped, backedUp, artifacts } =
+      await applySpec(root, { requirements: demoted, architecture, exec: okExec });
+
+    const dirs = (await readdir(path.join(root, '.hackathon/specs'))).sort();
+    assert.deepEqual(dirs, ['0001-shared-care-record', '0002-medication-safety'],
+      'the still-must-have feature keeps its folder — no 0001-medication-safety duplicate');
+
+    assert.ok(await readFile(path.join(kept, 'notes.md'), 'utf8'),
+      'the reused folder\'s other contents must survive');
+    assert.ok(artifacts.includes('.hackathon/specs/0002-medication-safety/tasks.md'),
+      'the reused folder is what gets written, so it is what gets declared');
+    assert.ok(backedUp.includes('.hackathon/specs/0002-medication-safety/tasks.md'),
+      'the ticked tasks.md must be backed up before the rerun regenerates it');
+    const backups = (await readdir(path.join(root, '.hackathon/backups'))).sort();
+    const saved = await readFile(
+      path.join(root, '.hackathon/backups', backups.at(-1),
+        '.hackathon/specs/0002-medication-safety/tasks.md'), 'utf8');
+    assert.equal(saved, checked, 'the ticked-off state must be recoverable, not lost');
+
+    assert.ok(!skipped.some((s) => s.includes('medication-safety')),
+      'a feature that never left the must-have set must never be reported as skipped');
+    assert.ok(skipped.some((s) => s.includes('0001-shared-care-record')
+      && s.includes('no longer a must-have feature')),
+      'the genuinely demoted feature is the only one reported');
+  });
+});
+
+// --- Stage 2 review: a dry run must say what it would overwrite ---------------------------
+
+test('--dry-run reports the triad files that already exist, and only those', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const p = await payloads();
+
+    const fresh = await applySpec(root, { ...p, exec: okExec, dryRun: true });
+    assert.deepEqual(fresh.wouldOverwrite, [],
+      'nothing is on disk yet, so a preview must not claim it would overwrite anything');
+
+    await applySpec(root, { ...p, exec: okExec });
+    const { wouldOverwrite } = await applySpec(root, { ...p, exec: okExec, dryRun: true });
+    assert.ok(wouldOverwrite.includes('.hackathon/specs/0001-shared-care-record/tasks.md'),
+      'a tasks.md a build agent may have ticked off must be named before it is regenerated');
+    assert.ok(wouldOverwrite.includes('.hackathon/specs/0002-medication-safety/design.md'));
+  });
+});
+
+// --- Stage 2 review: a readdir failure that is not ENOENT must not be swallowed -----------
+
+test('a specs path that is not a directory surfaces its error rather than being ignored', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    await mkdir(path.join(root, '.hackathon'), { recursive: true });
+    await writeFile(path.join(root, '.hackathon/specs'), 'not a directory\n', 'utf8');
+    const p = await payloads();
+    let called = false;
+    const spyExec = async () => { called = true; return { code: 0, stdout: '', stderr: '' }; };
+    await assert.rejects(
+      () => applySpec(root, { ...p, exec: spyExec }),
+      // ENOTDIR from the scandir itself, not EEXIST from a later mkdir: the readdir used to
+      // catch(() => []) and swallow every error, so the run carried on past a specs path it
+      // could not actually read and only tripped further downstream.
+      (err) => err.code === 'ENOTDIR',
+    );
+    assert.equal(called, false, 'it must fail before driving OpenSpec, not after');
+  });
+});

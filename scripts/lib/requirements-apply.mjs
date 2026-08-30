@@ -20,12 +20,14 @@ import {
 import {
   readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
 } from './state.mjs';
-import { backupFile } from './backup.mjs';
+import { openBackupSet, existingPaths } from './backup.mjs';
 import { validateRequirements } from './requirements-schema.mjs';
 import { renderRequirements } from './render-requirements.mjs';
 import { emitAllGherkin } from './emit-gherkin.mjs';
 
-export async function applyRequirements(root, requirements, { recon, architecture, dryRun = false } = {}) {
+export async function applyRequirements(
+  root, requirements, { recon, architecture, dryRun = false, stamp: stampOverride } = {},
+) {
   const { valid, errors } = validateRequirements(requirements, { recon, architecture });
   if (!valid) {
     throw new Error(`refusing to apply an invalid requirements payload:\n  ${errors.join('\n  ')}`);
@@ -77,12 +79,21 @@ export async function applyRequirements(root, requirements, { recon, architectur
   }
 
   const artifacts = [...files.keys()];
-  if (dryRun) return { artifacts, backedUp: [], skipped };
+  // A preview must say what it would destroy, or the command file's "tell the user before
+  // applying" step has no output to act on. Read-only, and it covers every artifact, not
+  // just the two that get backed up — a regenerated .feature file is still overwritten.
+  if (dryRun) {
+    return { artifacts, backedUp: [], skipped, wouldOverwrite: await existingPaths(root, artifacts) };
+  }
 
-  const stamp = timestamp();
+  // One backup set, opened once, shared by every backup below, so a single apply run
+  // produces one coherent, co-timestamped backup set rather than one directory per file —
+  // and no other run can land in it. `stampOverride` exists so a test can inject a known
+  // value and observe on disk that this call actually used it.
+  const set = openBackupSet(root, stampOverride ?? timestamp());
   const backedUp = [];
   for (const rel of backedUpFiles.keys()) {
-    const saved = await backupFile(root, rel, stamp);
+    const saved = await set.backup(rel);
     if (saved !== null) backedUp.push(rel);
   }
 
@@ -106,5 +117,5 @@ export async function applyRequirements(root, requirements, { recon, architectur
   };
   await writeState(root, next);
 
-  return { artifacts, backedUp, skipped };
+  return { artifacts, backedUp, skipped, backupStamp: set.stamp };
 }
