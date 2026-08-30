@@ -88,9 +88,13 @@ export async function applyRecon(root, recon, { now = new Date() } = {}) {
   }
   const artifacts = files.map(([name]) => rel(name));
 
+  // A re-run must not reset the budget clock's origin point -- preserve started_at from
+  // whatever is already on disk. First run (no prior hackathon digest) still gets the
+  // fresh stamp from buildHackathonDigest.
+  const digest = buildHackathonDigest(recon, { now });
   const next = {
     ...state,
-    hackathon: buildHackathonDigest(recon, { now }),
+    hackathon: { ...digest, started_at: state.hackathon?.started_at ?? digest.started_at },
     deliverables: {
       ...state.deliverables,
       submission_requirements: mergeDeliverables(
