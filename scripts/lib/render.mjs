@@ -59,6 +59,20 @@ export function renderStatusBoard({ state, resolution, tools }) {
     for (const id of outstanding) lines.push(`  [ ] ${id}`);
   }
 
+  const forbiddenFound = state.compliance?.forbidden_tech_found ?? [];
+  if (forbiddenFound.length > 0) {
+    lines.push('');
+    lines.push('Forbidden technology found');
+    for (const id of forbiddenFound) lines.push(`  ! ${id}`);
+  }
+
+  const cutFeatures = state.project?.cut_features ?? [];
+  if (cutFeatures.length > 0) {
+    lines.push('');
+    lines.push('Cut under :pivot');
+    for (const id of cutFeatures) lines.push(`  - ${id}`);
+  }
+
   // An action deadline closes before the work is due — missing it costs a resource,
   // not the hackathon, which is exactly why it is easy to forget.
   const action = state.hackathon?.next_action_deadline;

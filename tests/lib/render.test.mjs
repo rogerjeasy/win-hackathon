@@ -216,3 +216,19 @@ test('unverified required tech is shown as outstanding, not hidden', () => {
   assert.ok(!/vercel-deploy/.test(out.split('Required tech')[1] ?? ''),
     'verified items are not worth board space; unverified ones are');
 });
+
+test('renderStatusBoard lists forbidden tech found, when any', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.compliance.forbidden_tech_found = ['DynamoDB'];
+  const board = renderStatusBoard({ state, resolution: { outcome: 'complete', phase: null }, tools: [] });
+  assert.match(board, /Forbidden technology found/);
+  assert.match(board, /DynamoDB/);
+});
+
+test('renderStatusBoard lists cut features, when any', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = { name: 'x', selected_idea: 'i-1', cut_features: ['FR-05.1'] };
+  const board = renderStatusBoard({ state, resolution: { outcome: 'complete', phase: null }, tools: [] });
+  assert.match(board, /Cut under :pivot/);
+  assert.match(board, /FR-05\.1/);
+});
