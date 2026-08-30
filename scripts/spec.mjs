@@ -34,7 +34,7 @@ if (subcommand === 'apply') {
 
   try {
     const {
-      artifacts, openspec, skipped, backedUp, warnings,
+      artifacts, openspec, skipped, backedUp, warnings, wouldOverwrite,
     } = await applySpec(root, { requirements, architecture, dryRun });
 
     // :spec has no `validate` subcommand of its own (it validates the requirements payload
@@ -61,6 +61,14 @@ if (subcommand === 'apply') {
       for (const a of proposals) console.log(`  ${dryRun ? '?' : '+'} ${a}`);
     } else {
       console.log('  (none written — see OpenSpec status below)');
+    }
+
+    // The consent gate: commands/spec.md tells the agent to name these to the user before
+    // applying, which it can only do if the preview actually reports them. tasks.md matters
+    // most — a build agent ticks it off, and a rerun regenerates it.
+    if (wouldOverwrite?.length > 0) {
+      console.log('\nWould overwrite:');
+      for (const w of wouldOverwrite) console.log(`  ! ${w}`);
     }
 
     if (backedUp?.length > 0) {

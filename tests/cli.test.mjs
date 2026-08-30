@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { readFile, access, copyFile, writeFile, mkdir, readdir } from 'node:fs/promises';
+import { readFile, access, copyFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from './helpers/tmp.mjs';
 import { writeV1State } from './helpers/v1-state.mjs';
@@ -691,10 +691,14 @@ test('requirements.mjs apply reports a backup when requirements.md already exist
     const { stdout } = await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir]);
     assert.match(stdout, /Backed up before overwriting/);
     assert.match(stdout, /requirements\.md/);
-    const backups = await readdir(path.join(dir, '.hackathon', 'backups'));
-    assert.equal(backups.length, 1);
+    // seedForRequirements() drops a requirements.json in place, so the FIRST apply above
+    // already backs one file up and creates a backup set of its own -- the total count is
+    // not 1, and depends on whether the two applies land in the same wall-clock second.
+    // Assert on the newest set instead, the same way tests/lib/stack-apply.test.mjs does.
+    const backups = (await readdir(path.join(dir, '.hackathon', 'backups'))).sort();
+    const latest = backups.at(-1);
     const saved = await readFile(
-      path.join(dir, '.hackathon', 'backups', backups[0], '.hackathon', 'requirements.md'), 'utf8',
+      path.join(dir, '.hackathon', 'backups', latest, '.hackathon', 'requirements.md'), 'utf8',
     );
     assert.match(saved, /Hand-written\./);
   });
@@ -811,5 +815,77 @@ test('spec.mjs apply prints validateRequirements warnings — :spec has no valid
     // it now surfaces, since :spec has no separate `validate` subcommand to print it from.
     const { stdout } = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
     assert.match(stdout, /warning:.*recon/i);
+  });
+});
+
+// --- Stage 2 review: the dry-run overwrite warning the command files promise ---------------
+//
+// Every apply module's dry-run branch returned `backedUp: []` unconditionally, so no CLI had
+// ever printed anything about overwriting during a preview — yet all four command files tell
+// the agent "if it reports it would overwrite something, tell the user first". The consent
+// gate was notional. Each of these drives both branches: the heading appears when a real
+// artifact is on disk, and does not when none is.
+
+test('stack.mjs apply --dry-run names what it would overwrite, and stays silent when nothing would be', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForStack(dir);
+    const present = await run('node', [path.join(scripts, 'stack.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(present.stdout, /Would overwrite:/);
+    assert.match(present.stdout, /! \.hackathon\/stack\.json/);
+
+    // The payload can come from anywhere; what matters is that no artifact is on disk.
+    await rm(path.join(dir, '.hackathon', 'stack.json'));
+    const absent = await run('node',
+      [path.join(scripts, 'stack.mjs'), 'apply', dir, '--stack', stackFixture, '--dry-run']);
+    assert.doesNotMatch(absent.stdout, /Would overwrite:/);
+  });
+});
+
+test('architect.mjs apply --dry-run names what it would overwrite, and stays silent when nothing would be', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForArchitect(dir);
+    const present = await run('node', [path.join(scripts, 'architect.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(present.stdout, /Would overwrite:/);
+    assert.match(present.stdout, /! \.hackathon\/architecture\.json/);
+
+    // :init itself lays down AGENTS.md and CLAUDE.md, and both are :architect artifacts, so
+    // they have to go too before the "nothing would be overwritten" case is reachable.
+    await rm(path.join(dir, '.hackathon', 'architecture.json'));
+    await rm(path.join(dir, 'AGENTS.md'), { force: true });
+    await rm(path.join(dir, 'CLAUDE.md'), { force: true });
+    const absent = await run('node',
+      [path.join(scripts, 'architect.mjs'), 'apply', dir, '--architecture', architectureFixture, '--dry-run']);
+    assert.doesNotMatch(absent.stdout, /Would overwrite:/);
+  });
+});
+
+test('requirements.mjs apply --dry-run names what it would overwrite, and stays silent when nothing would be', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForRequirements(dir);
+    const present = await run('node', [path.join(scripts, 'requirements.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(present.stdout, /Would overwrite:/);
+    assert.match(present.stdout, /! \.hackathon\/requirements\.json/);
+
+    await rm(path.join(dir, '.hackathon', 'requirements.json'));
+    const absent = await run('node',
+      [path.join(scripts, 'requirements.mjs'), 'apply', dir, '--requirements', requirementsFixture, '--dry-run']);
+    assert.doesNotMatch(absent.stdout, /Would overwrite:/);
+  });
+});
+
+test('spec.mjs apply --dry-run names the triad files it would regenerate, and stays silent when there are none', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSpec(dir);
+    const absent = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
+    assert.doesNotMatch(absent.stdout, /Would overwrite:/,
+      'no spec folder exists yet — a first run overwrites nothing');
+
+    // A tasks.md a build agent has been ticking off is the file that matters most here.
+    const folder = path.join(dir, '.hackathon', 'specs', '0001-shared-care-record');
+    await mkdir(folder, { recursive: true });
+    await writeFile(path.join(folder, 'tasks.md'), '# Tasks\n\n- [x] done\n', 'utf8');
+    const present = await run('node', [path.join(scripts, 'spec.mjs'), 'apply', dir, '--dry-run']);
+    assert.match(present.stdout, /Would overwrite:/);
+    assert.match(present.stdout, /! \.hackathon\/specs\/0001-shared-care-record\/tasks\.md/);
   });
 });

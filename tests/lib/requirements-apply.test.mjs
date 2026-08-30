@@ -210,3 +210,60 @@ test('it refuses when project is not set, and no artifact exists', async () => {
     assert.equal(after.phases.requirements.status, 'not_started', 'state must not move either');
   });
 });
+
+// --- Stage 2 review: the backup stamp must be injectable, and actually used ---------------
+//
+// applyRequirements() minted its own timestamp() with no injection point, so nothing proved
+// its "one coherent, co-timestamped backup set" claim — swapping in a per-file timestamp()
+// left the suite green. Inject a value timestamp() could never produce, then check on disk.
+
+test('requirements.json and requirements.md are backed up under the one injected stamp', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    await mkdir(path.join(root, '.hackathon'), { recursive: true });
+    await writeFile(path.join(root, '.hackathon', 'requirements.json'), '{"mine":true}\n', 'utf8');
+    await writeFile(path.join(root, '.hackathon', 'requirements.md'), '# Mine\n\nReq rule.\n', 'utf8');
+
+    const fixedStamp = 'requirements-shared-stamp-check';
+    const { backedUp, backupStamp } = await applyRequirements(root, await fx('h0-requirements.json'), {
+      recon: await fx('h0-recon.json'), architecture: await fx('h0-architecture.json'), stamp: fixedStamp,
+    });
+
+    assert.equal(backupStamp, fixedStamp, 'the stamp actually used must be the one passed in');
+    assert.deepEqual(backedUp.sort(), ['.hackathon/requirements.json', '.hackathon/requirements.md']);
+
+    const stamps = await readdir(path.join(root, '.hackathon', 'backups'));
+    assert.deepEqual(stamps, [fixedStamp],
+      'one apply run must produce exactly one backup directory, and it must be the injected stamp');
+    const [json, md] = await Promise.all([
+      readFile(path.join(backupDir(root, fixedStamp), '.hackathon', 'requirements.json'), 'utf8'),
+      readFile(path.join(backupDir(root, fixedStamp), '.hackathon', 'requirements.md'), 'utf8'),
+    ]);
+    assert.match(json, /"mine"/, 'requirements.json backup has the wrong content');
+    assert.match(md, /Req rule\./, 'requirements.md backup has the wrong content');
+  });
+});
+
+// --- Stage 2 review: a dry run must say what it would overwrite ---------------------------
+
+test('--dry-run reports the requirements artifacts that already exist, and only those', async () => {
+  await withTmpDir(async (root) => {
+    await seeded(root);
+    const r = await fx('h0-requirements.json');
+    const recon = await fx('h0-recon.json');
+    const architecture = await fx('h0-architecture.json');
+
+    const fresh = await applyRequirements(root, r, { recon, architecture, dryRun: true });
+    assert.deepEqual(fresh.wouldOverwrite, [],
+      'nothing is on disk yet, so a preview must not claim it would overwrite anything');
+
+    await applyRequirements(root, r, { recon, architecture });
+    const { wouldOverwrite, artifacts } =
+      await applyRequirements(root, r, { recon, architecture, dryRun: true });
+    assert.deepEqual(wouldOverwrite.sort(), [...artifacts].sort(),
+      'after a full apply every artifact exists, so every one of them would be overwritten');
+    assert.ok(wouldOverwrite.includes('.hackathon/requirements.md'));
+    assert.ok(wouldOverwrite.some((w) => w.endsWith('.feature')),
+      'a regenerated .feature file is still an overwrite, even though it is not backed up');
+  });
+});

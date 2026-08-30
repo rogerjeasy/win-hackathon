@@ -24,7 +24,7 @@ import {
 import {
   readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
 } from './state.mjs';
-import { backupFile } from './backup.mjs';
+import { openBackupSet, existingPaths } from './backup.mjs';
 import { validateArchitecture } from './architecture-schema.mjs';
 import { layout } from './layout.mjs';
 import { emitMermaid } from './emit-mermaid.mjs';
@@ -85,19 +85,24 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
   ]);
 
   const artifacts = [...files.keys()];
-  if (dryRun) return { artifacts, backedUp: [], skipped: [] };
+  // A preview must say what it would destroy, or the command file's "tell the user which
+  // files before applying" step has no output to act on. Read-only.
+  if (dryRun) {
+    return { artifacts, backedUp: [], skipped: [], wouldOverwrite: await existingPaths(root, artifacts) };
+  }
 
   // --- Everything below is the write phase. Every body above rendered successfully, so
   // it is now safe to touch disk. ---
-  // One stamp, computed once, shared by every backupFile() call below -- that sharing is
-  // the whole backup promise (Fix 8, task-18a-brief.md): a single apply run must produce
-  // one coherent, co-timestamped backup set, not one directory per file. `stampOverride`
+  // One backup set, opened once, shared by every backup below -- that sharing is the whole
+  // backup promise (Fix 8, task-18a-brief.md): a single apply run must produce one coherent,
+  // co-timestamped backup set, not one directory per file, and no concurrent or
+  // same-second run may write into it (openBackupSet suffixes a taken name). `stampOverride`
   // exists so a test can inject a known value and observe on disk that this call actually
-  // used it, rather than each backupFile() call minting its own via timestamp().
-  const stamp = stampOverride ?? timestamp();
+  // used it, rather than each backup minting its own via timestamp().
+  const set = openBackupSet(root, stampOverride ?? timestamp());
   const backedUp = [];
   for (const rel of artifacts) {
-    const saved = await backupFile(root, rel, stamp);
+    const saved = await set.backup(rel);
     if (saved !== null) backedUp.push(rel);
   }
 
@@ -120,5 +125,5 @@ export async function applyArchitecture(root, architecture, { stack, dryRun = fa
   };
   await writeState(root, next);
 
-  return { artifacts, backedUp, skipped: [], backupStamp: backedUp.length > 0 ? stamp : null };
+  return { artifacts, backedUp, skipped: [], backupStamp: set.stamp };
 }
