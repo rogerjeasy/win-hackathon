@@ -27,16 +27,17 @@ test('validateComplianceReport rejects a non-boolean used flag', async () => {
 test('applyCompliance overwrites required_tech_verified as flat booleans and never persists evidence', async () => {
   await withTmpDir(async (root) => {
     const state = createDefaultState({ pluginVersion: '0.1.0' });
-    state.compliance.required_tech_verified = { 'aws-bedrock': false, 'stale-entry': true };
+    // Both keys the report will cover -- a report that omits a seeded slot is a separate,
+    // dedicated regression (applyCompliance refuses a report that omits a seeded slot...).
+    state.compliance.required_tech_verified = { 'aws-bedrock': false, 'aurora-pgvector': true };
     await writeState(root, state);
     const report = await fixture('h0-compliance-result.json');
     const now = new Date('2026-08-30T10:00:00Z');
     const result = await applyCompliance(root, report, { now });
 
     const next = await readState(root);
-    assert.deepEqual(next.compliance.required_tech_verified, { 'aws-bedrock': true, 'aurora-pgvector': false });
-    assert.equal('stale-entry' in next.compliance.required_tech_verified, false,
-      'a run must overwrite, not merge -- a slot the report no longer mentions must not survive');
+    assert.deepEqual(next.compliance.required_tech_verified, { 'aws-bedrock': true, 'aurora-pgvector': false },
+      'a run must overwrite, not merge -- each slot\'s value comes from the fresh report, not the old state');
     assert.equal(next.compliance.last_checked, '2026-08-30T10:00:00.000Z');
     assert.deepEqual(result.outstanding, ['aurora-pgvector']);
   });
@@ -80,4 +81,28 @@ test('validateComplianceReport rejects used: true with evidence as non-string (r
   const { valid, errors } = validateComplianceReport(report);
   assert.equal(valid, false);
   assert.ok(errors.some((e) => /evidence must be a string or null/.test(e)));
+});
+
+test('applyCompliance refuses a report that omits a seeded slot, without touching state (regression)', async () => {
+  await withTmpDir(async (root) => {
+    const before = createDefaultState({ pluginVersion: '0.1.0' });
+    before.compliance.required_tech_verified = { 'aws-bedrock': false, 'aurora-pgvector': false };
+    await writeState(root, before);
+
+    const partialReport = {
+      required_tech_verified: { 'aws-bedrock': { used: true, evidence: 'src/lib/bedrock.ts:14' } },
+      forbidden_tech_found: [],
+    };
+    await assert.rejects(
+      () => applyCompliance(root, partialReport),
+      (err) => {
+        assert.match(err.message, /refusing to apply an incomplete compliance report/);
+        assert.match(err.message, /aurora-pgvector/);
+        return true;
+      },
+    );
+
+    const after = await readState(root);
+    assert.deepEqual(after.compliance, before.compliance, 'a truncated report must not overwrite the seeded record');
+  });
 });
