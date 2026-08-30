@@ -1,5 +1,6 @@
 /**
- * Same shape as stack-apply.mjs: validate, precondition-check, compute the file list in
+ * Same shape as stack-apply.mjs: validate (loading stack.json for the cross-check) first,
+ * before anything touches state -- then precondition-check, compute the file list in
  * memory, dry-run branch, backup+write, merge state. deploy-engineer writes the actual
  * Dockerfile/Terraform/workflow content itself (via its own Write/Bash calls, guided by
  * the containerization/iac-terraform/cicd-github-actions skills) -- this module only
@@ -41,6 +42,14 @@ export function selectTargets(stack) {
 }
 
 export async function applyShip(root, deploy, { dryRun = false, stamp: stampOverride } = {}) {
+  let stack = null;
+  try {
+    stack = JSON.parse(await readFile(stackPath(root), 'utf8'));
+  } catch { /* validateDeploy degrades to a warning when stack is absent */ }
+
+  const { valid, errors } = validateDeploy(deploy, stack);
+  if (!valid) throw new Error(`refusing to apply an invalid deploy payload:\n  ${errors.join('\n  ')}`);
+
   let state;
   if (dryRun) {
     state = await readMigratedState(root);
@@ -52,14 +61,6 @@ export async function applyShip(root, deploy, { dryRun = false, stamp: stampOver
   if (state.phases?.stack?.status !== 'approved') {
     throw new Error('cannot ship before :stack is approved -- run /win-hackathon:stack first');
   }
-
-  let stack = null;
-  try {
-    stack = JSON.parse(await readFile(stackPath(root), 'utf8'));
-  } catch { /* validateDeploy degrades to a warning when stack is absent */ }
-
-  const { valid, errors } = validateDeploy(deploy, stack);
-  if (!valid) throw new Error(`refusing to apply an invalid deploy payload:\n  ${errors.join('\n  ')}`);
 
   const files = [[DEPLOY_FILE, `${JSON.stringify(deploy, null, 2)}\n`]];
   const artifacts = files.map(([name]) => rel(name));
