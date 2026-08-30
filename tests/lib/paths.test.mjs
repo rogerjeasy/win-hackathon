@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {
   stackPath, architecturePath, requirementsPath, specsDir,
-  docsPath, assetsPath, featurePath, HACKATHON_DIR,
+  docsPath, assetsPath, featurePath, HACKATHON_DIR, deployPath,
 } from '../../scripts/lib/paths.mjs';
 
 const ROOT = '/tmp/proj';
@@ -26,4 +26,8 @@ test('showroom artifacts live under docs/, not .hackathon/', () => {
 test('feature files are named from the slug, at the repo root', () => {
   assert.equal(featurePath(ROOT, 'shared-care-record'),
     path.join(ROOT, 'features', 'shared-care-record.feature'));
+});
+
+test('deployPath is .hackathon/deploy.json', () => {
+  assert.equal(deployPath('/proj'), path.join('/proj', '.hackathon', 'deploy.json'));
 });
