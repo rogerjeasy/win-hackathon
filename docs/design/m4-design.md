@@ -396,12 +396,14 @@ mutation-proven treatment M3 established.
   is the sole claim on a criterion must never appear in the proposed list), remaining-time
   math, and the `cut_features` append — the highest-value TDD target in this milestone, since
   it is pure logic with real consequences and no agent involved at all
-- hook math (`UserPromptSubmit` threshold, `PostToolUse` elapsed-time calc) follows
-  `inject-state.mjs`'s actual precedent, not an invented one: plain `Date.now()`/
-  `Date.parse()`, no injected clock. Tests use fixed far-future/near/past deadlines and
-  assert on presence/absence of the warning and on structural bounds (line count, no
-  crash) — the same style `tests/hooks/inject-state.test.mjs` already uses — rather than
-  asserting an exact computed hour count
+- hook math lives in a `scripts/lib/` module with an injectable `now` parameter, the same
+  convention `recon-apply.mjs`'s `buildHackathonDigest(recon, { now = new Date() })`
+  already uses — not the invented "never `Date.now()`" rule this section first claimed.
+  The thin hook script in `hooks/` calls that lib function with the real clock and is
+  itself tested the way `inject-state.mjs` already is: spawned as a subprocess against
+  fixed far-future/near/past fixture deadlines, asserting on presence/absence of the
+  warning and on structural bounds (line count, no crash), never an exact computed hour
+  count. The lib function gets ordinary injected-`now` unit tests on top of that
 - v3 → v4 migration — additive, idempotent, still refusing a version newer than it knows
 - non-destructive writes for every new file `:ship` produces — backup created,
   `--dry-run` writes nothing, marked-block rerun touches only the plugin's block
