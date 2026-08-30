@@ -28,6 +28,11 @@ test('mustHaveFeatures excludes FR-ids present in cutFeatures', async () => {
   const someFrId = requirements.features.find((f) => f.priority === 'must').requirements[0].id;
   const cut = mustHaveFeatures(requirements, [someFrId]);
   assert.equal(cut.length, musts.length - 1);
+  // The core guarantee: cutting a feature must never renumber its neighbors' dir.
+  for (const survivor of cut) {
+    const uncut = musts.find((f) => f.slug === survivor.slug);
+    assert.equal(survivor.dir, uncut.dir, `${survivor.slug}'s dir must not shift when an earlier feature is cut`);
+  }
 });
 
 test('parseTasksProgress counts checkbox lines and reports done only when all are checked', () => {
