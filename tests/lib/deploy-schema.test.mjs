@@ -45,3 +45,45 @@ test('auth "static-secret" is valid but only WIF/OIDC pass without a warning', a
   assert.equal(valid, true);
   assert.ok(warnings.some((w) => /static-secret is a fallback/i.test(w)));
 });
+
+test('a slot id where a keyword is embedded inside a larger unbroken word (not its own segment) is still deployable, not silently excluded', () => {
+  // "recache-service" and "dequeue-worker" each contain "cache"/"queue" as a *substring*
+  // of a longer segment ("recache", "dequeue") but not as their own delimited segment --
+  // exactly the class of false negative the unanchored regex used to produce.
+  const fakeStack = { slots: [{ id: 'recache-service' }, { id: 'dequeue-worker' }] };
+  const deploy = { target_strategy: 'vercel', services: [], cicd: { auth: 'wif' } };
+  const { errors } = validateDeploy(deploy, fakeStack);
+  assert.ok(errors.some((e) => /stack slot "recache-service" has no matching service/i.test(e)),
+    'recache-service is a real deployable and should still require a matching service');
+  assert.ok(errors.some((e) => /stack slot "dequeue-worker" has no matching service/i.test(e)),
+    'dequeue-worker is a real deployable and should still require a matching service');
+});
+
+test('a slot id that is exactly (or has a segment exactly equal to) a non-deployable word is still excluded', () => {
+  const fakeStack = {
+    slots: [
+      { id: 'database' },
+      { id: 'job-queue' },
+      { id: 'edge-cache' },
+      { id: 'frontend' },
+    ],
+  };
+  const deploy = {
+    target_strategy: 'vercel',
+    services: [{ name: 'frontend', kind: 'frontend', target: 'vercel', verified: false }],
+    cicd: { auth: 'wif' },
+  };
+  const { valid, errors } = validateDeploy(deploy, fakeStack);
+  assert.deepEqual(errors, []);
+  assert.equal(valid, true);
+});
+
+test('h0-stack.json: only the database slot is excluded -- deploy and frontend still require a matching service', async () => {
+  const s = await stack();
+  const d = await golden();
+  d.services = [];
+  const { errors } = validateDeploy(d, s);
+  assert.ok(errors.some((e) => /stack slot "frontend" has no matching service/.test(e)));
+  assert.ok(errors.some((e) => /stack slot "deploy" has no matching service/.test(e)));
+  assert.ok(!errors.some((e) => /stack slot "database" has no matching service/.test(e)));
+});

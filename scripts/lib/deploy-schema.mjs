@@ -9,10 +9,18 @@ const isNonEmptyString = (v) => typeof v === 'string' && v.trim() !== '';
  * `stack` slots that plausibly need a running, deployed service. Anything without a
  * clearly database/queue/storage-shaped id is assumed deployable -- the same "is this a
  * database slot" heuristic stack-apply.mjs's primaryDatabase() already uses, inverted.
+ *
+ * Matching is on whole `-`/`_`-delimited segments, not a loose substring search: a slot
+ * named "frontend-cache" or "job-queue-worker" is a real deployable service whose id
+ * merely contains one of these words, and a substring match would wrongly drop it from
+ * the cross-check below.
  */
+const NON_DEPLOYABLE_SEGMENTS = new Set(['db', 'database', 'datastore', 'queue', 'storage', 'cache']);
 function deployableSlots(stack) {
-  return (stack?.slots ?? []).filter((s) =>
-    !/(^|[-_])db$|database|datastore|queue|storage|cache/i.test(s?.id ?? ''));
+  return (stack?.slots ?? []).filter((s) => {
+    const segments = (s?.id ?? '').toLowerCase().split(/[-_]/);
+    return !segments.some((seg) => NON_DEPLOYABLE_SEGMENTS.has(seg));
+  });
 }
 
 export function validateDeploy(doc, stack) {
