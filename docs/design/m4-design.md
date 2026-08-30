@@ -245,9 +245,16 @@ defaults to `null`.
   **inline**, not persisted: `state.json` stays a digest, same principle already applied to
   `project.stack`/`architecture_ref`. Also sets a new `forbidden_tech_found: []` and
   `last_checked`.
-- Also checks `deliverables.submission_requirements` / `bonus_content` status against what's
-  actually in the repo, so a cheap requirement (a hashtag, a disclosure line) doesn't get
-  discovered missing only at `:submit`.
+- **Deliverables auditing is deferred to M5, not built here.** This section originally
+  called for `:check` to also verify `deliverables.submission_requirements` / `bonus_content`
+  against the repo. The Stage 1 checkpoint review found that landed half-wired — the
+  `compliance-checker` agent was told to read those fields with no report field to put
+  findings in, and none of `validateComplianceReport`/`applyCompliance`/`check.mjs` ever
+  touch `state.deliverables`. Rather than bolt on a report shape under review pressure,
+  the decision is to defer it cleanly: M5's `:submit` already runs a final `:check` and is
+  the natural place to design the deliverables-report shape properly, with the full
+  submission-fields context `:submit` has and `:check` alone does not. `:check` in M4
+  covers required/forbidden technology only.
 - Prints a pass/fail report inline. Writes nothing but `state.json` — no `compliance.md`.
 - Safe to run at any time; called automatically by `:build` (after each feature) and will be
   called again by `:submit` in M5.
