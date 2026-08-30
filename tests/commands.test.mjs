@@ -396,3 +396,17 @@ test(':check command file never claims a manifest dependency counts as evidence'
   assert.match(content, /file:line/);
   assert.match(content, /manifest|package\.json/i);
 });
+
+// --- ship.md ------------------------------------------------------------------------
+
+test(':ship command file requires a curl-verified URL before the gate, and names the Compose fallback', async () => {
+  const content = await readCommand('ship.md');
+  assert.match(content, /curl/i);
+  assert.match(content, /docker-compose|Docker Compose/i);
+  assert.match(content, /resume_note/);
+});
+
+test(':ship command file has the agent consult ship.mjs suggest before choosing targets', async () => {
+  const content = await readCommand('ship.md');
+  assert.match(content, /ship\.mjs suggest/);
+});
