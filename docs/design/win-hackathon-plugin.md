@@ -387,8 +387,9 @@ of the architecture M4's build agent reads for that feature, not the full
 the CLI, runs `openspec init` if the directory is absent, and creates one change proposal
 per must-have feature in `openspec/changes/<slug>/`, seeded from the same two payloads. **An
 unreachable CLI defers that half rather than failing the phase** — the triad has no external
-dependency, so a missing `openspec` install leaves three of the four surfaces complete and
-the phase still finishable; only the fourth is deferred until the CLI is reachable.
+dependency, so a missing `@fission-ai/openspec` install leaves three of the four surfaces
+complete and the phase still finishable; only the fourth is deferred until the CLI is
+reachable.
 
 #### `:build [--feature <id>]`
 

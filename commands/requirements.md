@@ -54,8 +54,9 @@ This writes `.hackathon/requirements.json`, `.hackathon/requirements.md`, and on
 `.hackathon/backups/<timestamp>/` before being overwritten; the `.feature` files are not —
 regenerating them on every run is the intended contract, so never hand-edit one. If a
 `.feature` file from a previous run is no longer in the requirements, the script reports it
-under `Left in place:` rather than deleting it — the user may have hand-edited it before it
-was dropped.
+under `Left in place:` rather than deleting it — never hand-editing one is the rule, but the
+script will not destroy evidence that someone broke it, so a file it no longer regenerates is
+kept in case the user had edited it before it was dropped.
 
 ## Step 7 — Stop at the gate
 
