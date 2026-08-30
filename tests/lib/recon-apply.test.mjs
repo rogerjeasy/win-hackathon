@@ -158,6 +158,25 @@ test('buildHackathonDigest stamps started_at from the injected clock', async () 
   assert.equal(digest.started_at, BEFORE_EVERYTHING.toISOString());
 });
 
+test('applyRecon preserves started_at across a re-run (regression)', async () => {
+  await withTmpDir(async (dir) => {
+    await writeState(dir, createDefaultState({ pluginVersion: '0.1.0' }));
+    const first = new Date('2026-06-05T00:00:00Z');
+    await applyRecon(dir, await golden(), { now: first });
+    const afterFirst = await readState(dir);
+    assert.equal(afterFirst.hackathon.started_at, first.toISOString());
+
+    const later = new Date('2026-06-20T00:00:00Z');
+    await applyRecon(dir, await golden(), { now: later });
+    const afterSecond = await readState(dir);
+    assert.equal(
+      afterSecond.hackathon.started_at,
+      first.toISOString(),
+      're-running :recon must not reset the budget clock\'s origin point',
+    );
+  });
+});
+
 test('applyRecon preserves a deliverable already marked done', async () => {
   await withTmpDir(async (dir) => {
     await writeState(dir, createDefaultState({ pluginVersion: '0.1.0' }));
