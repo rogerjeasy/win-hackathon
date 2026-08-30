@@ -47,6 +47,13 @@ export async function applyCompliance(root, report, { now = new Date() } = {}) {
   const state = await readState(root);
   if (state === null) throw new Error(`no state at ${statePath(root)} -- run /win-hackathon:init first`);
 
+  const seededKeys = Object.keys(state.compliance?.required_tech_verified ?? {});
+  const reportKeys = new Set(Object.keys(report.required_tech_verified));
+  const missing = seededKeys.filter((k) => !reportKeys.has(k));
+  if (missing.length > 0) {
+    throw new Error(`refusing to apply an incomplete compliance report: missing required slot(s) ${missing.join(', ')}`);
+  }
+
   const flat = Object.fromEntries(
     Object.entries(report.required_tech_verified).map(([k, v]) => [k, v.used]),
   );
