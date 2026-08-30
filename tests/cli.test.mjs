@@ -8,6 +8,7 @@ import path from 'node:path';
 import { withTmpDir } from './helpers/tmp.mjs';
 import { writeV1State } from './helpers/v1-state.mjs';
 import { readState, writeState } from '../scripts/lib/state.mjs';
+import { mustHaveFeatures } from '../scripts/lib/build-apply.mjs';
 
 const run = promisify(execFile);
 const scripts = fileURLToPath(new URL('../scripts/', import.meta.url));
@@ -908,6 +909,40 @@ test('build.mjs status --feature with an unresolved FR-id reports a distinct err
         return true;
       },
     );
+  });
+});
+
+// Regression: the plan requires build's gate to reach awaiting_approval only when every
+// must-have feature is done AND the last :check passed clean, but gate used to check only
+// feature completion and never read state.compliance at all.
+test('build.mjs gate refuses to close the phase when compliance still has an unverified slot, even with every feature done', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await copyFile(requirementsFixture, path.join(dir, '.hackathon', 'requirements.json'));
+    const requirements = JSON.parse(await readFile(requirementsFixture, 'utf8'));
+    for (const feature of mustHaveFeatures(requirements)) {
+      const featDir = path.join(dir, '.hackathon', 'specs', feature.dir);
+      await mkdir(featDir, { recursive: true });
+      await writeFile(path.join(featDir, 'tasks.md'), '- [x] step one\n', 'utf8');
+    }
+    const state = await readState(dir);
+    state.compliance.required_tech_verified = { 'aws-bedrock': true, 'aurora-pgvector': false };
+    await writeState(dir, state);
+
+    await assert.rejects(
+      run('node', [path.join(scripts, 'build.mjs'), 'gate', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stdout, /Required technology not yet verified/);
+        assert.match(err.stdout, /aurora-pgvector/);
+        return true;
+      },
+    );
+
+    const after = await readState(dir);
+    assert.notEqual(after.phases.build.status, 'awaiting_approval',
+      'gate must not close the phase while compliance is outstanding');
   });
 });
 
