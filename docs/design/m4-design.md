@@ -381,9 +381,12 @@ mutation-proven treatment M3 established.
   is the sole claim on a criterion must never appear in the proposed list), remaining-time
   math, and the `cut_features` append — the highest-value TDD target in this milestone, since
   it is pure logic with real consequences and no agent involved at all
-- hook math (`UserPromptSubmit` threshold, `PostToolUse` elapsed-time calc) as pure functions
-  taking an injected `now` — never `Date.now()` directly, matching `iso-datetime.mjs`'s
-  existing testability convention
+- hook math (`UserPromptSubmit` threshold, `PostToolUse` elapsed-time calc) follows
+  `inject-state.mjs`'s actual precedent, not an invented one: plain `Date.now()`/
+  `Date.parse()`, no injected clock. Tests use fixed far-future/near/past deadlines and
+  assert on presence/absence of the warning and on structural bounds (line count, no
+  crash) — the same style `tests/hooks/inject-state.test.mjs` already uses — rather than
+  asserting an exact computed hour count
 - v3 → v4 migration — additive, idempotent, still refusing a version newer than it knows
 - non-destructive writes for every new file `:ship` produces — backup created,
   `--dry-run` writes nothing, marked-block rerun touches only the plugin's block
