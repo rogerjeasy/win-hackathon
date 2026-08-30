@@ -16,7 +16,7 @@ const isNonEmptyString = (v) => typeof v === 'string' && v.trim() !== '';
  * the cross-check below.
  */
 const NON_DEPLOYABLE_SEGMENTS = new Set(['db', 'database', 'datastore', 'queue', 'storage', 'cache']);
-function deployableSlots(stack) {
+export function deployableSlots(stack) {
   return (stack?.slots ?? []).filter((s) => {
     const segments = (s?.id ?? '').toLowerCase().split(/[-_]/);
     return !segments.some((seg) => NON_DEPLOYABLE_SEGMENTS.has(seg));
