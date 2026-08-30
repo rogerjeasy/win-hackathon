@@ -873,6 +873,22 @@ test('requirements.mjs apply --dry-run names what it would overwrite, and stays 
   });
 });
 
+// --- build.mjs -----------------------------------------------------------------------
+
+test('build.mjs status reports "nothing to build" against a project with no requirements.json', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await assert.rejects(
+      run('node', [path.join(scripts, 'build.mjs'), 'status', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /requirements\.json/);
+        return true;
+      },
+    );
+  });
+});
+
 test('spec.mjs apply --dry-run names the triad files it would regenerate, and stays silent when there are none', async () => {
   await withTmpDir(async (dir) => {
     await seedForSpec(dir);
