@@ -889,6 +889,28 @@ test('build.mjs status reports "nothing to build" against a project with no requ
   });
 });
 
+// Regression: nextFeature(..., { featureId }) returns null both when every must-have
+// feature is genuinely done AND when featureId doesn't resolve to any kept must-have
+// feature. status used to print the same "everything done" message either way, which
+// would send an agent past a typo'd or stale --feature flag straight to the gate.
+test('build.mjs status --feature with an unresolved FR-id reports a distinct error, not "everything done"', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await mkdir(path.join(dir, '.hackathon'), { recursive: true });
+    await copyFile(requirementsFixture, path.join(dir, '.hackathon', 'requirements.json'));
+    await assert.rejects(
+      run('node', [path.join(scripts, 'build.mjs'), 'status', dir, '--feature', 'FR-9.9']),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /FR-9\.9/);
+        assert.match(err.stderr, /does not resolve/);
+        assert.doesNotMatch(err.stdout ?? '', /Every must-have, non-cut feature is done/);
+        return true;
+      },
+    );
+  });
+});
+
 test('spec.mjs apply --dry-run names the triad files it would regenerate, and stays silent when there are none', async () => {
   await withTmpDir(async (dir) => {
     await seedForSpec(dir);

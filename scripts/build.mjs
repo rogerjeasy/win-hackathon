@@ -15,6 +15,18 @@ function usage() {
   process.exit(2);
 }
 
+// nextFeature(..., { featureId }) returns null both when every must-have feature is
+// genuinely done AND when featureId doesn't resolve to any kept must-have feature (a
+// typo, or an FR-id whose feature got cut) -- see build-apply.mjs. status must not
+// conflate those into the same "everything done" message, or a stale --feature flag
+// would send the calling agent straight past the loop to the closing gate.
+function featureIdResolves(requirements, cutFeatures, id) {
+  const owner = (requirements.features ?? []).find((f) =>
+    (f.requirements ?? []).some((r) => r.id === id));
+  if (!owner) return false;
+  return mustHaveFeatures(requirements, cutFeatures).some((f) => f.slug === owner.slug);
+}
+
 async function loadRequirements(root) {
   try {
     return JSON.parse(await readFile(requirementsPath(root), 'utf8'));
@@ -34,6 +46,12 @@ if (subcommand === 'status') {
   const cutFeatures = state?.project?.cut_features ?? [];
   const result = await nextFeature(root, requirements, cutFeatures, { featureId });
   if (result === null) {
+    if (featureId && !featureIdResolves(requirements, cutFeatures, featureId)) {
+      console.error(
+        `FR-id "${featureId}" does not resolve to a kept must-have feature -- check it isn't a typo or a cut feature.`,
+      );
+      process.exit(1);
+    }
     console.log('Every must-have, non-cut feature is done. Run build.mjs gate to close the phase.');
     process.exit(0);
   }
