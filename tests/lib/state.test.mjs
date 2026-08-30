@@ -4,7 +4,7 @@ import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from '../helpers/tmp.mjs';
 import { statePath } from '../../scripts/lib/paths.mjs';
-import { createDefaultState, CURRENT_SCHEMA_VERSION } from '../../scripts/lib/schema.mjs';
+import { createDefaultState, CURRENT_SCHEMA_VERSION, validateState } from '../../scripts/lib/schema.mjs';
 import { readState, writeState, updateState, migrateState } from '../../scripts/lib/state.mjs';
 import { readRawState, migrateStateFile, readMigratedState } from '../../scripts/lib/state.mjs';
 
@@ -132,7 +132,7 @@ test('migrateState upgrades a v1 state by adding deliverables', () => {
   const { state, migrated, from } = migrateState(v1State());
   assert.equal(migrated, true);
   assert.equal(from, 1);
-  assert.equal(state.schema_version, 3);
+  assert.equal(state.schema_version, 4);
   assert.deepEqual(state.deliverables, { submission_requirements: [], bonus_content: [] });
 });
 
@@ -178,7 +178,7 @@ test('migrateStateFile upgrades a v1 file on disk and reports it', async () => {
     assert.equal(result.from, 1);
 
     const after = await readState(dir);        // now passes validation
-    assert.equal(after.schema_version, 3);
+    assert.equal(after.schema_version, 4);
     assert.deepEqual(after.deliverables, { submission_requirements: [], bonus_content: [] });
   });
 });
@@ -235,7 +235,7 @@ test('readMigratedState throws when the migrated shape is still invalid', async 
   });
 });
 
-test('v2 state migrates to v3 additively', () => {
+test('v2 state migrates to v4 additively', () => {
   const v2 = {
     schema_version: 2,
     plugin_version: '0.1.0',
@@ -251,17 +251,23 @@ test('v2 state migrates to v3 additively', () => {
   const { state, migrated, from } = migrateState(v2);
   assert.equal(migrated, true);
   assert.equal(from, 2);
-  assert.equal(state.schema_version, 3);
-  assert.deepEqual(state.project, { name: 'Kintwadi', selected_idea: 'i1' },
-    'migration is additive — it must not invent stack or ref fields');
+  assert.equal(state.schema_version, 4);
+  assert.deepEqual(
+    state.project,
+    {
+      name: 'Kintwadi', selected_idea: 'i1',
+      cut_features: [], deploy: { primary_url: null, ref: null },
+    },
+    'migration is additive — it must not invent stack or ref fields, only the v4 defaults',
+  );
   assert.equal(state.deliverables.submission_requirements[0].status, 'done',
     'existing deliverable statuses survive migration');
 });
 
-test('v1 migrates all the way to v3 in one call', () => {
+test('v1 migrates all the way to v4 in one call', () => {
   const v1 = { schema_version: 1, phases: {}, project: null };
   const { state } = migrateState(v1);
-  assert.equal(state.schema_version, 3);
+  assert.equal(state.schema_version, 4);
   assert.ok(state.deliverables, 'the v1->v2 step still runs');
 });
 
@@ -274,4 +280,42 @@ test('migration is idempotent', () => {
 
 test('still refuses a version newer than it knows', () => {
   assert.throws(() => migrateState({ schema_version: 99 }), /newer than supported/);
+});
+
+test('migrateState 3 -> 4 adds started_at, cut_features, deploy, last_commit, and bumps compliance/budget defaults forward unchanged', () => {
+  // v1State() deliberately has no `deliverables` -- that field only exists from v2
+  // onward, added by the v1->v2 migration branch. A real v3 state always has it (there
+  // is no path to v3 that skips v2), so a v3 fixture built from v1State() must add it
+  // back explicitly or it describes a state schema_version 3 could never actually reach.
+  const v3 = {
+    ...v1State(),
+    schema_version: 3,
+    deliverables: { submission_requirements: [], bonus_content: [] },
+    hackathon: { name: 'AWS AI Hack', url: 'https://devpost.com/x' },
+    project: { name: 'Relay', selected_idea: 'idea-07' },
+  };
+  const { state, migrated, from } = migrateState(v3);
+  assert.equal(migrated, true);
+  assert.equal(from, 3);
+  assert.equal(state.schema_version, 4);
+  assert.equal(state.hackathon.started_at, null);
+  assert.deepEqual(state.project.cut_features, []);
+  assert.deepEqual(state.project.deploy, { primary_url: null, ref: null });
+  assert.equal(state.budget.last_commit, null);
+  assert.equal(validateState(state).valid, true);
+});
+
+test('migrateState 3 -> 4 is idempotent on a state that already has the v4 fields', () => {
+  const v4 = {
+    ...v1State(), schema_version: 4,
+    deliverables: { submission_requirements: [], bonus_content: [] },
+    hackathon: { name: 'x', started_at: '2026-08-30T09:00:00Z' },
+    project: { name: 'x', selected_idea: 'i-1', cut_features: ['FR-01'], deploy: { primary_url: null, ref: null } },
+  };
+  const { migrated } = migrateState(v4);
+  assert.equal(migrated, false);
+});
+
+test('migrateState still refuses a state newer than CURRENT_SCHEMA_VERSION', () => {
+  assert.throws(() => migrateState({ ...v1State(), schema_version: 99 }), /newer than supported/);
 });

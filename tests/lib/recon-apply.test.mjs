@@ -137,7 +137,7 @@ test('applyRecon migrates a v1 state on the way through', async () => {
 
     await applyRecon(dir, await golden(), { now: BEFORE_EVERYTHING });
     const state = await readState(dir);
-    assert.equal(state.schema_version, 3);
+    assert.equal(state.schema_version, 4);
     assert.equal(state.deliverables.submission_requirements.length, 6);
   });
 });
@@ -151,6 +151,11 @@ test('applyRecon is idempotent — re-running replaces rather than duplicating',
     assert.equal(state.deliverables.submission_requirements.length, 6);
     assert.equal(state.phases.recon.artifacts.length, 4);
   });
+});
+
+test('buildHackathonDigest stamps started_at from the injected clock', async () => {
+  const digest = buildHackathonDigest(await golden(), { now: BEFORE_EVERYTHING });
+  assert.equal(digest.started_at, BEFORE_EVERYTHING.toISOString());
 });
 
 test('applyRecon preserves a deliverable already marked done', async () => {

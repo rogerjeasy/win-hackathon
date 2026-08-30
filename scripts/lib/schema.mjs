@@ -1,7 +1,7 @@
 import { PHASES } from './paths.mjs';
 import { hasExplicitOffset } from './iso-datetime.mjs';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export const REPO_SHAPES = ['next-monolith', 'multi-service'];
 
@@ -25,7 +25,7 @@ export function createDefaultState({ pluginVersion }) {
     mode: 'solo',
     team: [],
     compliance: { last_checked: null, required_tech_verified: {} },
-    budget: { total_hours: null, spent_hours: 0, phase_budget: {} },
+    budget: { total_hours: null, spent_hours: 0, phase_budget: {}, last_commit: null },
     deliverables: { submission_requirements: [], bonus_content: [] },
   };
 }
@@ -106,6 +106,9 @@ export function validateState(state) {
     if (h.tiebreak !== undefined && !TIEBREAKS.includes(h.tiebreak)) {
       errors.push(`hackathon.tiebreak must be one of ${TIEBREAKS.join(', ')}, got "${h.tiebreak}"`);
     }
+    if (h.started_at !== undefined && h.started_at !== null && !hasExplicitOffset(h.started_at)) {
+      errors.push('hackathon.started_at must be ISO 8601 with an explicit UTC offset when present');
+    }
   }
 
   if (!['solo', 'team'].includes(state.mode)) {
@@ -113,8 +116,78 @@ export function validateState(state) {
   }
 
   validateProject(state.project, errors);
+  validateCompliance(state.compliance, errors);
+  validateBudget(state.budget, errors);
 
   return { valid: errors.length === 0, errors };
+}
+
+// Validated for the first time in v4 -- through v3 this was written but never checked,
+// the same gap `project` had until v3 (see the comment above validateProject). :check
+// both reads and overwrites this shape, so an unvalidated field here is exactly how a
+// silent status bug would ship.
+function validateCompliance(compliance, errors) {
+  if (compliance === null || compliance === undefined) return;
+  if (typeof compliance !== 'object' || Array.isArray(compliance)) {
+    errors.push('compliance must be an object');
+    return;
+  }
+  const verified = compliance.required_tech_verified;
+  if (verified !== undefined && verified !== null) {
+    if (typeof verified !== 'object' || Array.isArray(verified)) {
+      errors.push('compliance.required_tech_verified must be an object');
+    } else {
+      for (const [key, value] of Object.entries(verified)) {
+        if (key.trim() === '') errors.push('compliance.required_tech_verified has an empty key');
+        if (typeof value !== 'boolean') {
+          errors.push(`compliance.required_tech_verified["${key}"] must be a boolean`);
+        }
+      }
+    }
+  }
+  if (compliance.forbidden_tech_found !== undefined) {
+    const list = compliance.forbidden_tech_found;
+    const isArrayOfStrings = Array.isArray(list) && list.every((x) => typeof x === 'string');
+    if (!isArrayOfStrings) errors.push('compliance.forbidden_tech_found must be an array of strings');
+  }
+}
+
+function validateBudget(budget, errors) {
+  if (budget === null || budget === undefined) return;
+  if (typeof budget !== 'object' || Array.isArray(budget)) {
+    errors.push('budget must be an object');
+    return;
+  }
+  for (const key of ['total_hours', 'spent_hours']) {
+    const v = budget[key];
+    if (v !== undefined && v !== null && !(typeof v === 'number' && v >= 0)) {
+      errors.push(`budget.${key} must be a non-negative number or null`);
+    }
+  }
+  if (budget.phase_budget !== undefined && budget.phase_budget !== null) {
+    if (typeof budget.phase_budget !== 'object' || Array.isArray(budget.phase_budget)) {
+      errors.push('budget.phase_budget must be an object');
+    } else {
+      for (const [key, value] of Object.entries(budget.phase_budget)) {
+        if (!(typeof value === 'number' && value >= 0)) {
+          errors.push(`budget.phase_budget["${key}"] must be a non-negative number`);
+        }
+      }
+    }
+  }
+  if (budget.last_commit !== undefined && budget.last_commit !== null) {
+    const lc = budget.last_commit;
+    if (typeof lc !== 'object' || Array.isArray(lc)) {
+      errors.push('budget.last_commit must be an object');
+    } else {
+      if (typeof lc.sha !== 'string' || lc.sha.trim() === '') {
+        errors.push('budget.last_commit.sha must be a non-empty string');
+      }
+      if (!hasExplicitOffset(lc.at)) {
+        errors.push('budget.last_commit.at must be ISO 8601 with an explicit UTC offset');
+      }
+    }
+  }
 }
 
 // `project` was unvalidated through v2 — it was only ever defaulted to null. M4's
@@ -145,6 +218,26 @@ function validateProject(project, errors) {
   for (const key of ['architecture_ref', 'requirements_ref']) {
     if (project[key] !== undefined && !nonEmpty(project[key])) {
       errors.push(`project.${key} must be a non-empty string when present`);
+    }
+  }
+
+  if (project.cut_features !== undefined) {
+    const isArrayOfStrings = Array.isArray(project.cut_features)
+      && project.cut_features.every((x) => typeof x === 'string' && x.trim() !== '');
+    if (!isArrayOfStrings) errors.push('project.cut_features must be an array of non-empty strings');
+  }
+
+  if (project.deploy !== undefined && project.deploy !== null) {
+    const d = project.deploy;
+    if (typeof d !== 'object' || Array.isArray(d)) {
+      errors.push('project.deploy must be an object');
+    } else {
+      if (d.primary_url !== undefined && d.primary_url !== null && !nonEmpty(d.primary_url)) {
+        errors.push('project.deploy.primary_url must be a non-empty string or null');
+      }
+      if (d.ref !== undefined && d.ref !== null && !nonEmpty(d.ref)) {
+        errors.push('project.deploy.ref must be a non-empty string or null');
+      }
     }
   }
 }

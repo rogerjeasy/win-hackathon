@@ -29,7 +29,7 @@ test('init --apply creates state, then status reports phase one', async () => {
   await withTmpDir(async (dir) => {
     await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
     const raw = await readFile(path.join(dir, '.hackathon', 'state.json'), 'utf8');
-    assert.equal(JSON.parse(raw).schema_version, 3);
+    assert.equal(JSON.parse(raw).schema_version, 4);
 
     const { stdout } = await run('node', [path.join(scripts, 'status.mjs'), dir]);
     assert.match(stdout, /recon/);
@@ -153,7 +153,7 @@ test('recon.mjs apply writes the artifacts end to end', async () => {
     assert.match(stdout, /brief\.md/);
     assert.match(stdout, /criteria\.md/);
     const state = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
-    assert.equal(state.schema_version, 3);
+    assert.equal(state.schema_version, 4);
     assert.ok(state.hackathon.deadline.endsWith('-07:00'));
   });
 });
@@ -223,7 +223,7 @@ test('status.mjs migrates a v1 state file instead of crashing on it', async () =
     const { stdout } = await run('node', [path.join(scripts, 'status.mjs'), dir]);
     assert.match(stdout, /recon/);
     const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
-    assert.equal(after.schema_version, 3);
+    assert.equal(after.schema_version, 4);
     assert.deepEqual(after.deliverables, { submission_requirements: [], bonus_content: [] });
   });
 });
@@ -236,7 +236,7 @@ test('next.mjs migrates a v1 state file instead of crashing on it', async () => 
     assert.equal(r.outcome, 'start');
     assert.equal(r.phase, 'recon');
     const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
-    assert.equal(after.schema_version, 3);
+    assert.equal(after.schema_version, 4);
   });
 });
 
@@ -246,7 +246,7 @@ test('init.mjs --apply migrates an existing v1 state file and backs it up first'
     const { stdout } = await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
 
     const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
-    assert.equal(after.schema_version, 3, ':init is the command the design makes responsible for migrating');
+    assert.equal(after.schema_version, 4, ':init is the command the design makes responsible for migrating');
     assert.match(stdout, /backup:.*state\.json/,
       'the design requires :init to back up before it migrates');
   });
@@ -262,7 +262,7 @@ test('a migrated v1 state keeps the fields it already had', async () => {
     });
     await run('node', [path.join(scripts, 'status.mjs'), dir]);
     const after = JSON.parse(await readFile(path.join(dir, '.hackathon/state.json'), 'utf8'));
-    assert.equal(after.schema_version, 3);
+    assert.equal(after.schema_version, 4);
     assert.equal(after.phases.recon.status, 'approved');
     assert.equal(after.mode, 'team');
     assert.equal(after.budget.total_hours, 36);
