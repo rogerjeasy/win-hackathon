@@ -1,0 +1,27 @@
+{
+  "target_strategy": "vercel",
+  "services": [
+    {
+      "name": "frontend",
+      "kind": "frontend",
+      "target": "vercel",
+      "dockerfile": null,
+      "url": "https://h0-demo.vercel.app",
+      "verified": true,
+      "verified_at": "2026-08-30T20:00:00Z",
+      "verification_method": "curl -sf https://h0-demo.vercel.app (exit 0)"
+    },
+    {
+      "name": "deploy",
+      "kind": "backend",
+      "target": "vercel",
+      "dockerfile": null,
+      "url": "https://h0-demo.vercel.app/api/health",
+      "verified": true,
+      "verified_at": "2026-08-30T20:00:00Z",
+      "verification_method": "curl -sf https://h0-demo.vercel.app/api/health (exit 0)"
+    }
+  ],
+  "infra": { "terraform_modules": [], "state_backend": "local" },
+  "cicd": { "workflows": [".github/workflows/deploy-web.yml"], "auth": "wif" }
+}

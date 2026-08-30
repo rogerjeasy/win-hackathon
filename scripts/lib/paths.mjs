@@ -67,3 +67,9 @@ export function assetsPath(root, name) {
 export function featurePath(root, slug) {
   return path.join(root, FEATURES_DIR, `${slug}.feature`);
 }
+
+export const DEPLOY_FILE = 'deploy.json';
+
+export function deployPath(root) {
+  return path.join(root, HACKATHON_DIR, DEPLOY_FILE);
+}
