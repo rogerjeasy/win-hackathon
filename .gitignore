@@ -31,3 +31,6 @@ venv/
 # Test/coverage output
 coverage/
 .nyc_output/
+
+# Isolated worktrees for subagent-driven development
+.worktrees/
