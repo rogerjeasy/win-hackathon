@@ -1,5 +1,5 @@
 /**
- * Renders docs/requirements.md from a requirements payload, optionally an architecture payload.
+ * Renders .hackathon/requirements.md from a requirements payload, optionally an architecture payload.
  *
  * Follows Cassandra's shape: component inventory -> functional requirements by feature ->
  * non-functional -> acceptance criteria as a Definition of Done -> test matrix.

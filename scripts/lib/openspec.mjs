@@ -79,7 +79,7 @@ export async function runOpenspec(root, requirements, architecture, { exec = def
     if (init.code !== 0) {
       return {
         status: 'deferred', artifacts: [], command,
-        reason: `${OPENSPEC_PACKAGE} could not be reached (openspec init exited ${init.code}: ` +
+        reason: `${OPENSPEC_PACKAGE} could not be reached (its \`init\` subcommand exited ${init.code}: ` +
           `${(init.stderr || init.stdout).trim() || 'no output'}). The other three surfaces were written.`,
       };
     }
@@ -95,7 +95,7 @@ export async function runOpenspec(root, requirements, architecture, { exec = def
   if (validated.code !== 0) {
     return {
       status: 'deferred', artifacts, command,
-      reason: `openspec validate exited ${validated.code}: ` +
+      reason: `The \`validate\` subcommand of ${OPENSPEC_PACKAGE} exited ${validated.code}: ` +
         `${(validated.stderr || validated.stdout).trim() || 'no output'}. ` +
         'The proposals are on disk — inspect and fix them, then re-run the command above.',
     };

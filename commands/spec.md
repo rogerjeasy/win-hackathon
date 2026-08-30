@@ -16,7 +16,8 @@ so — spec'ing against requirements that might still change wastes the work.
 
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/spec.mjs apply . --dry-run`
 
-Then:
+If it reports it would overwrite an existing `requirements.md`, `design.md` or `tasks.md`
+under `.hackathon/specs/NNNN-<slug>/`, tell the user which files **before** applying. Then:
 
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/spec.mjs apply .`
 
@@ -29,6 +30,11 @@ the architecture M4's build agent reads for that feature; it does not read the f
 must-have, under `openspec/changes/<slug>/proposal.md` — but that proposal depends on the
 `@fission-ai/openspec` CLI being reachable, unlike the triad, which depends on nothing
 external.
+
+The triad is regenerated on every `:spec` apply — `tasks.md` included, which matters because
+M4's build agent ticks its boxes off. Every triad file that already exists is copied to
+`.hackathon/backups/<timestamp>/` before it is overwritten, so a previous run's checked-off
+`tasks.md` is recoverable from there.
 
 ## Step 4 — Handle a deferred OpenSpec explicitly
 
