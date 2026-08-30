@@ -73,6 +73,21 @@ if (subcommand === 'status') {
     console.log(`Not done: ${remaining.feature.id} (${remaining.feature.slug}) still has unchecked tasks.`);
     process.exit(1);
   }
+  const verified = state.compliance?.required_tech_verified ?? {};
+  const outstanding = Object.entries(verified).filter(([, used]) => !used).map(([id]) => id);
+  const forbiddenFound = state.compliance?.forbidden_tech_found ?? [];
+  if (outstanding.length > 0 || forbiddenFound.length > 0) {
+    if (outstanding.length > 0) {
+      console.log('Required technology not yet verified (a manifest entry is not evidence):');
+      for (const id of outstanding) console.log(`  [ ] ${id}`);
+    }
+    if (forbiddenFound.length > 0) {
+      console.log('Forbidden technology found:');
+      for (const id of forbiddenFound) console.log(`  ! ${id}`);
+    }
+    process.exit(1);
+  }
+
   const features = mustHaveFeatures(requirements, cutFeatures);
   const artifacts = features.map((f) => `${specsDir(root).replace(`${root}${path.sep}`, '')}/${f.dir}/tasks.md`);
   await writeState(root, {
