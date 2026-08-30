@@ -1,0 +1,7 @@
+{
+  "required_tech_verified": {
+    "aws-bedrock": { "used": true, "evidence": "src/lib/bedrock.ts:14" },
+    "aurora-pgvector": { "used": false, "evidence": null }
+  },
+  "forbidden_tech_found": []
+}
