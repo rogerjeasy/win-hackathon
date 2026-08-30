@@ -148,3 +148,22 @@ test('solution-architect is warned against padding the invariants', async () => 
   const dont = md.slice(md.indexOf('## Do not'));
   assert.match(dont, /invent invariants/i);
 });
+
+// --- compliance-checker.md ----------------------------------------------------------------
+
+// Only compliance-checker here -- deploy-engineer.md is Stage 2 (Task 9). A single
+// "the M4 agents exist" test checking both would fail throughout all of Stage 1, since
+// deploy-engineer.md does not exist yet; Task 9 adds the sibling assertion for it.
+test('the Stage 1 M4 agent exists', async () => {
+  const files = await agentFiles();
+  assert.ok(files.includes('compliance-checker.md'), 'missing agents/compliance-checker.md');
+});
+
+test('compliance-checker is Sonnet with read-only + Bash tools, matching the parent design\'s model table', async () => {
+  const content = await readAgent('compliance-checker.md');
+  const fm = content.slice(4, content.indexOf('\n---', 4));
+  assert.match(fm, /model:\s*sonnet/);
+  assert.match(fm, /tools:.*Read/);
+  assert.match(fm, /tools:.*Grep/);
+  assert.doesNotMatch(fm, /Write/, 'compliance-checker only reports -- it writes nothing');
+});
