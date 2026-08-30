@@ -962,3 +962,14 @@ test('spec.mjs apply --dry-run names the triad files it would regenerate, and st
     assert.match(present.stdout, /! \.hackathon\/specs\/0001-shared-care-record\/tasks\.md/);
   });
 });
+
+// --- ship.mjs ------------------------------------------------------------------------
+
+test('ship.mjs suggest prints one slotId -> target line per deployable stack slot', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await copyFile(stackFixture, path.join(dir, '.hackathon', 'stack.json'));
+    const { stdout } = await run('node', [path.join(scripts, 'ship.mjs'), 'suggest', dir]);
+    assert.match(stdout, /->/);
+  });
+});

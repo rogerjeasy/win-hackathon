@@ -167,3 +167,21 @@ test('compliance-checker is Sonnet with read-only + Bash tools, matching the par
   assert.match(fm, /tools:.*Grep/);
   assert.doesNotMatch(fm, /Write/, 'compliance-checker only reports -- it writes nothing');
 });
+
+// Completes the pair Task 5's "the Stage 1 M4 agent exists" test left half-open --
+// both M4 agents are now on disk, so this is the point that check is meaningful.
+test('both M4 agents exist', async () => {
+  const files = await agentFiles();
+  for (const f of ['compliance-checker.md', 'deploy-engineer.md']) {
+    assert.ok(files.includes(f), `missing agents/${f}`);
+  }
+});
+
+test('deploy-engineer is Opus with Read/Write/Edit/Bash, matching the parent design\'s model table', async () => {
+  const content = await readAgent('deploy-engineer.md');
+  const fm = content.slice(4, content.indexOf('\n---', 4));
+  assert.match(fm, /model:\s*opus/);
+  for (const tool of ['Read', 'Write', 'Edit', 'Bash']) {
+    assert.match(fm, new RegExp(`tools:.*${tool}`));
+  }
+});
