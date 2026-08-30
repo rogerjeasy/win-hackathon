@@ -388,3 +388,11 @@ test(':build command file names the tasks.md-is-the-plan contract and never re-r
   assert.doesNotMatch(content, /openspec\/changes/,
     'M4 deliberately does not read the OpenSpec proposals -- see m4-design.md §5');
 });
+
+// --- check.md ------------------------------------------------------------------------
+
+test(':check command file never claims a manifest dependency counts as evidence', async () => {
+  const content = await readCommand('check.md');
+  assert.match(content, /file:line/);
+  assert.match(content, /manifest|package\.json/i);
+});
