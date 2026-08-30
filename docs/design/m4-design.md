@@ -173,6 +173,15 @@ Additive only, same migration shape as v1→v2 and v2→v3:
 }
 ```
 
+**`compliance` and `budget` are validated for the first time in v4**, the same treatment
+v3 gave `project` (schema.mjs's own comment already flags this: *"M4's compliance-checker
+reads project.stack, and an unvalidated field a later phase depends on is how a silent
+status bug ships"*). `required_tech_verified` must be an object mapping non-empty string
+keys to booleans; the new `forbidden_tech_found` must be an array of strings;
+`budget.total_hours`/`spent_hours` must be non-negative numbers or `null`; `phase_budget`
+values must be non-negative numbers; `last_commit`, when present, needs a non-empty `sha`
+and an offset-qualified `at`.
+
 `phases.build` and `phases.ship` keep the plain `{status}` shape every other phase already
 has — no per-feature sub-object. `:build`'s resume logic reads `tasks.md` checkboxes across
 `.hackathon/specs/*/`, not a duplicate progress structure in `state.json`; two sources of
@@ -226,10 +235,16 @@ defaults to `null`.
 ### `:check`
 
 - Dispatches `compliance-checker`.
-- **Overwrites** (never appends) `state.json.compliance`: `required_tech_verified` — one
-  `{ used, evidence }` entry per required-tech slot, evidence is a `file:line` citation, a
-  dependency in a manifest is never accepted as evidence on its own — plus a new
-  `forbidden_tech_found: []`, and `last_checked`.
+- **Overwrites** (never appends) `state.json.compliance`: `required_tech_verified` stays
+  the flat `{ [requirement_ref]: boolean }` map `:stack`'s `buildComplianceSeed` already
+  seeds (verified via `docs/design/m3-design.md`'s shipped `stack-apply.mjs`, not the
+  parent design's illustrative `{used, evidence}` shape from before M3 concretized it —
+  this design corrects that drift rather than reshaping an already-shipped field). A
+  dependency in a manifest is never accepted as evidence for flipping an entry to `true` on
+  its own — a real call site is required — but the `file:line` citation itself is reported
+  **inline**, not persisted: `state.json` stays a digest, same principle already applied to
+  `project.stack`/`architecture_ref`. Also sets a new `forbidden_tech_found: []` and
+  `last_checked`.
 - Also checks `deliverables.submission_requirements` / `bonus_content` status against what's
   actually in the repo, so a cheap requirement (a hashtag, a disclosure line) doesn't get
   discovered missing only at `:submit`.
