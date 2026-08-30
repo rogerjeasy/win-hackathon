@@ -61,3 +61,23 @@ test('applyCompliance throws a readable error given an invalid report, without t
     assert.deepEqual(after, before);
   });
 });
+
+test('validateComplianceReport rejects used: true with evidence omitted (regression)', async () => {
+  const report = {
+    required_tech_verified: { x: { used: true } },
+    forbidden_tech_found: [],
+  };
+  const { valid, errors } = validateComplianceReport(report);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /marked used with no evidence/.test(e)));
+});
+
+test('validateComplianceReport rejects used: true with evidence as non-string (regression)', async () => {
+  const report = {
+    required_tech_verified: { x: { used: true, evidence: 42 } },
+    forbidden_tech_found: [],
+  };
+  const { valid, errors } = validateComplianceReport(report);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /evidence must be a string or null/.test(e)));
+});

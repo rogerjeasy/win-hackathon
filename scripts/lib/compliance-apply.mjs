@@ -24,7 +24,9 @@ export function validateComplianceReport(report) {
       if (entry.evidence !== null && typeof entry.evidence !== 'string') {
         errors.push(`required_tech_verified["${key}"].evidence must be a string or null`);
       }
-      if (entry.used === true && (entry.evidence === null || entry.evidence.trim() === '')) {
+      const evidenceIsBlank = entry.evidence === null || entry.evidence === undefined
+        || (typeof entry.evidence === 'string' && entry.evidence.trim() === '');
+      if (entry.used === true && evidenceIsBlank) {
         errors.push(`required_tech_verified["${key}"] is marked used with no evidence -- a dependency in a manifest is not evidence`);
       }
     }
