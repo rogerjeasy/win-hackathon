@@ -14,7 +14,6 @@ JSON report, printed as the last thing in your response inside a fenced code blo
 - `.hackathon/stack.json` -- every slot with `source: "required"` names a technology that
   must have a real call site.
 - `.hackathon/recon.json` -- `tech.forbidden` names anything that must be absent.
-- `.hackathon/state.json` -- `deliverables.submission_requirements` and `.bonus_content`.
 
 ## What counts as evidence
 
