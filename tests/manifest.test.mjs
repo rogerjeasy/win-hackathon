@@ -40,8 +40,11 @@ test('manifest and marketplace agree on the plugin name', async () => {
 const EXPECTED_COMMANDS = [
   'stack.md', 'architect.md', 'requirements.md', 'spec.md',
   'build.md', 'check.md', 'ship.md', 'pivot.md',
+  'review.md', 'log.md',
 ];
-const EXPECTED_AGENTS = ['solution-architect.md', 'compliance-checker.md', 'deploy-engineer.md'];
+const EXPECTED_AGENTS = [
+  'solution-architect.md', 'compliance-checker.md', 'deploy-engineer.md', 'quality-reviewer.md',
+];
 const EXPECTED_SKILLS = [
   'framework-drift-guard', 'security-invariants', 'monorepo-structure',
   'architecture-diagramming', 'frontend-architecture', 'backend-architecture',
