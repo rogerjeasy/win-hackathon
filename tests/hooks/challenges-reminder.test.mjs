@@ -40,7 +40,9 @@ test('names the specific failures the transcript shows when challenges.md was no
     assert.match(stdout, /challenges\.md/);
     assert.match(stdout, /ECONNREFUSED connecting to postgres on port 5432/);
     assert.match(stdout, /FAIL tests\/deploy\.test\.mjs > deploys the service/);
-    assert.match(stdout, /win-hackathon:log/);
+    assert.match(stdout, /challenges\.md directly/);
+    assert.doesNotMatch(stdout, /win-hackathon:log/,
+      '/win-hackathon:log does not exist yet -- M5 adds it, this is M4');
   });
 });
 

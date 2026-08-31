@@ -93,7 +93,7 @@ try {
 
   const lines = ['win-hackathon: this session hit real failures and .hackathon/challenges.md was not updated:'];
   for (const f of failures) lines.push(`  - ${f}`);
-  lines.push('Run /win-hackathon:log "<what happened>" or edit challenges.md directly.');
+  lines.push('Edit .hackathon/challenges.md directly to record what happened.');
   const output = lines.join('\n');
   console.log(output.length > MAX_OUTPUT_CHARS ? `${output.slice(0, MAX_OUTPUT_CHARS)}${ELLIPSIS}` : output);
 } catch {
