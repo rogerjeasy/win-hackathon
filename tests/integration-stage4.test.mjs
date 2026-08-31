@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { checkTools } from '../scripts/lib/preflight.mjs';
@@ -45,18 +46,26 @@ test('M4 milestone: Docker Compose end-to-end -- selectTargets, applyShip, and a
     }
     assert.equal(verified, true, 'the compose service never became reachable');
 
+    // h0-stack.json (scaffolded above) has two deployable slots -- "frontend" and "deploy"
+    // (its "database" slot is the only one deployableSlots() excludes, per
+    // deploy-schema.test.mjs's "only the database slot is excluded" case). Its
+    // shape_rationale is next-monolith: server actions cover every write, so one running
+    // instance legitimately covers both slots -- both service entries point at the single
+    // compose container's curl-verified URL, not two separate deploys.
+    const service = (name, kind) => ({
+      name, kind, target: 'docker-compose', dockerfile: null,
+      url, verified: true, verified_at: new Date().toISOString(),
+      verification_method: `curl -sf ${url} (exit 0)`,
+    });
     const deploy = {
       target_strategy: 'docker-compose',
-      services: [{
-        name: 'web', kind: 'frontend', target: 'docker-compose', dockerfile: null,
-        url, verified: true, verified_at: new Date().toISOString(),
-        verification_method: `curl -sf ${url} (exit 0)`,
-      }],
+      services: [service('frontend', 'frontend'), service('deploy', 'backend')],
       infra: { terraform_modules: [], state_backend: 'local' },
       cicd: { workflows: [], auth: 'static-secret' },
     };
-    const { valid } = validateDeploy(deploy, null);
-    assert.equal(valid, true);
+    const stack = JSON.parse(await readFile(new URL('./fixtures/h0-stack.json', import.meta.url), 'utf8'));
+    const { valid, errors } = validateDeploy(deploy, stack);
+    assert.equal(valid, true, errors.join('\n'));
     const { artifacts } = await applyShip(root, deploy, {});
     assert.deepEqual(artifacts, ['.hackathon/deploy.json']);
     const next = await readState(root);
