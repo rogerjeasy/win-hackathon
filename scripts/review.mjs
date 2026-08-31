@@ -3,7 +3,8 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { validateReview } from './lib/review-schema.mjs';
 import { mergeFindings, applyReview } from './lib/review-apply.mjs';
-import { HACKATHON_DIR, REVIEW_FILE, reviewPath } from './lib/paths.mjs';
+import { HACKATHON_DIR, REVIEW_FILE, reviewPath, timestamp } from './lib/paths.mjs';
+import { openBackupSet } from './lib/backup.mjs';
 
 const [subcommand, target, ...rest] = process.argv.slice(2);
 const flags = new Set(rest.filter((a) => a.startsWith('--')));
@@ -39,9 +40,13 @@ if (subcommand === 'merge') {
     process.exit(1);
   }
   const dest = reviewPath(root);
+  const relDest = `${HACKATHON_DIR}/${REVIEW_FILE}`;
   await mkdir(path.dirname(dest), { recursive: true });
+  const set = openBackupSet(root, timestamp());
+  const backedUp = await set.backup(relDest);
   await writeFile(dest, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
-  console.log(`Wrote ${HACKATHON_DIR}/${REVIEW_FILE} -- ${merged.findings.length} finding(s).`);
+  console.log(`Wrote ${relDest} -- ${merged.findings.length} finding(s).`);
+  if (backedUp !== null) console.log(`Backed up the previous ${relDest} before overwriting.`);
 } else if (subcommand === 'validate') {
   if (!target) usage();
   const review = await readJson(path.resolve(target));
