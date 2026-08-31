@@ -990,3 +990,25 @@ test('pivot.mjs propose reports "nothing to cut" against a project with everythi
     assert.match(stdout, /Proposed cuts|Nothing to cut/);
   });
 });
+
+// Regression: the early-exit on "nothing proposable" used to fire before the
+// never-propose list was computed or printed, so a user in the all-protected case (real
+// not-done features exist, but every one of them solely claims a judging criterion) saw
+// only the generic "nothing to cut" line and never learned which features were
+// protected or why. h0-requirements.json's two must-have features each solely claim
+// disjoint criteria (F1 -> technical-implementation/impact, F2 -> design/originality),
+// so with no specs/ written this is exactly that all-protected case: nothing proposable,
+// but two real protected features exist and must be named in stdout.
+test('pivot.mjs propose names protected features even when nothing is proposable', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await copyFile(requirementsFixture, path.join(dir, '.hackathon', 'requirements.json'));
+    const state = await readState(dir);
+    await writeState(dir, { ...state, project: { name: 'x', selected_idea: 'i-1' } });
+    const { stdout } = await run('node', [path.join(scripts, 'pivot.mjs'), 'propose', dir]);
+    assert.match(stdout, /Never proposed/,
+      'the protected-feature section must still print when nothing is proposable');
+    assert.match(stdout, /FR-1\.1/, 'F1 (sole claim on technical-implementation/impact) must be named');
+    assert.match(stdout, /FR-2\.1/, 'F2 (sole claim on design/originality) must be named');
+  });
+});
