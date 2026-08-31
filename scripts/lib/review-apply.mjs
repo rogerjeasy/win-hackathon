@@ -15,6 +15,21 @@ import { renderReview } from './render-review.mjs';
 const REVIEW_FILE_REL = `${HACKATHON_DIR}/${REVIEW_FILE}`;
 const REVIEW_MD_REL = `${HACKATHON_DIR}/review.md`;
 
+/**
+ * Accepts either a bare findings array or the `{ findings: [...] }` shape
+ * quality-reviewer.md documents as its own report -- an orchestrating LLM can plausibly
+ * hand mergeFindings() the whole report object instead of extracting the array first.
+ * Anything else is a clear, named error, not a raw "findings.map is not a function".
+ */
+function toFindingsArray(value, label) {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object' && Array.isArray(value.findings)) return value.findings;
+  throw new Error(
+    `mergeFindings: ${label} must be an array of findings or an object shaped { findings: [...] } -- got ${typeof value}`,
+  );
+}
+
 export function mergeFindings(codeReviewFindings, qualityReviewerFindings) {
   let n = 0;
   const withIds = (findings, source) => findings.map((f) => {
@@ -24,8 +39,8 @@ export function mergeFindings(codeReviewFindings, qualityReviewerFindings) {
   return {
     schema_version: 1,
     findings: [
-      ...withIds(codeReviewFindings ?? [], 'code-review'),
-      ...withIds(qualityReviewerFindings ?? [], 'quality-reviewer'),
+      ...withIds(toFindingsArray(codeReviewFindings, 'codeReviewFindings'), 'code-review'),
+      ...withIds(toFindingsArray(qualityReviewerFindings, 'qualityReviewerFindings'), 'quality-reviewer'),
     ],
   };
 }
@@ -42,9 +57,6 @@ export async function applyReview(root, review, { dryRun = false, stamp: stampOv
     state = await readState(root);
   }
   if (state === null) throw new Error(`no state at ${statePath(root)} -- run /win-hackathon:init first`);
-  if (state.phases?.ship?.status !== 'approved') {
-    throw new Error('cannot review before :ship is approved -- run /win-hackathon:ship first');
-  }
 
   const files = new Map([
     [REVIEW_FILE_REL, `${JSON.stringify(review, null, 2)}\n`],

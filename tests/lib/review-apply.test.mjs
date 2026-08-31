@@ -40,15 +40,41 @@ test('mergeFindings is deterministic across repeated calls with the same inputs'
   assert.deepEqual(mergeFindings(a, b), mergeFindings(a, b));
 });
 
-test('applyReview refuses when :ship is not approved', async () => {
+test('mergeFindings accepts { findings: [...] } -- quality-reviewer.md\'s own documented report shape', () => {
+  const codeReview = [
+    { severity: 'should-fix', title: 'A', summary: '…', file: null, line: null, judge_visible: false },
+  ];
+  const qualityReviewerReport = {
+    findings: [
+      { severity: 'blocking', title: 'B', summary: '…', file: 'x.ts', line: 1, judge_visible: true },
+    ],
+  };
+  const merged = mergeFindings(codeReview, qualityReviewerReport);
+  assert.deepEqual(merged.findings.map((f) => f.id), ['REV-1', 'REV-2']);
+  assert.deepEqual(merged.findings.map((f) => f.source), ['code-review', 'quality-reviewer']);
+  assert.equal(merged.findings[1].title, 'B');
+});
+
+test('mergeFindings throws a clear, named error when an argument is neither an array nor { findings: [...] }', () => {
+  const codeReview = [
+    { severity: 'should-fix', title: 'A', summary: '…', file: null, line: null, judge_visible: false },
+  ];
+  assert.throws(
+    () => mergeFindings(codeReview, 'not-a-findings-payload'),
+    /mergeFindings: qualityReviewerFindings must be an array of findings or an object shaped \{ findings: \[\.\.\.\] \}/,
+  );
+});
+
+test('applyReview does not gate on :ship status -- no apply-level precondition, matching applyShip not gating on :build', async () => {
   await withTmpDir(async (root) => {
     const s = createDefaultState({ pluginVersion: '0.1.0' });
-    await writeState(root, s);
+    s.project = { name: 'Kintwadi', selected_idea: 'i1' };
+    await writeState(root, s); // phases.ship stays 'not_started'
     const review = await fixture('h0-review-clean.json');
-    await assert.rejects(
-      () => applyReview(root, review),
-      /cannot review before :ship is approved/,
-    );
+    const result = await applyReview(root, review);
+    assert.equal(result.clean, true);
+    const state = await readState(root);
+    assert.equal(state.phases.review.status, 'awaiting_approval');
   });
 });
 
