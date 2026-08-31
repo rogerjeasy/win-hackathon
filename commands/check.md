@@ -1,5 +1,5 @@
 ---
-description: Audit required sponsor technology usage, forbidden technology, and submission requirements -- with file:line evidence, not a manifest guess
+description: Audit required sponsor technology usage and forbidden technology -- with file:line evidence, not a manifest guess
 allowed-tools: Bash, Read, Task
 ---
 

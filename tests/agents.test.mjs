@@ -165,6 +165,8 @@ test('compliance-checker is Sonnet with read-only + Bash tools, matching the par
   assert.match(fm, /model:\s*sonnet/);
   assert.match(fm, /tools:.*Read/);
   assert.match(fm, /tools:.*Grep/);
+  assert.match(fm, /tools:.*Bash/);
+  assert.match(fm, /tools:.*Glob/);
   assert.doesNotMatch(fm, /Write/, 'compliance-checker only reports -- it writes nothing');
 });
 
