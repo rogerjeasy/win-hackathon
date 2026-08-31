@@ -73,3 +73,9 @@ export const DEPLOY_FILE = 'deploy.json';
 export function deployPath(root) {
   return path.join(root, HACKATHON_DIR, DEPLOY_FILE);
 }
+
+export const REVIEW_FILE = 'review.json';
+
+export function reviewPath(root) {
+  return path.join(root, HACKATHON_DIR, REVIEW_FILE);
+}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {
   stackPath, architecturePath, requirementsPath, specsDir,
-  docsPath, assetsPath, featurePath, HACKATHON_DIR, deployPath,
+  docsPath, assetsPath, featurePath, HACKATHON_DIR, deployPath, reviewPath,
 } from '../../scripts/lib/paths.mjs';
 
 const ROOT = '/tmp/proj';
@@ -30,4 +30,8 @@ test('feature files are named from the slug, at the repo root', () => {
 
 test('deployPath is .hackathon/deploy.json', () => {
   assert.equal(deployPath('/proj'), path.join('/proj', '.hackathon', 'deploy.json'));
+});
+
+test('reviewPath joins the hackathon dir and REVIEW_FILE', () => {
+  assert.equal(reviewPath('/proj'), path.join('/proj', '.hackathon', 'review.json'));
 });
