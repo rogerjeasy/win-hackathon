@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "findings": [
+    {
+      "id": "REV-1",
+      "source": "code-review",
+      "severity": "should-fix",
+      "title": "Duplicate date-formatting helper",
+      "summary": "src/lib/date.ts and src/lib/format.ts both implement the same relative-time logic.",
+      "file": "src/lib/format.ts",
+      "line": 22,
+      "judge_visible": false
+    }
+  ]
+}

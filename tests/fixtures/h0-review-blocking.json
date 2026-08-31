@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "findings": [
+    {
+      "id": "REV-1",
+      "source": "quality-reviewer",
+      "severity": "blocking",
+      "title": "New export route bypasses withAuthedDb()",
+      "summary": "src/app/(app)/circles/[id]/export/route.ts queries the tenant table with the raw db client, not withAuthedDb() -- RLS never scopes this read.",
+      "file": "src/app/(app)/circles/[id]/export/route.ts",
+      "line": 18,
+      "judge_visible": true
+    },
+    {
+      "id": "REV-2",
+      "source": "code-review",
+      "severity": "post-hackathon",
+      "title": "Unused import in seed script",
+      "summary": "scripts/seed.ts imports faker but never calls it.",
+      "file": "scripts/seed.ts",
+      "line": 3,
+      "judge_visible": false
+    }
+  ]
+}
