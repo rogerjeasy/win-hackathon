@@ -35,7 +35,11 @@ function parseJsonObject(raw) {
 
 try {
   const input = parseJsonObject(await readStdin());
-  const command = input.tool_input?.command ?? input.toolInput?.command ?? '';
+  // snake_case only -- the hook-development plugin skill is the one authoritative
+  // reference this task found for PostToolUse's input schema, and it documents
+  // tool_input exclusively. No camelCase variant appears anywhere in it, so none is
+  // assumed here either.
+  const command = input.tool_input?.command ?? '';
   if (!/\bgit\s+commit\b/.test(command)) process.exit(0);
 
   await migrateStateFile(root);
