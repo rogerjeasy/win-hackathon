@@ -408,7 +408,14 @@ test('the M4 ship skills exist', async () => {
 test('deploy-targets names every target from the parent design and states the sponsor-wins rule', async () => {
   const content = await readSkill('deploy-targets');
   for (const target of ['Vercel', 'Cloud Run', 'Railway', 'Render', 'AWS', 'Docker Compose']) {
-    assert.match(content, new RegExp(target));
+    // \b at the start and end of the whole phrase, not mid-phrase -- "Cloud Run" and
+    // "Docker Compose" are two words with an ordinary space between them, which is
+    // already a word boundary; anchoring only the phrase's outer edges is correct and
+    // anchoring internally (e.g. between "Cloud" and "Run") would be redundant, not wrong,
+    // but the point is the phrase must not be found merely as a substring of a longer word
+    // -- e.g. bare /Render/ also matching inside "Rendered".
+    assert.match(content, new RegExp(`\\b${target}\\b`),
+      `"${target}" must appear as its own word/phrase, not merely as a substring of a longer word`);
   }
   assert.match(content, /sponsor/i);
 });
