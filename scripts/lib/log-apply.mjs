@@ -22,7 +22,7 @@ export async function appendChallenge(root, text, { now = new Date() } = {}) {
     exists = false;
   }
 
-  const entry = `\n## ${now.toISOString()}\n\n${trimmed}\n`;
+  const entry = `\n## ${now.toISOString()} — ${trimmed}\n`;
   await appendFile(target, exists ? entry : `${HEADER}${entry}`, 'utf8');
   return CHALLENGES_REL;
 }
