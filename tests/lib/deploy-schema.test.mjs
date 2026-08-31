@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateDeploy, DEPLOY_SCHEMA_VERSION, AUTH_KINDS } from '../../scripts/lib/deploy-schema.mjs';
+import { validateDeploy, AUTH_KINDS } from '../../scripts/lib/deploy-schema.mjs';
 
 async function fixture(name) {
   return JSON.parse(await readFile(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'));
@@ -70,12 +70,39 @@ test('a slot id that is exactly (or has a segment exactly equal to) a non-deploy
   };
   const deploy = {
     target_strategy: 'vercel',
-    services: [{ name: 'frontend', kind: 'frontend', target: 'vercel', verified: false }],
+    services: [{
+      name: 'frontend', kind: 'frontend', target: 'vercel', url: 'https://f.example.com',
+      verified: true, verified_at: '2026-08-30T20:00:00Z', verification_method: 'curl -sf (exit 0)',
+    }],
     cicd: { auth: 'wif' },
   };
   const { valid, errors } = validateDeploy(deploy, fakeStack);
   assert.deepEqual(errors, []);
   assert.equal(valid, true);
+});
+
+test('a service missing url is an error', async () => {
+  const d = await golden();
+  delete d.services[0].url;
+  const { valid, errors } = validateDeploy(d, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /services\[0\]\.url must be a non-empty string/.test(e)));
+});
+
+test('a service with verified: false is an error -- an unverified deploy is not shipped', async () => {
+  const d = await golden();
+  d.services[0].verified = false;
+  const { valid, errors } = validateDeploy(d, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /services\[0\] is not verified/.test(e)));
+});
+
+test('a service missing verified entirely is an error, same as verified: false', async () => {
+  const d = await golden();
+  delete d.services[0].verified;
+  const { valid, errors } = validateDeploy(d, await stack());
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /services\[0\] is not verified/.test(e)));
 });
 
 test('h0-stack.json: only the database slot is excluded -- deploy and frontend still require a matching service', async () => {

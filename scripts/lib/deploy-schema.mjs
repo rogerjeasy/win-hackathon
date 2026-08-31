@@ -1,4 +1,3 @@
-export const DEPLOY_SCHEMA_VERSION = 1;
 export const TARGET_STRATEGIES = ['vercel', 'cloud-run', 'railway', 'render', 'aws', 'docker-compose'];
 export const AUTH_KINDS = ['wif', 'oidc', 'static-secret'];
 const SERVICE_KINDS = ['frontend', 'backend', 'agent', 'worker'];
@@ -42,7 +41,10 @@ export function validateDeploy(doc, stack) {
       if (!isNonEmptyString(s?.name)) errors.push(`${at}.name must be a non-empty string`);
       if (!SERVICE_KINDS.includes(s?.kind)) errors.push(`${at}.kind must be one of ${SERVICE_KINDS.join(', ')}`);
       if (!isNonEmptyString(s?.target)) errors.push(`${at}.target must be a non-empty string`);
-      if (s?.verified === true) {
+      if (!isNonEmptyString(s?.url)) errors.push(`${at}.url must be a non-empty string`);
+      if (s?.verified !== true) {
+        errors.push(`${at} is not verified -- a deploy that has not been fetched successfully is not shipped`);
+      } else {
         if (!isNonEmptyString(s?.verified_at)) errors.push(`${at}.verified_at is required when verified is true`);
         if (!isNonEmptyString(s?.verification_method)) errors.push(`${at}.verification_method is required when verified is true`);
       }
