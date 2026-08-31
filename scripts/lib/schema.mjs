@@ -1,7 +1,7 @@
 import { PHASES } from './paths.mjs';
 import { hasExplicitOffset } from './iso-datetime.mjs';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export const REPO_SHAPES = ['next-monolith', 'multi-service'];
 
@@ -237,6 +237,34 @@ function validateProject(project, errors) {
       }
       if (d.ref !== undefined && d.ref !== null && !nonEmpty(d.ref)) {
         errors.push('project.deploy.ref must be a non-empty string or null');
+      }
+    }
+  }
+
+  if (project.review !== undefined && project.review !== null) {
+    const r = project.review;
+    if (typeof r !== 'object' || Array.isArray(r)) {
+      errors.push('project.review must be an object');
+    } else {
+      if (r.clean !== undefined && r.clean !== null && typeof r.clean !== 'boolean') {
+        errors.push('project.review.clean must be a boolean or null');
+      }
+      if (r.ref !== undefined && r.ref !== null && !nonEmpty(r.ref)) {
+        errors.push('project.review.ref must be a non-empty string or null');
+      }
+    }
+  }
+
+  if (project.submission !== undefined && project.submission !== null) {
+    const s = project.submission;
+    if (typeof s !== 'object' || Array.isArray(s)) {
+      errors.push('project.submission must be an object');
+    } else {
+      if (s.requirements_complete !== undefined && typeof s.requirements_complete !== 'boolean') {
+        errors.push('project.submission.requirements_complete must be a boolean');
+      }
+      if (s.ref !== undefined && s.ref !== null && !nonEmpty(s.ref)) {
+        errors.push('project.submission.ref must be a non-empty string or null');
       }
     }
   }
