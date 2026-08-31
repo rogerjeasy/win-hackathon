@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { checkTools } from '../scripts/lib/preflight.mjs';
 import { selectTargets, applyShip } from '../scripts/lib/ship-apply.mjs';
 import { validateDeploy } from '../scripts/lib/deploy-schema.mjs';
@@ -10,6 +11,10 @@ import { withTmpDir } from './helpers/tmp.mjs';
 import { scaffoldStage2Project } from './helpers/scaffold.mjs'; // from Task 6
 
 const run = promisify(execFile);
+
+// Resolved from this file's own location, not `cwd: root` -- `root` is the bare
+// scratch dir withTmpDir hands us, which never contains the repo's tests/ tree.
+const composeFile = fileURLToPath(new URL('./fixtures/h0-compose.yml', import.meta.url));
 
 test('M4 milestone: Docker Compose end-to-end -- selectTargets, applyShip, and a real curl-verified local URL', async (t) => {
   const tools = await checkTools();
@@ -25,8 +30,8 @@ test('M4 milestone: Docker Compose end-to-end -- selectTargets, applyShip, and a
 
     // A minimal one-service Compose fixture -- a static file server on a fixed port is
     // enough to prove the mechanics without needing a real application build.
-    await run('docker', ['compose', '-f', 'tests/fixtures/h0-compose.yml', 'up', '-d'], { cwd: root });
-    t.after(() => run('docker', ['compose', '-f', 'tests/fixtures/h0-compose.yml', 'down'], { cwd: root }).catch(() => {}));
+    await run('docker', ['compose', '-f', composeFile, 'up', '-d'], { cwd: root });
+    t.after(() => run('docker', ['compose', '-f', composeFile, 'down'], { cwd: root }).catch(() => {}));
 
     const url = 'http://localhost:8089/';
     let verified = false;
