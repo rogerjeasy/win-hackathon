@@ -3,7 +3,7 @@
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
-![node:test](https://img.shields.io/badge/node%3Atest-806%20passing-3C873A)
+![node:test](https://img.shields.io/badge/node%3Atest-811%20passing-3C873A)
 ![dependencies](https://img.shields.io/badge/dependencies-0-4C1)
 ![build step](https://img.shields.io/badge/build%20step-none-4C1)
 ![CI](https://img.shields.io/badge/CI-Node%2020%20%7C%2022%20%7C%2024-2088FF?logo=githubactions&logoColor=white)
@@ -25,7 +25,7 @@ one feature's `tasks.md` at a time), sponsor-tech compliance is checked after ea
 never just claimed. On top of M1's spine, M2's front half, and M3's design half, this adds
 the `/win-hackathon:build`, `:check`, `:ship`, and `:pivot` commands, state schema v4, two
 agents (`compliance-checker`, `deploy-engineer`), and four skills (`deploy-targets`,
-`containerization`, `cicd-github-actions`, `iac-terraform`). `npm test` (`node --test`) runs the suite: **806
+`containerization`, `cicd-github-actions`, `iac-terraform`). `npm test` (`node --test`) runs the suite: **812
 tests, 0 failures, 1 cleanly skipped** (the Docker Compose milestone check, which needs
 Docker and this machine has none), green on Node 20, 22, and 24.
 
