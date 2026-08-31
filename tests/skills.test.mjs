@@ -397,3 +397,38 @@ test('openspec-workflow explains why a deferred phase is not a failed phase', as
   const deferred = md.slice(md.indexOf('## The deferred path'));
   assert.match(deferred, /optional|must not fail|own outputs/i);
 });
+
+test('the M4 ship skills exist', async () => {
+  const names = await skillNames();
+  for (const n of ['deploy-targets', 'containerization', 'cicd-github-actions', 'iac-terraform']) {
+    assert.ok(names.includes(n), `missing skills/${n}`);
+  }
+});
+
+test('deploy-targets names every target from the parent design and states the sponsor-wins rule', async () => {
+  const content = await readSkill('deploy-targets');
+  for (const target of ['Vercel', 'Cloud Run', 'Railway', 'Render', 'AWS', 'Docker Compose']) {
+    assert.match(content, new RegExp(target));
+  }
+  assert.match(content, /sponsor/i);
+});
+
+test('deploy-targets makes no unattributed specific claim about kintwadi or karma', async () => {
+  // deploy-targets' evidence claim is deliberately kept general ("both reference
+  // repositories chose differently") rather than naming either repo, precisely so this
+  // skill needs no cross-check against skills/winning-ideation/references/winner-corpus.md
+  // the way a skill making a named claim would. If a future edit adds a named claim about
+  // either repo, it must cite the corpus file the same way M3's skills do -- this test is
+  // what catches an edit that adds one without adding that citation.
+  const content = await readSkill('deploy-targets');
+  assert.doesNotMatch(content, /kintwadi/i);
+  assert.doesNotMatch(content, /karma/i);
+});
+
+test('containerization, cicd-github-actions and iac-terraform have frontmatter and non-trivial content', async () => {
+  for (const n of ['containerization', 'cicd-github-actions', 'iac-terraform']) {
+    const content = await readSkill(n);
+    assert.ok(content.startsWith('---\n'));
+    assert.ok(content.length > 500, `${n}/SKILL.md looks too thin to be useful`);
+  }
+});
