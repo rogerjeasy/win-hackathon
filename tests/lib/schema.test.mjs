@@ -97,8 +97,8 @@ test('validateState accepts a phase with a proper artifacts array', () => {
 
 import { DELIVERABLE_STATUSES } from '../../scripts/lib/schema.mjs';
 
-test('the current schema version is 4', () => {
-  assert.equal(CURRENT_SCHEMA_VERSION, 4);
+test('the current schema version is 5', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 5);
 });
 
 test('a default state carries an empty deliverables block', () => {
@@ -221,8 +221,8 @@ test('validateState accepts a fully populated hackathon digest', () => {
   assert.equal(validateState(s).valid, true);
 });
 
-test('schema version is 4', () => {
-  assert.equal(CURRENT_SCHEMA_VERSION, 4);
+test('schema version is 5', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 5);
 });
 
 test('compliance.required_tech_verified must be a boolean map', () => {
@@ -282,6 +282,49 @@ test('a fully v4-shaped state validates clean', () => {
   };
   state.compliance = { last_checked: '2026-08-30T09:00:00Z', required_tech_verified: { 'aws-bedrock': true }, forbidden_tech_found: [] };
   state.budget = { total_hours: 48, spent_hours: 12.5, phase_budget: { build: 20 }, last_commit: { sha: 'abc1234', at: '2026-08-30T20:00:00Z' } };
+  const { valid, errors } = validateState(state);
+  assert.deepEqual(errors, []);
+  assert.equal(valid, true);
+});
+
+test('schema version is 5', () => {
+  assert.equal(CURRENT_SCHEMA_VERSION, 5);
+});
+
+test('project.review.clean must be a boolean or null; .ref a non-empty string or null', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = { name: 'x', selected_idea: 'i-1', review: { clean: 'yes', ref: null } };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /project\.review\.clean must be a boolean or null/.test(e)));
+});
+
+test('project.review.ref rejects an empty string', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = { name: 'x', selected_idea: 'i-1', review: { clean: true, ref: '' } };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /project\.review\.ref must be a non-empty string or null/.test(e)));
+});
+
+test('project.submission.requirements_complete must be a boolean; .ref a non-empty string or null', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = {
+    name: 'x', selected_idea: 'i-1',
+    submission: { requirements_complete: 'nope', ref: null },
+  };
+  const { valid, errors } = validateState(state);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /project\.submission\.requirements_complete must be a boolean/.test(e)));
+});
+
+test('a fully v5-shaped state validates clean', () => {
+  const state = createDefaultState({ pluginVersion: '0.1.0' });
+  state.project = {
+    name: 'x', selected_idea: 'i-1',
+    review: { clean: true, ref: '.hackathon/review.json' },
+    submission: { requirements_complete: false, ref: '.hackathon/submission.json' },
+  };
   const { valid, errors } = validateState(state);
   assert.deepEqual(errors, []);
   assert.equal(valid, true);

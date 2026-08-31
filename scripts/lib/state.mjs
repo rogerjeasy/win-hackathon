@@ -141,6 +141,24 @@ export function migrateState(state) {
     migrated = true;
   }
 
+  // v4 -> v5: adds project.review and project.submission. Additive only -- every v4
+  // state that was legal stays legal; these two fields are simply absent until :review
+  // or :submit runs once.
+  if (next.schema_version === 4) {
+    next = {
+      ...next,
+      schema_version: 5,
+      project: next.project === null || next.project === undefined
+        ? next.project
+        : {
+          ...next.project,
+          review: next.project.review ?? { clean: null, ref: null },
+          submission: next.project.submission ?? { requirements_complete: false, ref: null },
+        },
+    };
+    migrated = true;
+  }
+
   return { state: next, migrated, from };
 }
 

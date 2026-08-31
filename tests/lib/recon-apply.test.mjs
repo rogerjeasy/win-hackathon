@@ -137,7 +137,7 @@ test('applyRecon migrates a v1 state on the way through', async () => {
 
     await applyRecon(dir, await golden(), { now: BEFORE_EVERYTHING });
     const state = await readState(dir);
-    assert.equal(state.schema_version, 4);
+    assert.equal(state.schema_version, 5);
     assert.equal(state.deliverables.submission_requirements.length, 6);
   });
 });
