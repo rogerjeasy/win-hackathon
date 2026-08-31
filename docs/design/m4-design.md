@@ -388,6 +388,20 @@ plan paid for (see the M2/M3 project memory: prose tests that grep for keywords 
 unfalsifiable). The two genuinely prose surfaces below get the same section-scoped,
 mutation-proven treatment M3 established.
 
+**Scoped exception, decided at the final whole-branch review:** the four ship skills
+(`deploy-targets`, `containerization`, `cicd-github-actions`, `iac-terraform`) are
+selection-criteria and reference-table prose, not claims about a real project — Task 12's
+own fix already confirmed none of the four makes an unattributed claim about `kintwadi` or
+`karma`. The harsh M2/M3 keyword-presence rule exists specifically to guard against a
+false claim about a real project passing unnoticed; that risk doesn't apply to a target
+selection table. These four skills' tests are held to a lighter bar instead: real keyword
+checks with `\b` word-boundary anchors (so `/Render/` cannot pass on the word "Rendered"
+inside unrelated prose — the exact class of bug this project's own history already
+flagged), not full `content.slice()`-scoped position assertions. Any future skill that
+*does* make a specific claim about a real project still gets the full M2/M3 treatment —
+this exception is scoped to "selection criteria with no per-project claim," not to "any
+skill in the ship category."
+
 **Mechanical, tested normally:**
 
 - `deploy-schema.mjs` — every rule in §3 gets a passing and a failing case, including the
