@@ -1,6 +1,6 @@
 ---
 name: compliance-checker
-description: Audits required sponsor technology usage, forbidden technology, and submission requirements, returning evidence-backed findings
+description: Audits required sponsor technology usage and forbidden technology, returning evidence-backed findings
 model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
