@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "readme": {
+    "tagline": "One shared, permission-aware care record for families caring for an aging parent across cities and time zones.",
+    "thesis_quote": "The database is the thesis, not a default -- caregiving is relational, transactional and access-controlled.",
+    "problem": "Care gets coordinated over chaotic group chats and half-remembered phone calls.",
+    "features": [
+      { "title": "Shared care record", "description": "Recipient profile, documents vault, emergency card." }
+    ],
+    "security_summary": "Defense-in-depth, fail-closed -- see AGENTS.md for the full, enforced invariants.",
+    "demo_data_note": "All seeded people and records are fictional.",
+    "hackathon_disclosure": null
+  },
+  "runbook": {
+    "prerequisites": ["Node 20+", "An Aurora PostgreSQL instance or any Postgres 15+ with pgvector"],
+    "quick_start_steps": ["Open the live demo link", "Click \"Run demo\" on the homepage"],
+    "manual_walkthrough": [
+      { "step": 1, "instructions": "Sign in as maria@kintwadi.demo", "expected": "You land on the care timeline." }
+    ],
+    "troubleshooting": [
+      { "symptom": "Sign-in fails", "fix": "Re-run npm run db:seed to reset demo accounts." }
+    ],
+    "reset_procedure": "npm run db:seed",
+    "expected_duration_minutes": 10
+  },
+  "devpost_form": {
+    "fields": [
+      { "id": "project_name", "text": "Kintwadi -- one shared record for family caregiving" },
+      { "id": "elevator_pitch", "text": "One shared, permission-aware care record for families caring for an aging parent across cities and time zones." }
+    ],
+    "challenges": "A stray timezone offset in the digest cron caused a duplicate send -- fixed by making the job idempotent per (circle, date).",
+    "requirements_tracker": [
+      { "id": "text-description", "requirement": "A text description naming the AWS Database used.", "status": "done" },
+      { "id": "demo-video", "requirement": "Under three minutes, public on YouTube.", "status": "not_started" },
+      { "id": "architecture-diagram", "requirement": "A diagram showing back-end connections.", "status": "done" },
+      { "id": "vercel-project-link", "requirement": "A link to the published Vercel project.", "status": "done" },
+      { "id": "vercel-team-id", "requirement": "The Vercel Team ID.", "status": "done" },
+      { "id": "db-proof-screenshot", "requirement": "A Storage Configuration screenshot.", "status": "not_started" }
+    ],
+    "bonus_tracker": [
+      { "id": "bonus-1", "kind": "blog", "platform": "dev.to", "url": "https://dev.to/x/rls-on-aurora", "status": "done" }
+    ]
+  },
+  "video_script": {
+    "total_seconds": 170,
+    "shots": [
+      { "label": "hook", "seconds": 15, "script": "Care gets coordinated over group chats.", "on_screen": "A chaotic group chat screenshot." },
+      { "label": "problem", "seconds": 25, "script": "Meds get missed or doubled.", "on_screen": "The problem statement, on screen." },
+      { "label": "demo", "seconds": 90, "script": "Here's Kintwadi in action.", "on_screen": "Live app walkthrough." },
+      { "label": "technical-depth", "seconds": 30, "script": "Row-Level Security enforces this in the database.", "on_screen": "The RLS policy in drizzle/0001_rls_policies.sql." },
+      { "label": "close", "seconds": 10, "script": "Kintwadi -- togetherness, doing it as one.", "on_screen": "Logo and live URL." }
+    ]
+  },
+  "screenshots": {
+    "shots": [
+      { "id": "storage-config", "criterion_ref": "technical-implementation", "instructions": "Vercel dashboard -> Storage -> show the Aurora connection string redacted." }
+    ]
+  }
+}
