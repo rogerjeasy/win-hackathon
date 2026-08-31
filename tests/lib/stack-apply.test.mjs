@@ -287,6 +287,39 @@ test('a required_tech_verified entry already true survives a re-run of applyStac
   });
 });
 
+// Final whole-branch review, Fix 2: a stale required_tech_verified key (one the fresh
+// stack.json's seed no longer has) must not survive a re-run of applyStack -- otherwise
+// compliance-checker's report, which is scoped to the current stack.json, can never
+// mention it, and applyCompliance's completeness guard would refuse every future report
+// forever with no recovery. A key the fresh seed still has, previously true, must still
+// survive (P3's existing guarantee, unchanged).
+test('a stale required_tech_verified key not in the fresh seed is dropped on a re-run, while a surviving key stays true', async () => {
+  await withTmpDir(async (root) => {
+    const state = await seeded(root);
+    const stack = await fixture('h0-stack.json');
+    const recon = await fixture('h0-recon.json');
+    const seed = buildComplianceSeed(stack);
+    const survivingKey = Object.keys(seed)[0];
+    state.compliance = {
+      last_checked: null,
+      required_tech_verified: {
+        [survivingKey]: true,
+        'stale-slot-no-longer-in-stack': true,
+      },
+    };
+    await writeState(root, state);
+
+    await applyStack(root, stack, { recon });
+
+    const after = await readState(root);
+    assert.ok(!('stale-slot-no-longer-in-stack' in after.compliance.required_tech_verified),
+      'a required_tech_verified key the fresh stack.json seed no longer has must be dropped, ' +
+      'not left stale forever');
+    assert.equal(after.compliance.required_tech_verified[survivingKey], true,
+      'a key still present in the fresh seed, already true, must not be reset to false');
+  });
+});
+
 // --- Ledger 5: primaryDatabase() is a user-visible regex ---------------------------------
 
 test('primaryDatabase matches a slot id of "database"', () => {
