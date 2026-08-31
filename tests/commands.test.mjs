@@ -419,3 +419,25 @@ test(':pivot command file never proposes cutting a feature that solely claims a 
   assert.match(content, /requirements\.json.*never/i);
   assert.match(content, /explicit yes|requires approval/i);
 });
+
+// --- review.md ------------------------------------------------------------------------
+
+test(':review command file delegates code-level review to /code-review rather than reimplementing it', async () => {
+  const content = await readCommand('review.md');
+  assert.match(content, /\/code-review/);
+  assert.doesNotMatch(content, /reimplement/i);
+});
+
+test(':review command file gates on blocking findings only, not should-fix or post-hackathon', async () => {
+  const content = await readCommand('review.md');
+  assert.match(content, /blocking/i);
+  assert.match(content, /only blocking items are mandatory|do not.*present should-fix.*as blockers/i);
+});
+
+test(':review command file merges before applying, in the documented order', async () => {
+  const content = await readCommand('review.md');
+  const mergeAt = content.indexOf('review.mjs merge');
+  const applyAt = content.indexOf('review.mjs apply');
+  assert.ok(mergeAt !== -1 && applyAt !== -1);
+  assert.ok(mergeAt < applyAt, 'merge must run before apply');
+});
