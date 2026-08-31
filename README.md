@@ -23,9 +23,9 @@ must-have feature is implemented test-first (via `superpowers:subagent-driven-de
 one feature's `tasks.md` at a time), sponsor-tech compliance is checked after each one with
 `file:line` evidence, and the application is actually deployed — every URL `curl`-verified,
 never just claimed. On top of M1's spine, M2's front half, and M3's design half, this adds
-the `/win-hackathon:build`, `:check`, `:ship`, and `:pivot` commands, state schema v4, one
-agent (`deploy-engineer`), and four skills (`deploy-targets`, `containerization`,
-`cicd-github-actions`, `iac-terraform`). `npm test` (`node --test`) runs the suite: **806
+the `/win-hackathon:build`, `:check`, `:ship`, and `:pivot` commands, state schema v4, two
+agents (`compliance-checker`, `deploy-engineer`), and four skills (`deploy-targets`,
+`containerization`, `cicd-github-actions`, `iac-terraform`). `npm test` (`node --test`) runs the suite: **806
 tests, 0 failures, 1 cleanly skipped** (the Docker Compose milestone check, which needs
 Docker and this machine has none), green on Node 20, 22, and 24.
 
