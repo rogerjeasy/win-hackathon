@@ -34,13 +34,20 @@ if (subcommand === 'propose') {
     : `${hours.toFixed(1)}h remain against ${outstanding}h of outstanding phase budget.`);
 
   const proposable = ranked.filter((c) => !c.neverPropose);
-  if (proposable.length === 0) {
-    console.log('Nothing to cut: every not-done feature is the sole claim on a judging criterion, or nothing is left to cut.');
+  const protectedOnes = ranked.filter((c) => c.neverPropose);
+
+  if (proposable.length === 0 && protectedOnes.length === 0) {
+    console.log('Nothing to cut: nothing is left to cut.');
     process.exit(0);
   }
-  console.log('Proposed cuts (safest first):');
-  for (const c of proposable) console.log(`  ${c.id}  ${c.slug}`);
-  const protectedOnes = ranked.filter((c) => c.neverPropose);
+
+  if (proposable.length > 0) {
+    console.log('Proposed cuts (safest first):');
+    for (const c of proposable) console.log(`  ${c.id}  ${c.slug}`);
+  } else {
+    console.log('Nothing to cut: every not-done feature is the sole claim on a judging criterion.');
+  }
+
   if (protectedOnes.length > 0) {
     console.log('Never proposed (sole claim on a judging criterion -- cutting one guarantees a zero on that axis):');
     for (const c of protectedOnes) console.log(`  ${c.id}  ${c.slug}`);
