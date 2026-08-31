@@ -24,7 +24,8 @@ Translate each of its findings into this shape:
 Use the same three-bucket rule `quality-reviewer` uses below: **blocking** is a
 correctness bug or security-invariant violation reachable from the judge's actual path (the
 demo route, the README, the deploy target) or a false required-sponsor-tech claim;
-**should-fix** is real but off that path; **post-hackathon** is a no-user-visible-effect
+**should-fix** is real but off that path, or a simplification/efficiency finding with
+concrete impact; **post-hackathon** is a nice-to-have, style, or no-user-visible-effect
 refactor. Write the resulting array to `.hackathon/.tmp-code-review-findings.json`.
 
 ## Step 3 — Architecture-level review
