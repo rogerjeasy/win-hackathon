@@ -187,3 +187,30 @@ test('deploy-engineer is Opus with Read/Write/Edit/Bash, matching the parent des
     assert.match(fm, new RegExp(`tools:.*${tool}`));
   }
 });
+
+// --- quality-reviewer.md ----------------------------------------------------------------
+
+// Only quality-reviewer here -- submission-writer.md is Stage 2 (Task 12). Same split
+// M4 used across compliance-checker.md (Task 5) and deploy-engineer.md (Task 9).
+test('the Stage 1 M5 agent exists', async () => {
+  const files = await agentFiles();
+  assert.ok(files.includes('quality-reviewer.md'), 'missing agents/quality-reviewer.md');
+});
+
+test('quality-reviewer is Opus with read-only + Bash tools, matching the parent design\'s model table', async () => {
+  const content = await readAgent('quality-reviewer.md');
+  const fm = content.slice(4, content.indexOf('\n---', 4));
+  assert.match(fm, /model:\s*opus/);
+  for (const tool of ['Read', 'Grep', 'Glob', 'Bash']) {
+    assert.match(fm, new RegExp(`tools:.*${tool}`));
+  }
+  assert.doesNotMatch(fm, /Write/, 'quality-reviewer only reports -- it writes nothing');
+});
+
+test('quality-reviewer states the same three-bucket classification rule the design records', async () => {
+  const content = await readAgent('quality-reviewer.md');
+  assert.match(content, /\bblocking\b/);
+  assert.match(content, /should-fix/);
+  assert.match(content, /post-hackathon/);
+  assert.match(content, /judge_visible/);
+});
