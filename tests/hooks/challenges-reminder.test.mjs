@@ -103,3 +103,31 @@ test('silent when stdin carries no transcript_path at all', async () => {
     assert.equal(stdout.trim(), '');
   });
 });
+
+// Regression: transcript JSONL escapes embedded newlines as literal `\n`, so a
+// failure-line match starting mid-JSON-record can otherwise run to the end of that
+// record -- potentially thousands of raw JSON characters dumped via console.log. Mirrors
+// inject-state.mjs's own "cap each field, then cap the whole output" contract.
+test('an oversized failure match is truncated, not dumped verbatim', async () => {
+  await withTmpDir(async (root) => {
+    const transcriptPath = path.join(root, 'oversized.jsonl');
+    const firstLine = JSON.stringify({
+      type: 'user', timestamp: '2026-08-30T10:00:00.000Z', sessionId: 's-oversized',
+      message: { role: 'user', content: 'go' },
+    });
+    // A single match, well past MAX_FIELD_CHARS, with no newline to break it up --
+    // exactly the shape a match starting mid-JSON-record would take.
+    const oversizedLine = `Error: ${'x'.repeat(5000)}`;
+    await writeFile(transcriptPath, `${firstLine}\n${oversizedLine}\n`, 'utf8');
+
+    const input = JSON.stringify({
+      session_id: 's-oversized', transcript_path: transcriptPath,
+      cwd: root, hook_event_name: 'Stop', reason: 'end_turn',
+    });
+    const { stdout, code } = await runHook(HOOK, { cwd: root, input });
+    assert.equal(code, 0);
+    assert.ok(stdout.length < 4200, `output must be bounded, got ${stdout.length} chars`);
+    assert.doesNotMatch(stdout, /x{500}/, 'the oversized match must not survive verbatim');
+    assert.match(stdout, /…/, 'a truncated field must be marked with an ellipsis');
+  });
+});
