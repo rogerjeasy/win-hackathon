@@ -970,7 +970,15 @@ test('ship.mjs suggest prints one slotId -> target line per deployable stack slo
     await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
     await copyFile(stackFixture, path.join(dir, '.hackathon', 'stack.json'));
     const { stdout } = await run('node', [path.join(scripts, 'ship.mjs'), 'suggest', dir]);
-    assert.match(stdout, /->/);
+
+    // h0-stack.json has three slots: "database" (excluded -- deployableSlots() drops
+    // database/queue/storage/cache-shaped slots), "deploy" (source: required, choice:
+    // "Vercel" -> sponsor-mandated vercel), and "frontend" (default, id matches
+    // /(front|web|ui)/ -> frontend kind -> vercel). One line per deployable slot, naming
+    // the actual slot ids, not just the presence of an arrow anywhere in stdout.
+    const lines = stdout.trim().split('\n');
+    assert.deepEqual(lines.sort(), ['deploy -> vercel', 'frontend -> vercel'].sort());
+    assert.doesNotMatch(stdout, /^database ->/m, 'the database slot must not be suggested a deploy target');
   });
 });
 
