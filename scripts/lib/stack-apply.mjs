@@ -152,11 +152,19 @@ export async function applyStack(root, stack, { recon, dryRun = false, stamp: st
     compliance: {
       ...state.compliance,
       // Merge, never replace: a re-run of :stack must not un-verify something :check
-      // already confirmed.
-      required_tech_verified: {
-        ...buildComplianceSeed(stack),
-        ...(state.compliance?.required_tech_verified ?? {}),
-      },
+      // already confirmed -- for any slot the fresh stack.json still has. A slot the
+      // fresh seed no longer has must NOT survive: compliance-checker's report is scoped
+      // to the current stack.json, so a stale key it will never mention would otherwise
+      // sit in required_tech_verified forever, permanently failing applyCompliance's
+      // completeness guard with no way to clear it.
+      required_tech_verified: (() => {
+        const seed = buildComplianceSeed(stack);
+        const existing = state.compliance?.required_tech_verified ?? {};
+        const prunedExisting = Object.fromEntries(
+          Object.entries(existing).filter(([key]) => key in seed),
+        );
+        return { ...seed, ...prunedExisting };
+      })(),
     },
     phases: {
       ...state.phases,
