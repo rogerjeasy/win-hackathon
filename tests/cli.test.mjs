@@ -985,9 +985,35 @@ test('pivot.mjs propose reports "nothing to cut" against a project with everythi
     // No specs/ written at all -- cutCandidates treats every must-have feature as "not
     // done" (featureDone() returns false on a missing tasks.md), so this exercises the
     // *other* empty case: nothing left to propose because nothing is a safe cut, not
-    // because everything is finished. Assert on that actual message, not an invented one.
+    // because everything is finished. h0-requirements.json's two must-have features each
+    // solely claim a judging criterion (FR-1.1, FR-2.1), so both are protected
+    // ("neverPropose"), leaving the proposable list empty -- this exact message, not the
+    // generic disjunction that also matches every other exit path.
     const { stdout } = await run('node', [path.join(scripts, 'pivot.mjs'), 'propose', dir]);
-    assert.match(stdout, /Proposed cuts|Nothing to cut/);
+    assert.match(stdout, /Nothing to cut: every not-done feature is the sole claim on a judging criterion\./);
+  });
+});
+
+// Regression (Fix 10, final whole-branch review): loadRequirements() used to let a
+// missing/corrupt requirements.json throw a raw, unfriendly Node stack trace out of
+// pivot.mjs propose, unlike the actionable message given two lines above it in the same
+// function for a missing state.json.
+test('pivot.mjs propose prints an actionable message, not a stack trace, when requirements.json is missing', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    const state = await readState(dir);
+    await writeState(dir, { ...state, project: { name: 'x', selected_idea: 'i-1' } });
+    // requirements.json is deliberately never written.
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'pivot.mjs'), 'propose', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /requirements\.json/);
+        assert.match(err.stderr, /win-hackathon:requirements/);
+        assert.doesNotMatch(err.stderr, /^\s+at /m, 'no raw stack frames may reach the user');
+        return true;
+      },
+    );
   });
 });
 
