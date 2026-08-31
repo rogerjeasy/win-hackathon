@@ -43,9 +43,16 @@ This assigns `REV-` IDs in pass order -- code-review findings first, then
 quality-reviewer's -- and writes the validated, combined payload to
 `.hackathon/review.json`. Delete both temp files afterward; neither is a durable artifact.
 
-## Step 5 — Apply and check the gate
+## Step 5 — Preview, then apply
 
-Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs apply "$PWD"`
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs apply "$PWD" --dry-run`
+
+If it reports it would overwrite an existing `review.json`/`review.md`, say which files
+before applying. Then:
+
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs apply "$PWD"`
+
+## Step 6 — Check the gate
 
 **If any finding is `blocking`, the phase stays `in_progress`.** Show the user the blocking
 findings from `review.md` and stop -- do not present should-fix/post-hackathon findings as
@@ -54,6 +61,6 @@ blockers. Under deadline pressure, only blocking items are mandatory.
 If there are zero blocking findings, the phase is now `awaiting_approval`. Show the
 should-fix and post-hackathon findings too, but say plainly that they don't block.
 
-## Step 6 — Stop at the gate
+## Step 7 — Stop at the gate
 
 Ask whether to proceed. **Do not continue to `:submit` without an explicit yes.**

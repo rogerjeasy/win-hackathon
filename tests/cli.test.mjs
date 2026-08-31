@@ -982,6 +982,117 @@ test('ship.mjs suggest prints one slotId -> target line per deployable stack slo
   });
 });
 
+// --- review.mjs -----------------------------------------------------------------------
+
+async function seedForReview(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  const state = await readState(dir);
+  await writeState(dir, { ...state, project: { name: 'x', selected_idea: 'i-1' } });
+}
+
+test('review.mjs merge writes a valid review.json from two findings-array temp files', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForReview(dir);
+    const codeReviewPath = path.join(dir, 'code-review.json');
+    const qualityPath = path.join(dir, 'quality.json');
+    await writeFile(codeReviewPath, JSON.stringify([
+      { severity: 'should-fix', title: 'A', summary: 'desc', file: null, line: null, judge_visible: false },
+    ]), 'utf8');
+    await writeFile(qualityPath, JSON.stringify([
+      { severity: 'post-hackathon', title: 'B', summary: 'desc', file: null, line: null, judge_visible: false },
+    ]), 'utf8');
+
+    const { stdout } = await run('node', [path.join(scripts, 'review.mjs'), 'merge', dir, codeReviewPath, qualityPath]);
+    assert.match(stdout, /Wrote \.hackathon\/review\.json -- 2 finding\(s\)\./);
+
+    const review = JSON.parse(await readFile(path.join(dir, '.hackathon', 'review.json'), 'utf8'));
+    assert.equal(review.schema_version, 1);
+    assert.deepEqual(review.findings.map((f) => f.id), ['REV-1', 'REV-2']);
+    assert.deepEqual(review.findings.map((f) => f.source), ['code-review', 'quality-reviewer']);
+  });
+});
+
+// Finding 2 of the Stage 1 checkpoint review: merge used to write review.json directly,
+// so by the time apply's own openBackupSet ran, the prior run's findings were already
+// gone. merge must now back up whatever review.json it is about to overwrite.
+test('review.mjs merge backs up the previous review.json before a second run overwrites it', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForReview(dir);
+    const findingsA = path.join(dir, 'a.json');
+    const findingsB = path.join(dir, 'b.json');
+    const empty = path.join(dir, 'empty.json');
+    await writeFile(findingsA, JSON.stringify([
+      { severity: 'should-fix', title: 'First run finding', summary: 'desc', file: null, line: null, judge_visible: false },
+    ]), 'utf8');
+    await writeFile(findingsB, JSON.stringify([
+      { severity: 'post-hackathon', title: 'Second run finding', summary: 'desc', file: null, line: null, judge_visible: false },
+    ]), 'utf8');
+    await writeFile(empty, '[]', 'utf8');
+
+    await run('node', [path.join(scripts, 'review.mjs'), 'merge', dir, findingsA, empty]);
+    const firstRun = await readFile(path.join(dir, '.hackathon', 'review.json'), 'utf8');
+
+    const { stdout } = await run('node', [path.join(scripts, 'review.mjs'), 'merge', dir, findingsB, empty]);
+    assert.match(stdout, /Backed up the previous \.hackathon\/review\.json/);
+
+    const backupsDir = path.join(dir, '.hackathon', 'backups');
+    const stamps = await readdir(backupsDir);
+    assert.equal(stamps.length, 1);
+    const backedUpContent = await readFile(path.join(backupsDir, stamps[0], '.hackathon', 'review.json'), 'utf8');
+    assert.equal(backedUpContent, firstRun);
+    assert.match(backedUpContent, /First run finding/);
+
+    const secondRun = await readFile(path.join(dir, '.hackathon', 'review.json'), 'utf8');
+    assert.match(secondRun, /Second run finding/);
+    assert.doesNotMatch(secondRun, /First run finding/);
+  });
+});
+
+test('review.mjs apply with a blocking finding exits 1 and leaves phases.review.status in_progress', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForReview(dir);
+    const blocking = path.join(dir, 'blocking.json');
+    const empty = path.join(dir, 'empty.json');
+    await writeFile(blocking, JSON.stringify([
+      { severity: 'blocking', title: 'Bad thing', summary: 'desc', file: null, line: null, judge_visible: true },
+    ]), 'utf8');
+    await writeFile(empty, '[]', 'utf8');
+    await run('node', [path.join(scripts, 'review.mjs'), 'merge', dir, blocking, empty]);
+
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'review.mjs'), 'apply', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stdout, /Blocking findings remain/);
+        return true;
+      },
+    );
+    const state = await readState(dir);
+    assert.equal(state.phases.review.status, 'in_progress');
+  });
+});
+
+test('review.mjs apply exits 0 and reaches awaiting_approval once a re-run is clean', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForReview(dir);
+    const blocking = path.join(dir, 'blocking.json');
+    const empty = path.join(dir, 'empty.json');
+    await writeFile(blocking, JSON.stringify([
+      { severity: 'blocking', title: 'Bad thing', summary: 'desc', file: null, line: null, judge_visible: true },
+    ]), 'utf8');
+    await writeFile(empty, '[]', 'utf8');
+    await run('node', [path.join(scripts, 'review.mjs'), 'merge', dir, blocking, empty]);
+    await assert.rejects(() => run('node', [path.join(scripts, 'review.mjs'), 'apply', dir]));
+
+    // Fix the blocking finding, re-merge clean, re-apply.
+    await run('node', [path.join(scripts, 'review.mjs'), 'merge', dir, empty, empty]);
+    const { stdout } = await run('node', [path.join(scripts, 'review.mjs'), 'apply', dir]);
+    assert.match(stdout, /awaiting_approval/);
+    const state = await readState(dir);
+    assert.equal(state.phases.review.status, 'awaiting_approval');
+  });
+});
+
 // --- pivot.mjs ------------------------------------------------------------------------
 
 test('pivot.mjs propose reports "nothing to cut" against a project with everything already done', async () => {
