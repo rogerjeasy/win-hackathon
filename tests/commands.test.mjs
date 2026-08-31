@@ -410,3 +410,12 @@ test(':ship command file has the agent consult ship.mjs suggest before choosing 
   const content = await readCommand('ship.md');
   assert.match(content, /ship\.mjs suggest/);
 });
+
+// --- pivot.md ------------------------------------------------------------------------
+
+test(':pivot command file never proposes cutting a feature that solely claims a criterion, and requires approval', async () => {
+  const content = await readCommand('pivot.md');
+  assert.match(content, /neverPropose|sole claim/i);
+  assert.match(content, /requirements\.json.*never/i);
+  assert.match(content, /explicit yes|requires approval/i);
+});

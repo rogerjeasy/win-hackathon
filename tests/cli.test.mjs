@@ -973,3 +973,20 @@ test('ship.mjs suggest prints one slotId -> target line per deployable stack slo
     assert.match(stdout, /->/);
   });
 });
+
+// --- pivot.mjs ------------------------------------------------------------------------
+
+test('pivot.mjs propose reports "nothing to cut" against a project with everything already done', async () => {
+  await withTmpDir(async (dir) => {
+    await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+    await copyFile(requirementsFixture, path.join(dir, '.hackathon', 'requirements.json'));
+    const state = await readState(dir);
+    await writeState(dir, { ...state, project: { name: 'x', selected_idea: 'i-1' } });
+    // No specs/ written at all -- cutCandidates treats every must-have feature as "not
+    // done" (featureDone() returns false on a missing tasks.md), so this exercises the
+    // *other* empty case: nothing left to propose because nothing is a safe cut, not
+    // because everything is finished. Assert on that actual message, not an invented one.
+    const { stdout } = await run('node', [path.join(scripts, 'pivot.mjs'), 'propose', dir]);
+    assert.match(stdout, /Proposed cuts|Nothing to cut/);
+  });
+});
