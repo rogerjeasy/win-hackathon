@@ -9,7 +9,7 @@
  */
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { HACKATHON_DIR, DEPLOY_FILE, deployPath, stackPath, statePath, timestamp } from './paths.mjs';
+import { HACKATHON_DIR, DEPLOY_FILE, stackPath, statePath, timestamp } from './paths.mjs';
 import { deployableSlots } from './deploy-schema.mjs';
 import { readState, writeState, migrateStateFile, readMigratedState } from './state.mjs';
 import { openBackupSet, existingPaths } from './backup.mjs';

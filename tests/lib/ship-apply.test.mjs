@@ -80,6 +80,21 @@ test('applyShip refuses an invalid deploy payload', async () => {
   });
 });
 
+// Regression: validateDeploy now requires every service to be verified (Fix 1, final
+// whole-branch review). applyShip calls validateDeploy first, so an unverified deploy
+// payload must be rejected there -- it must never reach the phases.ship write below.
+test('applyShip refuses a deploy payload with an unverified service, and never sets phases.ship to awaiting_approval', async () => {
+  await withTmpDir(async (root) => {
+    await seededProject(root);
+    const deploy = await fixture('h0-deploy.json');
+    deploy.services[0].verified = false;
+    await assert.rejects(() => applyShip(root, deploy, {}), /not verified/);
+
+    const state = await readState(root);
+    assert.notEqual(state.phases.ship.status, 'awaiting_approval');
+  });
+});
+
 test('applyShip validates before checking the :stack precondition', async () => {
   await withTmpDir(async (root) => {
     // Both conditions are wrong at once: the deploy payload is invalid AND :stack is not
