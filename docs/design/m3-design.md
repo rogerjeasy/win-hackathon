@@ -838,7 +838,9 @@ as a mechanical check.
 2. **EARS fidelity.** Rendering Given/When/Then scenarios into EARS-form acceptance criteria
    is a mechanical transform of a form that was not designed for it. Relay's and Memoria's
    Kiro specs were hand-written; whether a generated one reads as well is untested.
-3. **Whether four spec surfaces survive M4.** §6.4 names a reader for each. If M4 shows one of
-   them going unread, it should be dropped rather than maintained.
+3. **Whether four spec surfaces survive M4 — resolved, no.** `:build` reads the Kiro triad
+   and the Gherkin; `openspec/changes/<slug>/` is not read by anything in M4 and remains a
+   standalone artifact for a human driving the CLI directly. `:spec` itself is unchanged —
+   this only closes the question it left open. See `m4-design.md` §12, open question 1.
 4. **Waylo's repository was not read** — its Devpost link resolves to a GitHub organisation
    rather than a repository — so the corpus in §2 is ten repositories deep, not twelve.

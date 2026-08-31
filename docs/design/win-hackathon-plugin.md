@@ -4,6 +4,7 @@
 **Date:** 2026-08-21
 **Amended:** 2026-08-22 — §3, §4, §8, §10, §12, §15 revised after reviewing twelve winning Devpost submissions and the two reference repositories. Detail in `m2-front-half.md`.
 **Amended:** 2026-08-24 — §2, §3, §4, §8, §9, §10, §13, §14 and Appendix A revised for M3 — the design and requirements phases, three diagram formats replacing a promised PNG export, and a validated payload behind every rendered surface. Detail in `m3-design.md`.
+**Amended:** 2026-08-31 — §4, §8, §9, §10, §11, §13, §14 revised for M4 — `:build`, `:ship`, `:check`, `:pivot`, state schema v4, the `deploy.json` contract, two new agents, four deploy skills, and the plugin's last three hooks. Detail in `m4-design.md`.
 **Author:** Roger Jeasy Bavibidila
 **Supersedes:** `project-idea.md`
 
@@ -671,6 +672,13 @@ Too large for a single pass. Five milestones; the plugin is genuinely useful fro
 `:architect`; Stage 2 ships `:requirements` and `:spec`. The split is a review boundary, not
 a scope cut — M3 is not done until both stages have landed, which is what this amendment
 records.
+
+**M4 delivers in two stages, specified in `m4-design.md`.** Stage 1 ships `:build` and
+`:check`; Stage 2 ships `:ship` and `:pivot`, the four deploy skills, and the plugin's last
+three hooks. Same review-boundary-not-scope-cut treatment as M3, plus one further gate M3
+didn't have: a whole-stage checkpoint review after Stage 1 (not just per-task review),
+which found and fixed three cross-task bugs invisible to any single task's own reviewer —
+worth repeating at M5. **M4 is done and merged to `main`** as of 2026-08-31.
 
 ---
 
