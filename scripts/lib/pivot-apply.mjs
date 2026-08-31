@@ -27,7 +27,13 @@ export function phaseBudgetOutstanding(state) {
 
 /** The same "sole claim on a rubric criterion" condition requirements-schema.mjs's
  * crossCheckRecon computes for a validation error message, recomputed here as a
- * per-feature boolean a caller can act on rather than a doc-level error string. */
+ * per-feature boolean a caller can act on rather than a doc-level error string.
+ *
+ * Counted over must-have features only, not "must or should" -- a should-have
+ * feature's claim on a criterion doesn't guarantee anything (a should-have "may
+ * not get built", per requirements-schema.mjs's own crossCheckRecon warning), so
+ * it can't satisfy the actual rationale here: cutting a true sole-must-claimant
+ * would *guarantee* a zero on that criterion, which is what this must prevent. */
 function annotateSoleClaims(musts) {
   const claimCount = new Map();
   for (const f of musts) {

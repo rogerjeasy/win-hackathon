@@ -68,6 +68,36 @@ test('rankCutCandidates orders safe-to-cut before neverPropose', async () => {
   });
 });
 
+test('a must-have that shares its criterion with a should-have is still never-propose (should-have coverage does not guarantee anything)', async () => {
+  await withTmpDir(async (root) => {
+    const base = await fixture('h0-requirements.json');
+    const requirements = {
+      ...base,
+      features: [
+        ...base.features,
+        {
+          id: 'F3', slug: 'nice-to-have-widget', title: 'A nice-to-have widget',
+          priority: 'should',
+          // Shares 'technical-implementation' with F1 (must) -- a should-have claim
+          // does not guarantee the criterion stays covered, so it must not exempt
+          // the must-have from being flagged as a sole (must-only) claimant.
+          criterion_refs: ['technical-implementation'],
+          requirements: [{ id: 'FR-3.1', statement: 'placeholder' }],
+        },
+      ],
+    };
+    for (const f of mustHaveFeatures(requirements)) {
+      await mkdir(path.join(root, '.hackathon', 'specs', f.dir), { recursive: true });
+      await writeFile(path.join(root, '.hackathon', 'specs', f.dir, 'tasks.md'), '- [ ] not done\n', 'utf8');
+    }
+
+    const ranked = rankCutCandidates(await cutCandidates(root, requirements, []));
+    const f1 = ranked.find((c) => c.slug === 'shared-care-record');
+    assert.equal(f1.soleClaim, true, 'F1 is still the sole MUST claimant on technical-implementation');
+    assert.equal(f1.neverPropose, true, 'a should-have sharing the criterion must not exempt F1 from protection');
+  });
+});
+
 test('applyPivot appends to cut_features (deduplicated) and writes decisions.md, never touching requirements.json', async () => {
   await withTmpDir(async (root) => {
     const requirements = await scaffold(root);
