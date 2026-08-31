@@ -3,11 +3,11 @@
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
-![node:test](https://img.shields.io/badge/node%3Atest-710%20passing-3C873A)
+![node:test](https://img.shields.io/badge/node%3Atest-806%20passing-3C873A)
 ![dependencies](https://img.shields.io/badge/dependencies-0-4C1)
 ![build step](https://img.shields.io/badge/build%20step-none-4C1)
 ![CI](https://img.shields.io/badge/CI-Node%2020%20%7C%2022%20%7C%2024-2088FF?logo=githubactions&logoColor=white)
-![Markdown](https://img.shields.io/badge/Markdown-10%20commands%20%C2%B7%204%20agents%20%C2%B7%2015%20skills-000000?logo=markdown&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-14%20commands%20%C2%B7%206%20agents%20%C2%B7%2019%20skills-000000?logo=markdown&logoColor=white)
 ![JSON](https://img.shields.io/badge/JSON-schema--validated-lightgrey?logo=json&logoColor=white)
 ![Bash](https://img.shields.io/badge/Bash-1%20wrapper-4EAA25?logo=gnubash&logoColor=white)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
@@ -18,17 +18,21 @@ agents, skills, and hooks.
 
 ## Status
 
-**M3 (Design) complete — no Stage 3.** A Devpost URL goes in; by the end of this milestone a
-resolved stack, a full architecture (three diagram formats, `AGENTS.md`/`CLAUDE.md`), verifiable
-requirements, and per-feature specs (the Kiro triad, plus OpenSpec change proposals when the CLI
-is reachable) come out — everything up to writing code. On top of M1's spine and M2's front
-half, this adds the `/win-hackathon:stack`, `:architect`, `:requirements`, and `:spec` commands,
-state schema v3, one agent, and ten skills. `npm test` (`node --test`) runs the suite: **710
-tests, 0 failures**, green on Node 20, 22, and 24.
+**M4 (Build & ship) complete.** A Devpost URL goes in; by the end of this milestone every
+must-have feature is implemented test-first (via `superpowers:subagent-driven-development`,
+one feature's `tasks.md` at a time), sponsor-tech compliance is checked after each one with
+`file:line` evidence, and the application is actually deployed — every URL `curl`-verified,
+never just claimed. On top of M1's spine, M2's front half, and M3's design half, this adds
+the `/win-hackathon:build`, `:check`, `:ship`, and `:pivot` commands, state schema v4, one
+agent (`deploy-engineer`), and four skills (`deploy-targets`, `containerization`,
+`cicd-github-actions`, `iac-terraform`). `npm test` (`node --test`) runs the suite: **806
+tests, 0 failures, 1 cleanly skipped** (the Docker Compose milestone check, which needs
+Docker and this machine has none), green on Node 20, 22, and 24.
 
 The full design lives in [`docs/design/win-hackathon-plugin.md`](docs/design/win-hackathon-plugin.md),
-with the front half specified in [`docs/design/m2-front-half.md`](docs/design/m2-front-half.md)
-and the design half in [`docs/design/m3-design.md`](docs/design/m3-design.md).
+with the front half specified in [`docs/design/m2-front-half.md`](docs/design/m2-front-half.md),
+the design half in [`docs/design/m3-design.md`](docs/design/m3-design.md), and the build/ship
+half in [`docs/design/m4-design.md`](docs/design/m4-design.md).
 [`docs/design/project-idea.md`](docs/design/project-idea.md) is the original sketch it supersedes,
 kept for lineage.
 
@@ -40,7 +44,7 @@ M2 onward:
 | M1 — Spine | manifest, state schema, environment detection, `:init`, `:next`, `:status`, SessionStart hook | **Done** — infrastructure only, no phase commands yet |
 | M2 — Front half | `:recon`, `:brainstorm`, `:describe` + ideation and scoring skills | **Done** — usable end to end |
 | M3 — Design | `:stack`, `:architect`, `:requirements`, `:spec` + design and engineering skills | **Done** — covers everything up to writing code |
-| M4 — Build & ship | `:build`, `:ship`, `:check`, `:pivot` + deploy skills | Yes |
+| M4 — Build & ship | `:build`, `:ship`, `:check`, `:pivot` + deploy skills | **Done** — a real deployed, sponsor-tech-compliant app comes out |
 | M5 — Close | `:review`, `:submit`, `:log` + submission skills | Complete |
 
 ## The workflow
@@ -50,7 +54,7 @@ Eleven gated phases. Nothing advances without explicit approval.
 `:recon` → `:brainstorm` → `:describe` → `:stack` → `:architect` → `:requirements` →
 `:spec` → `:build` → `:ship` → `:review` → `:submit`
 
-The first seven are implemented; the rest land in M4–M5. You never need to remember that
+The first nine are implemented; the rest land in M5. You never need to remember that
 order — `:next` resolves it from on-disk state.
 
 ## Install
@@ -77,10 +81,16 @@ The git root is the plugin root deliberately: `/plugin marketplace add` expects
 | `/win-hackathon:architect` | Designs the system — architecture, data model, three diagram formats, and the `AGENTS.md` invariants — all rendered from one validated payload. |
 | `/win-hackathon:requirements` | Turns the architecture into FR ids with acceptance criteria, a test matrix, and executable Gherkin scenarios. |
 | `/win-hackathon:spec` | Turns requirements into per-feature specs — the Kiro triad, plus OpenSpec change proposals when the CLI is reachable. |
+| `/win-hackathon:build [--feature <FR-id>]` | Implements the must-have features one at a time, TDD all the way via `superpowers:subagent-driven-development`, running `:check` after each one. |
+| `/win-hackathon:check` | Audits required/forbidden sponsor technology with `file:line` evidence — never a manifest guess. Safe to run any time; does not gate. |
+| `/win-hackathon:ship` | Picks a deploy target, writes Dockerfiles/Terraform/CI, actually deploys, and `curl`-verifies every URL before the gate. |
+| `/win-hackathon:pivot` | Deadline triage — proposes a demoable core, ranked safest-to-cut-first, protecting any feature that solely claims a judging criterion. Requires explicit approval. |
 
-Each command ends at an approval gate and stops.
+Each command ends at an approval gate and stops — `:check` and `:pivot` are the two
+exceptions: `:check` is a repeatable audit with no gate of its own, and `:pivot`'s only
+gate is the approval it asks for directly in Step 2.
 
-## What M1–M3 produce
+## What M1–M4 produce
 
 Working documents land in `.hackathon/`; judge-facing ones land in `docs/` and the repo
 root later in the workflow.
@@ -94,18 +104,23 @@ root later in the workflow.
 | `:architect` | `architecture.json`, `docs/architecture.md`, `docs/data-model.md`, plus `AGENTS.md`/`CLAUDE.md` at the repo root |
 | `:requirements` | `requirements.json`, `requirements.md`, `requirements.feature` (executable Gherkin) |
 | `:spec` | `specs/NNNN-<slug>/{requirements,design,tasks}.md` per must-have feature (the Kiro triad), plus `openspec/changes/<slug>/proposal.md` when the `@fission-ai/openspec` CLI is reachable |
+| `:build` | Application source code, one must-have feature at a time — progress is read back from `[x]` checkboxes in that feature's own `tasks.md`, not tracked a second way in `state.json` |
+| `:ship` | `deploy.json` — per-service target, Dockerfile, verified URL and verification method, plus the `infra/`/`.github/workflows/` files `deploy-engineer` writes alongside it |
 
 **Every judgment phase validates before it writes.** Each of `:recon`, `:brainstorm`, `:stack`,
-`:architect`, and `:requirements` emits a JSON payload that must pass a schema first; every
-rendered surface — markdown, diagrams, the Kiro triad — comes from that payload, so nothing
-downstream can drift from the source. Rules the schemas enforce because they lose hackathons
-outright:
+`:architect`, `:requirements`, and `:ship` emits a JSON payload that must pass a schema first;
+every rendered surface — markdown, diagrams, the Kiro triad, `deploy.json` — comes from that
+payload, so nothing downstream can drift from the source. Rules the schemas enforce because
+they lose hackathons outright:
 
 - Every date carries an explicit UTC offset. A floating `2026-06-29T17:00:00` is rejected.
 - A disqualified idea is never scored — a number invites falling in love with an idea that
   cannot win.
 - A rubric criterion no feature claims fails `:requirements` validation outright — it would
   otherwise score zero silently.
+- A service marked `verified: true` in `deploy.json` must carry a real `verified_at` and
+  `verification_method` — `:ship` does not gate on a deploy until every service it could
+  verify has actually been `curl`-ed, not just configured.
 
 ## Dependencies
 

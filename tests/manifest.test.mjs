@@ -34,20 +34,22 @@ test('manifest and marketplace agree on the plugin name', async () => {
   assert.equal(JSON.parse(pluginRaw).name, JSON.parse(marketRaw).plugins[0].name);
 });
 
-// Full M3 scope: all four commands, the one M3 agent, and all ten M3 skills. Widening
-// this surface as the plugin grows should be an edit to the lists below, not a second,
-// parallel test.
+// Full M4 scope: all eight commands, all three agents, and all fourteen M3+M4 skills.
+// Widening this surface as the plugin grows should be an edit to the lists below, not a
+// second, parallel test.
 const EXPECTED_COMMANDS = [
-  'stack.md', 'architect.md', 'requirements.md', 'spec.md', 'build.md', 'check.md',
+  'stack.md', 'architect.md', 'requirements.md', 'spec.md',
+  'build.md', 'check.md', 'ship.md', 'pivot.md',
 ];
-const EXPECTED_AGENTS = ['solution-architect.md', 'compliance-checker.md'];
+const EXPECTED_AGENTS = ['solution-architect.md', 'compliance-checker.md', 'deploy-engineer.md'];
 const EXPECTED_SKILLS = [
   'framework-drift-guard', 'security-invariants', 'monorepo-structure',
   'architecture-diagramming', 'frontend-architecture', 'backend-architecture',
   'data-modeling', 'ui-design-principles', 'gherkin-requirements', 'openspec-workflow',
+  'deploy-targets', 'containerization', 'cicd-github-actions', 'iac-terraform',
 ];
 
-test('every M3 command, agent and skill exists on disk', async () => {
+test('every M4 command, agent and skill exists on disk', async () => {
   const { readdir } = await import('node:fs/promises');
   const commands = await readdir(new URL('../commands', import.meta.url));
   for (const c of EXPECTED_COMMANDS) {
