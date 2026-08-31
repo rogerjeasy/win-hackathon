@@ -441,3 +441,11 @@ test(':review command file merges before applying, in the documented order', asy
   assert.ok(mergeAt !== -1 && applyAt !== -1);
   assert.ok(mergeAt < applyAt, 'merge must run before apply');
 });
+
+// --- log.md --------------------------------------------------------------------------
+
+test(':log command file has no approval gate -- it is a running log, not a judgment', async () => {
+  const content = await readCommand('log.md');
+  assert.match(content, /challenges\.md/);
+  assert.doesNotMatch(content, /awaiting_approval/);
+});
