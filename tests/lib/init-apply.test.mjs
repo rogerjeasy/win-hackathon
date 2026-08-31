@@ -105,3 +105,33 @@ test('git-init runs when consented', async () => {
     assert.equal(await exists(path.join(dir, '.git')), true);
   });
 });
+
+test('two applyInit runs in the same wall-clock second do not destroy each other\'s backup', async () => {
+  await withTmpDir(async (dir) => {
+    // Seed a hand-edited CLAUDE.md so both runs have something to back up.
+    await writeFile(path.join(dir, 'CLAUDE.md'), 'First edit -- do not lose me.\n', 'utf8');
+    const plan = await planInit(dir);
+    const collide = 'same-second';
+
+    const first = await applyInit(dir, plan, {
+      ...OPTS, stamp: collide, consented: new Set(['CLAUDE.md']),
+    });
+    const firstClaude = first.backups.find((p) => p.endsWith(path.join('CLAUDE.md')));
+    assert.ok(firstClaude, 'CLAUDE.md should have been backed up on the first run');
+
+    await writeFile(path.join(dir, 'CLAUDE.md'), 'Second edit -- do not lose me either.\n', 'utf8');
+    const second = await applyInit(dir, await planInit(dir), {
+      ...OPTS, stamp: collide, consented: new Set(['CLAUDE.md']),
+    });
+    const secondClaude = second.backups.find((p) => p.endsWith(path.join('CLAUDE.md')));
+    assert.ok(secondClaude, 'CLAUDE.md should have been backed up on the second run too');
+
+    assert.ok(firstClaude.includes(path.join('.hackathon', 'backups', collide)));
+    assert.ok(secondClaude.includes(path.join('.hackathon', 'backups', `${collide}-2`)),
+      'the second run must claim a directory of its own, not overwrite the first run\'s');
+
+    assert.equal(await readFile(firstClaude, 'utf8'), 'First edit -- do not lose me.\n',
+      'the first run\'s backup was destroyed by the second');
+    assert.equal(await readFile(secondClaude, 'utf8'), 'Second edit -- do not lose me either.\n');
+  });
+});

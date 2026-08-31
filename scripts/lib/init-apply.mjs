@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { upsertBlock } from './markers.mjs';
-import { backupFile } from './backup.mjs';
+import { openBackupSet } from './backup.mjs';
 import { writeState, readRawState, migrateStateFile } from './state.mjs';
 import { createDefaultState, CURRENT_SCHEMA_VERSION } from './schema.mjs';
 import { HACKATHON_DIR } from './paths.mjs';
@@ -19,6 +19,7 @@ export async function applyInit(root, plan, { consented, pluginVersion, stamp })
   const applied = [];
   const skipped = [];
   const backups = [];
+  const set = openBackupSet(root, stamp);
 
   // Scenario C ("our project already"): migrate the schema before anything else reads
   // it. The `create` action below skips state.json when the file already exists, so
@@ -29,7 +30,7 @@ export async function applyInit(root, plan, { consented, pluginVersion, stamp })
   // first"), so take the backup while the old file is still on disk.
   const existingState = await readRawState(root);
   if (existingState !== null && existingState.schema_version !== CURRENT_SCHEMA_VERSION) {
-    const b = await backupFile(root, STATE_REL, stamp);
+    const b = await set.backup(STATE_REL);
     if (b) backups.push(b);
   }
   await migrateStateFile(root);
@@ -61,7 +62,7 @@ export async function applyInit(root, plan, { consented, pluginVersion, stamp })
       case 'update-block': {
         const before = (await exists(abs)) ? await readFile(abs, 'utf8') : '';
         if (before !== '') {
-          const b = await backupFile(root, action.path, stamp);
+          const b = await set.backup(action.path);
           if (b) backups.push(b);
         }
         await mkdir(path.dirname(abs), { recursive: true });
