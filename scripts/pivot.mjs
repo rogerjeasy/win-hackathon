@@ -16,7 +16,19 @@ function usage() {
 }
 
 async function loadRequirements(root) {
-  return JSON.parse(await readFile(requirementsPath(root), 'utf8'));
+  let raw;
+  try {
+    raw = await readFile(requirementsPath(root), 'utf8');
+  } catch {
+    console.error('no requirements.json -- run /win-hackathon:requirements first');
+    process.exit(1);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    console.error(`${requirementsPath(root)} could not be parsed as JSON -- run /win-hackathon:requirements first`);
+    process.exit(1);
+  }
 }
 
 if (subcommand === 'propose') {
