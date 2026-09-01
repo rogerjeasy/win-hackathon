@@ -1,6 +1,6 @@
 # win-hackathon
 
-[![release](https://img.shields.io/github/v/release/rogerjeasy/win-hackathon?label=release&color=blue)](https://github.com/rogerjeasy/win-hackathon/releases)
+[![release](https://img.shields.io/github/v/release/rogerjeasy/win-hackathon?label=release&color=blue&cacheSeconds=300)](https://github.com/rogerjeasy/win-hackathon/releases)
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
@@ -48,7 +48,7 @@ You never need to remember that order — `:next` resolves it from on-disk state
 From a local clone:
 
 ```bash
-git clone git@github.com:rogerjeasy/win-hackathon.git
+git clone https://github.com/rogerjeasy/win-hackathon.git
 /plugin marketplace add /path/to/win-hackathon
 /plugin install win-hackathon
 ```
@@ -56,17 +56,13 @@ git clone git@github.com:rogerjeasy/win-hackathon.git
 Directly from GitHub, without cloning first:
 
 ```bash
-/plugin marketplace add git@github.com:rogerjeasy/win-hackathon.git
+/plugin marketplace add rogerjeasy/win-hackathon
 /plugin install win-hackathon
 ```
 
 The git root is the plugin root deliberately: `/plugin marketplace add` expects
-`.claude-plugin/` at the top level. This repo is private, so `/plugin marketplace add`
-needs working git credentials for `github.com` — the SSH URL above works as long as your
-SSH key is set up (`ssh -T git@github.com` to check); the bare `rogerjeasy/win-hackathon`
-shorthand defaults to an unauthenticated HTTPS clone and fails with "repository not found"
-against a private repo. Pin an exact release instead of tracking `main` by appending a ref:
-`git@github.com:rogerjeasy/win-hackathon.git#v1.0.0`.
+`.claude-plugin/` at the top level. Pin an exact release instead of tracking `main` by
+appending a ref: `/plugin marketplace add rogerjeasy/win-hackathon#v1.0.0`.
 
 ## Commands
 
