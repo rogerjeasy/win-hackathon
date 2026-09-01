@@ -32,6 +32,11 @@ async function planMarkdownBlock(root, rel, body, reason) {
 
 const CLAUDE_MD_BODY = '@AGENTS.md';
 
+// Exported so log-apply.mjs can recreate this exact header when it appends the
+// first entry to a challenges.md that doesn't exist yet -- one source of truth
+// for the literal instead of two copies drifting apart.
+export const CHALLENGES_HEADER = '# Challenges\n\nIssues hit during the build, newest last.\n';
+
 const AGENTS_MD_BODY = [
   '## win-hackathon',
   '',
@@ -64,7 +69,7 @@ export async function planInit(root) {
   if (!(await exists(path.join(root, `${HACKATHON_DIR}/challenges.md`)))) {
     actions.push({
       kind: 'create', path: `${HACKATHON_DIR}/challenges.md`, needsConsent: false,
-      body: '# Challenges\n\nIssues hit during the build, newest last.\n',
+      body: CHALLENGES_HEADER,
       reason: 'running issues log, assembled into the Devpost submission',
     });
   }

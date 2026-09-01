@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { withTmpDir } from '../helpers/tmp.mjs';
-import { planInit } from '../../scripts/lib/init-plan.mjs';
+import { planInit, CHALLENGES_HEADER } from '../../scripts/lib/init-plan.mjs';
 import { BEGIN, END, isFullyManaged } from '../../scripts/lib/markers.mjs';
 
 const byPath = (actions, p) => actions.find((a) => a.path === p);
@@ -19,6 +19,17 @@ test('greenfield plan creates .hackathon and needs no consent', async () => {
     const fileActions = actions.filter((a) => a.kind !== 'git-init');
     assert.equal(fileActions.every((a) => a.needsConsent === false), true,
       'nothing pre-existing means nothing to consent to');
+  });
+});
+
+test('challenges.md create action body is the shared CHALLENGES_HEADER constant', async () => {
+  await withTmpDir(async (dir) => {
+    const { actions } = await planInit(dir);
+    const a = byPath(actions, '.hackathon/challenges.md');
+    // log-apply.mjs imports this same constant to recreate the header when it
+    // appends the first entry to a challenges.md that doesn't exist yet -- one
+    // source of truth for the literal, not two copies that can drift apart.
+    assert.equal(a.body, CHALLENGES_HEADER);
   });
 });
 
