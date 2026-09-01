@@ -449,3 +449,21 @@ test(':log command file has no approval gate -- it is a running log, not a judgm
   assert.match(content, /challenges\.md/);
   assert.doesNotMatch(content, /awaiting_approval/);
 });
+
+// --- submit.md ------------------------------------------------------------------------
+
+test(':submit command file requires a clean review before assembling anything', async () => {
+  const content = await readCommand('submit.md');
+  assert.match(content, /project\.review\.clean/);
+});
+
+test(':submit command file re-runs :check before declaring completion', async () => {
+  const content = await readCommand('submit.md');
+  assert.match(content, /\/win-hackathon:check/);
+});
+
+test(':submit command file refuses completion while a hard requirement is outstanding', async () => {
+  const content = await readCommand('submit.md');
+  assert.match(content, /requirementsComplete|requirements_complete/);
+  assert.match(content, /refuses|do not (declare|claim)/i);
+});
