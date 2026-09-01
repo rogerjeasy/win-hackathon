@@ -44,6 +44,7 @@ if (subcommand === 'validate') {
 } else if (subcommand === 'apply') {
   const root = target ? path.resolve(target) : process.cwd();
   const idx = rest.indexOf('--submission');
+  if (idx !== -1 && rest[idx + 1] === undefined) usage();
   const source = idx === -1 ? submissionPath(root) : path.resolve(rest[idx + 1]);
   const submission = await readJson(source);
   const recon = await readJson(reconPath(root), { optional: true });

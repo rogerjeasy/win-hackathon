@@ -17,6 +17,7 @@ const ideasFixture = fileURLToPath(new URL('./fixtures/h0-ideas.json', import.me
 const stackFixture = fileURLToPath(new URL('./fixtures/h0-stack.json', import.meta.url));
 const architectureFixture = fileURLToPath(new URL('./fixtures/h0-architecture.json', import.meta.url));
 const requirementsFixture = fileURLToPath(new URL('./fixtures/h0-requirements.json', import.meta.url));
+const submissionFixture = fileURLToPath(new URL('./fixtures/h0-submission.json', import.meta.url));
 
 test('init --dry-run writes nothing', async () => {
   await withTmpDir(async (dir) => {
@@ -1133,6 +1134,108 @@ test('the heredoc form commands/log.md uses leaves backticks and $() in the entr
     const content = await readFile(path.join(dir, '.hackathon', 'challenges.md'), 'utf8');
     assert.ok(content.includes(`\`touch ${injected1}\``), 'backticks must survive completely literally');
     assert.ok(content.includes(`$(touch ${injected2})`), '$(...) must survive completely literally');
+  });
+});
+
+// --- submit.mjs ------------------------------------------------------------------------
+
+const SUBMIT_DELIVERABLES = [
+  { id: 'text-description', status: 'not_started' },
+  { id: 'demo-video', status: 'not_started' },
+  { id: 'architecture-diagram', status: 'not_started' },
+  { id: 'vercel-project-link', status: 'not_started' },
+  { id: 'vercel-team-id', status: 'not_started' },
+  { id: 'db-proof-screenshot', status: 'not_started' },
+];
+
+async function seedForSubmit(dir) {
+  await run('node', [path.join(scripts, 'init.mjs'), dir, '--apply']);
+  const state = await readState(dir);
+  await writeState(dir, {
+    ...state,
+    project: { name: 'Kintwadi', selected_idea: 'i-1', review: { clean: true, ref: '.hackathon/review.json' } },
+    deliverables: {
+      submission_requirements: SUBMIT_DELIVERABLES,
+      bonus_content: [{ id: 'bonus-1', status: 'not_started', kind: 'blog', platform: null, angle: null, url: null }],
+    },
+  });
+}
+
+test('submit.mjs apply with an outstanding hard requirement exits 1 and leaves phases.submit.status in_progress', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSubmit(dir);
+    await copyFile(submissionFixture, path.join(dir, '.hackathon', 'submission.json'));
+
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'submit.mjs'), 'apply', dir]),
+      (err) => {
+        assert.equal(err.code, 1);
+        // h0-submission.json's fixture tracker leaves exactly these two hard requirements
+        // not_started -- named explicitly, not just "some exit-1 message".
+        assert.match(err.stdout, /Outstanding: demo-video, db-proof-screenshot/);
+        return true;
+      },
+    );
+    const state = await readState(dir);
+    assert.equal(state.phases.submit.status, 'in_progress');
+  });
+});
+
+test('submit.mjs apply exits 0 and reaches awaiting_approval once a subsequent apply completes every hard requirement', async () => {
+  await withTmpDir(async (dir) => {
+    await seedForSubmit(dir);
+    await copyFile(submissionFixture, path.join(dir, '.hackathon', 'submission.json'));
+    await assert.rejects(() => run('node', [path.join(scripts, 'submit.mjs'), 'apply', dir]));
+
+    // Fix the two outstanding hard requirements and re-apply, exactly the review.mjs
+    // fail-then-fix-then-reapply shape above.
+    const submission = JSON.parse(await readFile(submissionFixture, 'utf8'));
+    submission.devpost_form.requirements_tracker = submission.devpost_form.requirements_tracker.map((r) => (
+      ['demo-video', 'db-proof-screenshot'].includes(r.id) ? { ...r, status: 'skipped' } : r
+    ));
+    await writeFile(path.join(dir, '.hackathon', 'submission.json'), JSON.stringify(submission), 'utf8');
+
+    const { stdout } = await run('node', [path.join(scripts, 'submit.mjs'), 'apply', dir]);
+    assert.match(stdout, /awaiting_approval/);
+    const state = await readState(dir);
+    assert.equal(state.phases.submit.status, 'awaiting_approval');
+  });
+});
+
+test('submit.mjs validate exits 0 on a valid submission.json and 1 on an invalid one', async () => {
+  const { stdout } = await run('node', [path.join(scripts, 'submit.mjs'), 'validate', submissionFixture]);
+  assert.match(stdout, /valid/);
+
+  await withTmpDir(async (dir) => {
+    const bad = path.join(dir, 'bad.json');
+    const submission = JSON.parse(await readFile(submissionFixture, 'utf8'));
+    delete submission.readme.tagline;
+    await writeFile(bad, JSON.stringify(submission), 'utf8');
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'submit.mjs'), 'validate', bad]),
+      (err) => {
+        assert.equal(err.code, 1);
+        assert.match(err.stderr, /tagline/);
+        return true;
+      },
+    );
+  });
+});
+
+// Final whole-branch review, finding 10: `--submission` present with nothing after it
+// used to crash inside path.resolve(undefined) with a raw ERR_INVALID_ARG_TYPE stack
+// trace instead of the CLI's own usage() message.
+test('submit.mjs apply --submission with no value exits with the usage message, not a stack trace', async () => {
+  await withTmpDir(async (dir) => {
+    await assert.rejects(
+      () => run('node', [path.join(scripts, 'submit.mjs'), 'apply', dir, '--submission']),
+      (err) => {
+        assert.equal(err.code, 2);
+        assert.match(err.stderr, /usage/);
+        assert.doesNotMatch(err.stderr, /ERR_INVALID_ARG_TYPE/);
+        return true;
+      },
+    );
   });
 });
 
