@@ -1093,6 +1093,49 @@ test('review.mjs apply exits 0 and reaches awaiting_approval once a re-run is cl
   });
 });
 
+// --- log.mjs -------------------------------------------------------------------------
+
+test('log.mjs with positional args still works (manual/direct invocation)', async () => {
+  await withTmpDir(async (dir) => {
+    const { stdout } = await run('node', [path.join(scripts, 'log.mjs'), dir, 'Bedrock', 'timed', 'out']);
+    assert.match(stdout, /challenges\.md/);
+    const content = await readFile(path.join(dir, '.hackathon', 'challenges.md'), 'utf8');
+    assert.match(content, /Bedrock timed out/);
+  });
+});
+
+// Final whole-branch review, finding 1: commands/log.md's old `"$ARGUMENTS"` (double-quoted,
+// shell-interpolated) form stops word-splitting but NOT command substitution -- backticks or
+// $(...) in a challenge entry would execute before log.mjs ever saw the text. The fix passes
+// the text via a quoted heredoc on stdin instead, exactly as commands/log.md now does. This
+// drives the real CLI through a real shell (bash -c), textually substituting $ARGUMENTS the
+// same way the harness does, to prove the fix at the shell layer, not just in appendChallenge.
+test('the heredoc form commands/log.md uses leaves backticks and $() in the entry text completely unexpanded and unexecuted', async () => {
+  await withTmpDir(async (dir) => {
+    const injected1 = path.join(dir, 'INJECTED-backtick.txt');
+    const injected2 = path.join(dir, 'INJECTED-dollarparen.txt');
+    const entryText = `Hit a snag with \`touch ${injected1}\` and $(touch ${injected2}) during setup`;
+
+    // Mirrors commands/log.md's Step 1 exactly, with $ARGUMENTS substituted the way the
+    // harness substitutes it -- textually, before any shell parsing happens.
+    const script = [
+      `node ${JSON.stringify(path.join(scripts, 'log.mjs'))} ${JSON.stringify(dir)} <<'ENTRY'`,
+      entryText,
+      'ENTRY',
+    ].join('\n');
+    await run('bash', ['-c', script]);
+
+    // If the heredoc's quoted delimiter failed to suppress expansion, these files would
+    // exist on disk -- direct proof the embedded commands never ran.
+    await assert.rejects(() => access(injected1), /ENOENT/, 'backtick command must not have executed');
+    await assert.rejects(() => access(injected2), /ENOENT/, '$() command must not have executed');
+
+    const content = await readFile(path.join(dir, '.hackathon', 'challenges.md'), 'utf8');
+    assert.ok(content.includes(`\`touch ${injected1}\``), 'backticks must survive completely literally');
+    assert.ok(content.includes(`$(touch ${injected2})`), '$(...) must survive completely literally');
+  });
+});
+
 // --- pivot.mjs ------------------------------------------------------------------------
 
 test('pivot.mjs propose reports "nothing to cut" against a project with everything already done', async () => {
