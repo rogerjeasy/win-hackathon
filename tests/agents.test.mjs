@@ -215,6 +215,35 @@ test('quality-reviewer states the same three-bucket classification rule the desi
   assert.match(content, /judge_visible/);
 });
 
+// Task 4's only Important finding was these two paragraphs drifting apart; the fix synced
+// them but (per the final whole-branch review, finding 13) added no durable guard against
+// re-drifting. Extract the classification-rule paragraph from each file by stable content
+// markers (the paragraph's own opening/closing phrases, not a line number) and pin them
+// word-for-word identical, so an edit to only one side fails loudly.
+function extractClassificationRule(text) {
+  // Markdown line-wrap position differs between the two files (different surrounding prose
+  // widths, so "**blocking** is a" and "correctness bug" can land on different lines even
+  // within one file). Normalize whitespace first so both the search markers and the
+  // extracted span are compared as words, not as literal line-wrapped text.
+  const normalized = text.replace(/\s+/g, ' ');
+  const start = normalized.indexOf('**blocking** is a correctness bug');
+  const end = normalized.indexOf('refactor.', start);
+  if (start === -1 || end === -1) {
+    throw new Error('classification-rule paragraph not found -- markers may have drifted');
+  }
+  return normalized.slice(start, end + 'refactor.'.length).trim();
+}
+
+test('quality-reviewer.md and commands/review.md state the exact same classification-rule paragraph', async () => {
+  const agentContent = await readAgent('quality-reviewer.md');
+  const commandContent = await readFile(path.join(root, 'commands', 'review.md'), 'utf8');
+  const agentRule = extractClassificationRule(agentContent);
+  const commandRule = extractClassificationRule(commandContent);
+  assert.equal(agentRule, commandRule,
+    'commands/review.md\'s classification rule must stay word-for-word identical to quality-reviewer.md\'s -- '
+    + 'they drifted apart once already (Task 4)');
+});
+
 // Completes the pair Task 4's "the Stage 1 M5 agent exists" test left half-open --
 // both M5 agents are now on disk.
 test('both M5 agents exist', async () => {
