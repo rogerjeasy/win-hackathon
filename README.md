@@ -1,5 +1,6 @@
 # win-hackathon
 
+[![release](https://img.shields.io/github/v/release/rogerjeasy/win-hackathon?label=release&color=blue)](https://github.com/rogerjeasy/win-hackathon/releases)
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
@@ -18,18 +19,14 @@ agents, skills, and hooks.
 
 ## Status
 
-**M5 (Close) complete — all eleven phases now implemented end to end.** A Devpost URL goes
-in; by the end of this milestone the project has passed an architecture-and-code review
-gated on zero blocking findings, and a validated submission — judge-facing README, demo
-runbook, Devpost form draft, video script, and screenshot shot-list — comes out, gated on
-that clean review plus every hard submission requirement `done` or `skipped`. On top of
-M1's spine, M2's front half, M3's design half, and M4's build/ship half, this adds the
-`/win-hackathon:review`, `:submit`, and `:log` commands, state schema v5, two agents
-(`quality-reviewer`, `submission-writer`), and four skills (`judge-ready-readme`,
-`demo-runbook`, `devpost-submission`, `demo-video-script`). `npm test` (`node --test`) runs
-the suite: **921 tests, 920 pass, 0 failures, 1 cleanly skipped** (the Docker Compose
-milestone check, which needs Docker and this machine has none), green on Node 20, 22, and
-24.
+**v1.0.0 — complete. All five milestones are shipped and all eleven phases run end to
+end**, with no further milestones planned. A Devpost URL goes in; a reviewed, deployed,
+judge-ready submission — README, demo runbook, Devpost form draft, video script, and
+screenshot shot-list — comes out, gated on a clean architecture-and-code review (zero
+blocking findings) plus every hard submission requirement `done` or `skipped`. `npm test`
+(`node --test`) runs the suite: **921 tests, 920 pass, 0 failures, 1 cleanly skipped** (the
+Docker Compose milestone check, which needs Docker and this machine has none), green on
+Node 20, 22, and 24. See [`CHANGELOG.md`](CHANGELOG.md) for what shipped in this release.
 
 The full design lives in [`docs/design/win-hackathon-plugin.md`](docs/design/win-hackathon-plugin.md),
 with the front half specified in [`docs/design/m2-front-half.md`](docs/design/m2-front-half.md),
@@ -150,6 +147,23 @@ These are requirements of the *workflow*, not of the plugin's own code:
 - No Playwright/MCP dependency. `:recon` uses `WebFetch`; when a page is JS-gated or
   comes back thin it records the gap in `unresolved` and asks you to paste the page,
   rather than failing silently. See the design note in `docs/design/m2-front-half.md`.
+
+## Releases
+
+Not every push to `main` is a release — cutting one is a deliberate, separate act:
+
+1. Add a `## [x.y.z] - YYYY-MM-DD` section to the top of [`CHANGELOG.md`](CHANGELOG.md)
+   describing what changed.
+2. Bump `version` in `.claude-plugin/plugin.json` and `package.json` to match.
+3. Commit, then tag and push: `git tag -a vX.Y.Z -m "vX.Y.Z"` and `git push origin vX.Y.Z`.
+
+Pushing the tag (not the commit itself) is what triggers
+[`.github/workflows/release.yml`](.github/workflows/release.yml): it re-runs the test
+suite, pulls that version's section out of `CHANGELOG.md` via
+`.github/scripts/release-notes.mjs`, and publishes the GitHub Release from it. The
+workflow only listens for `v*` tag pushes, so ordinary commits to `main` never trigger it,
+and it fails closed if the matching `CHANGELOG.md` section is missing or empty rather than
+publishing a release with no notes.
 
 ## License
 
