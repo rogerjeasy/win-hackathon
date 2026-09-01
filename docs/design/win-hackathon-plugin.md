@@ -5,7 +5,7 @@
 **Amended:** 2026-08-22 — §3, §4, §8, §10, §12, §15 revised after reviewing twelve winning Devpost submissions and the two reference repositories. Detail in `m2-front-half.md`.
 **Amended:** 2026-08-24 — §2, §3, §4, §8, §9, §10, §13, §14 and Appendix A revised for M3 — the design and requirements phases, three diagram formats replacing a promised PNG export, and a validated payload behind every rendered surface. Detail in `m3-design.md`.
 **Amended:** 2026-08-31 — §4, §8, §9, §10, §11, §13, §14 revised for M4 — `:build`, `:ship`, `:check`, `:pivot`, state schema v4, the `deploy.json` contract, two new agents, four deploy skills, and the plugin's last three hooks. Detail in `m4-design.md`.
-**Amended:** 2026-09-01 — §4, §8, §10, §14 revised for M5 — `:review`, `:submit`, `:log`, state schema v5, the `review.json`/`submission.json` contracts, two new agents, four submission skills. Detail in `m5-design.md`.
+**Amended:** 2026-09-01 — §4, §8, §14 revised for M5 — `:review`, `:submit`, `:log`, state schema v5, the `review.json`/`submission.json` contracts, two new agents, four submission skills. Detail in `m5-design.md`.
 **Author:** Roger Jeasy Bavibidila
 **Supersedes:** `project-idea.md`
 
