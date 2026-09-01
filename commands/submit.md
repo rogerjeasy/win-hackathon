@@ -7,7 +7,7 @@ Submit the application.
 
 ## Step 1 — Check the inputs exist
 
-`.hackathon/review.json`'s `state.project.review.clean` must be `true`. If `:review` has
+`.hackathon/state.json`'s `project.review.clean` must be `true`. If `:review` has
 not reached a clean gate, this command refuses to assemble a submission around known-
 blocking findings -- run `/win-hackathon:review` first and resolve every blocking finding.
 
@@ -20,20 +20,21 @@ caught here, not discovered by a judge.
 
 Dispatch the `submission-writer` agent. It explores the actual built and deployed
 application -- not just specs -- and returns `submission.json`. Write its JSON payload to
-`.hackathon/submission.json`.
+the temp file `.hackathon/.tmp-submission.json`; it is not a durable artifact.
 
 ## Step 4 — Validate and render
 
-Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/submit.mjs apply "$PWD" --dry-run`
+Run: `node ${CLAUDE_PLUGIN_ROOT}/scripts/submit.mjs apply "$PWD" --submission .hackathon/.tmp-submission.json --dry-run`
 
 If it reports it would overwrite an existing file (most commonly `README.md`), say which
 files before applying. Then:
 
-`node ${CLAUDE_PLUGIN_ROOT}/scripts/submit.mjs apply "$PWD"`
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/submit.mjs apply "$PWD" --submission .hackathon/.tmp-submission.json`
 
 This renders all five surfaces (`README.md`, `docs/DEMO_RUNBOOK.md`,
 `.hackathon/submission.md`, `.hackathon/video-script.md`, `.hackathon/screenshots.md`) and
-marks delivered items `done` in `state.deliverables`.
+marks delivered items `done` in `state.deliverables`. Delete `.hackathon/.tmp-submission.json`
+afterward.
 
 ## Step 5 — The gate is not optional
 
