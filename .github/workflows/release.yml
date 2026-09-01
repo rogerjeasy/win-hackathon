@@ -1,0 +1,45 @@
+name: release
+
+# Deliberately decoupled from `main`: this only fires on a `vX.Y.Z` tag push, which is a
+# separate, deliberate act (see the tag/push commands in CHANGELOG.md and README.md).
+# A normal push/merge to main triggers test.yml and nothing else.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      # Same safety net as test.yml -- a broken tag should never become a GitHub Release.
+      - run: npm test
+
+      # Requires CHANGELOG.md to carry a matching "## [x.y.z]" section; fails the build
+      # rather than publishing a release with empty or missing notes.
+      - name: Extract release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node .github/scripts/release-notes.mjs "$TAG"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file release-notes.md
