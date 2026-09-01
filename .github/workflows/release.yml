@@ -35,11 +35,21 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: node .github/scripts/release-notes.mjs "$TAG"
 
-      - name: Create GitHub Release
+      # Idempotent: a tag can legitimately be re-pushed (e.g. history cleanup that
+      # rewrites commit SHAs without changing the release content), which re-fires
+      # this workflow against a tag that already has a release. Editing in that case
+      # keeps the run green instead of failing on "tag_name already exists".
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes-file release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "$TAG" \
+              --notes-file release-notes.md
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file release-notes.md
+          fi
