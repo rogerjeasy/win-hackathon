@@ -81,3 +81,34 @@ test('validateSubmission requires bonus_tracker items marked done to carry a url
 test('SUBMISSION_SCHEMA_VERSION is 1', () => {
   assert.equal(SUBMISSION_SCHEMA_VERSION, 1);
 });
+
+// Final whole-branch review, finding 2: requirements_tracker[]/bonus_tracker[].status were
+// never validated against DELIVERABLE_STATUSES -- a bad status value would sail through
+// validateSubmission, write all five rendered files, then throw inside writeState.
+test('validateSubmission rejects a requirements_tracker item with a status outside DELIVERABLE_STATUSES', async () => {
+  const submission = await fx('h0-submission.json');
+  submission.devpost_form.requirements_tracker[0].status = 'complete';
+  const { valid, errors } = validateSubmission(submission);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /requirements_tracker\[0\]\.status must be one of/.test(e)
+    && /"complete"/.test(e)));
+});
+
+test('validateSubmission rejects a bonus_tracker item with a status outside DELIVERABLE_STATUSES', async () => {
+  const submission = await fx('h0-submission.json');
+  submission.devpost_form.bonus_tracker[0].status = 'complete';
+  const { valid, errors } = validateSubmission(submission);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /bonus_tracker\[0\]\.status must be one of/.test(e)
+    && /"complete"/.test(e)));
+});
+
+// Final whole-branch review, finding 7 (deferred at Task 11): a screenshot shot missing
+// criterion_ref would render the literal string "undefined" instead of failing validation.
+test('validateSubmission rejects a screenshot shot missing criterion_ref', async () => {
+  const submission = await fx('h0-submission.json');
+  delete submission.screenshots.shots[0].criterion_ref;
+  const { valid, errors } = validateSubmission(submission);
+  assert.equal(valid, false);
+  assert.ok(errors.some((e) => /screenshots\.shots\[0\]\.criterion_ref must be a non-empty string/.test(e)));
+});

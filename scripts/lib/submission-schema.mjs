@@ -3,6 +3,8 @@
  * renderers. Cross-checks against `recon`/`state` degrade to a warning when either is
  * absent, mirroring requirements-schema.mjs's crossCheckRecon.
  */
+import { DELIVERABLE_STATUSES } from './schema.mjs';
+
 export const SUBMISSION_SCHEMA_VERSION = 1;
 
 const isNonEmptyString = (v) => typeof v === 'string' && v.trim() !== '';
@@ -124,6 +126,9 @@ function validateDevpostForm(form, errors, warnings, recon, state) {
     tracker.forEach((r, i) => {
       if (!isNonEmptyString(r?.id)) errors.push(`devpost_form.requirements_tracker[${i}].id must be a non-empty string`);
       if (!isNonEmptyString(r?.requirement)) errors.push(`devpost_form.requirements_tracker[${i}].requirement must be a non-empty string`);
+      if (!DELIVERABLE_STATUSES.includes(r?.status)) {
+        errors.push(`devpost_form.requirements_tracker[${i}].status must be one of ${DELIVERABLE_STATUSES.join(', ')}, got "${r?.status}"`);
+      }
     });
     crossCheckRequirementsTracker(tracker, errors, warnings, state);
   }
@@ -134,6 +139,9 @@ function validateDevpostForm(form, errors, warnings, recon, state) {
   } else {
     bonus.forEach((b, i) => {
       if (!isNonEmptyString(b?.id)) errors.push(`devpost_form.bonus_tracker[${i}].id must be a non-empty string`);
+      if (!DELIVERABLE_STATUSES.includes(b?.status)) {
+        errors.push(`devpost_form.bonus_tracker[${i}].status must be one of ${DELIVERABLE_STATUSES.join(', ')}, got "${b?.status}"`);
+      }
       if (b?.status === 'done' && (b?.url === null || b?.url === undefined || !isNonEmptyString(b.url))) {
         errors.push(`devpost_form.bonus_tracker[${i}] has status "done" but no non-null url`);
       }
@@ -217,6 +225,7 @@ function validateScreenshots(screenshots, errors) {
   }
   shots.forEach((s, i) => {
     if (!isNonEmptyString(s?.id)) errors.push(`screenshots.shots[${i}].id must be a non-empty string`);
+    if (!isNonEmptyString(s?.criterion_ref)) errors.push(`screenshots.shots[${i}].criterion_ref must be a non-empty string`);
     if (!isNonEmptyString(s?.instructions)) errors.push(`screenshots.shots[${i}].instructions must be a non-empty string`);
   });
 }
