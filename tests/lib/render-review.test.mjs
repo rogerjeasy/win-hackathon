@@ -37,6 +37,26 @@ test('renderReview cites file:line when present and omits it when null', async (
   assert.doesNotMatch(cleanMd, /:null/);
 });
 
+test('renderReview breaks judge_visible ties numerically, not lexicographically -- REV-10 after REV-9 and REV-2', () => {
+  const review = {
+    schema_version: 1,
+    findings: [
+      { id: 'REV-10', source: 'code-review', severity: 'should-fix', title: 'Tenth', summary: '…', file: null, line: null, judge_visible: false },
+      { id: 'REV-9', source: 'code-review', severity: 'should-fix', title: 'Ninth', summary: '…', file: null, line: null, judge_visible: false },
+      { id: 'REV-2', source: 'code-review', severity: 'should-fix', title: 'Second', summary: '…', file: null, line: null, judge_visible: false },
+    ],
+  };
+  const md = renderReview(review);
+  // A lexicographic sort puts "REV-10" before "REV-2" (the character '1' < '2');
+  // a numeric-aware sort must put it last, matching finding order REV-2, REV-9, REV-10.
+  const secondAt = md.indexOf('### REV-2');
+  const ninthAt = md.indexOf('### REV-9');
+  const tenthAt = md.indexOf('### REV-10');
+  assert.ok(secondAt !== -1 && ninthAt !== -1 && tenthAt !== -1);
+  assert.ok(secondAt < ninthAt && ninthAt < tenthAt,
+    'expected REV-2, REV-9, REV-10 in that numeric order');
+});
+
 test('renderReview sorts judge_visible findings first within a severity bucket', () => {
   const review = {
     schema_version: 1,

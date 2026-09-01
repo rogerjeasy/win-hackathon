@@ -15,7 +15,8 @@ export function renderReview(review) {
   for (const severity of SEVERITY_ORDER) {
     const bucket = findings
       .filter((f) => f.severity === severity)
-      .sort((a, b) => Number(b.judge_visible) - Number(a.judge_visible) || a.id.localeCompare(b.id));
+      .sort((a, b) => Number(b.judge_visible) - Number(a.judge_visible)
+        || a.id.localeCompare(b.id, undefined, { numeric: true }));
     if (bucket.length === 0) continue;
     lines.push(`## ${SEVERITY_LABEL[severity]}`, '');
     for (const f of bucket) {
