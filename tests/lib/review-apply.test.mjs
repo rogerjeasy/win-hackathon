@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, access } from 'node:fs/promises';
 import path from 'node:path';
 import { mergeFindings, applyReview } from '../../scripts/lib/review-apply.mjs';
 import { readState, writeState } from '../../scripts/lib/state.mjs';
@@ -139,5 +139,27 @@ test('applyReview refuses an invalid payload without touching state', async () =
     await assert.rejects(() => applyReview(root, { findings: 'nope' }), /refusing to apply/);
     const after = await readState(root);
     assert.equal(after.phases.review.status, 'not_started');
+  });
+});
+
+// Final whole-branch review, finding 3: review-apply.mjs lost its only precondition when
+// the Stage 1 checkpoint correctly removed the hard ship-status gate, and never gained
+// requireDescribedProject -- :review before :describe used to half-write review.json/
+// review.md and throw only once writeState() rejected the missing project.name, matching
+// the exact bug requireDescribedProject was added to state.mjs to prevent (see
+// stack-apply.mjs / architect-apply.mjs / requirements-apply.mjs).
+test('applyReview refuses cleanly before :describe has run, writing nothing to disk and leaving state untouched', async () => {
+  await withTmpDir(async (root) => {
+    const before = createDefaultState({ pluginVersion: '0.1.0' }); // project: null
+    await writeState(root, before);
+    const review = await fixture('h0-review-clean.json');
+
+    await assert.rejects(() => applyReview(root, review), /win-hackathon:describe/);
+
+    await assert.rejects(() => access(path.join(root, '.hackathon', 'review.json')), /ENOENT/);
+    await assert.rejects(() => access(path.join(root, '.hackathon', 'review.md')), /ENOENT/);
+
+    const after = await readState(root);
+    assert.deepEqual(after, before, 'state.json must be byte-for-byte untouched');
   });
 });
