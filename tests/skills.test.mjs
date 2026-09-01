@@ -439,3 +439,51 @@ test('containerization, cicd-github-actions and iac-terraform have frontmatter a
     assert.ok(content.length > 500, `${n}/SKILL.md looks too thin to be useful`);
   }
 });
+
+test('the M5 submission skills exist', async () => {
+  const names = await skillNames();
+  for (const n of ['judge-ready-readme', 'demo-runbook', 'devpost-submission', 'demo-video-script']) {
+    assert.ok(names.includes(n), `missing skills/${n}`);
+  }
+});
+
+test('judge-ready-readme places the thesis quote before any badges/results table', async () => {
+  const content = await readSkill('judge-ready-readme');
+  assert.match(content, /first (screen|blockquote|prose)/i);
+  assert.match(content, /\bKarma\b/);
+  assert.match(content, /\bKintwadi\b/);
+});
+
+test('judge-ready-readme treats the Hackathon Disclosure section as optional, not universal', async () => {
+  const content = await readSkill('judge-ready-readme');
+  assert.match(content, /Hackathon Disclosure/);
+  assert.match(content, /optional|not universal|when/i);
+});
+
+test('demo-runbook names the Judge Quick-Start section exactly, and the golden-run/reset fallback', async () => {
+  const content = await readSkill('demo-runbook');
+  assert.match(content, /Judge Quick-Start \(no account required\)/);
+  assert.match(content, /golden.run|reset fallback/i);
+});
+
+test('devpost-submission is organized by the platform\'s own form steps, with the requirements tracker', async () => {
+  const content = await readSkill('devpost-submission');
+  assert.match(content, /form step/i);
+  assert.match(content, /requirements tracker/i);
+  assert.match(content, /verbatim/i);
+});
+
+test('demo-video-script states the sub-three-minute structure and the per-shot timing budget', async () => {
+  const content = await readSkill('demo-video-script');
+  assert.match(content, /hook/i);
+  assert.match(content, /180|three minutes/i);
+  assert.match(content, /timing budget|seconds/i);
+});
+
+test('all four submission skills have frontmatter and non-trivial content', async () => {
+  for (const n of ['judge-ready-readme', 'demo-runbook', 'devpost-submission', 'demo-video-script']) {
+    const content = await readSkill(n);
+    assert.ok(content.startsWith('---\n'));
+    assert.ok(content.length > 500, `${n}/SKILL.md looks too thin to be useful`);
+  }
+});
