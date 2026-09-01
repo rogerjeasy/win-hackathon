@@ -7,7 +7,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HACKATHON_DIR, REVIEW_FILE, statePath, timestamp } from './paths.mjs';
-import { readState, writeState, migrateStateFile, readMigratedState } from './state.mjs';
+import {
+  readState, writeState, migrateStateFile, readMigratedState, requireDescribedProject,
+} from './state.mjs';
 import { openBackupSet, existingPaths } from './backup.mjs';
 import { validateReview, isClean, blockingFindings } from './review-schema.mjs';
 import { renderReview } from './render-review.mjs';
@@ -57,6 +59,7 @@ export async function applyReview(root, review, { dryRun = false, stamp: stampOv
     state = await readState(root);
   }
   if (state === null) throw new Error(`no state at ${statePath(root)} -- run /win-hackathon:init first`);
+  requireDescribedProject(state, root);
 
   const files = new Map([
     [REVIEW_FILE_REL, `${JSON.stringify(review, null, 2)}\n`],
