@@ -6,6 +6,8 @@ import { applyArchitecture } from '../../scripts/lib/architect-apply.mjs';
 import { applyRequirements } from '../../scripts/lib/requirements-apply.mjs';
 import { applySpec } from '../../scripts/lib/spec-apply.mjs';
 import { applyShip } from '../../scripts/lib/ship-apply.mjs';
+import { applyReview } from '../../scripts/lib/review-apply.mjs';
+import { buildSubmissionDeliverables } from '../../scripts/lib/recon-apply.mjs';
 
 const fx = async (n) => JSON.parse(await readFile(new URL(`../fixtures/${n}`, import.meta.url), 'utf8'));
 const okExec = async () => ({ code: 0, stdout: '', stderr: '' });
@@ -55,4 +57,32 @@ export async function scaffoldStage4Project(root, { exec = okExec } = {}) {
   await applyShip(root, deploy, {});
   await approve(root, 'ship');
   return { requirements, deploy };
+}
+
+/**
+ * Extends scaffoldStage4Project through a clean, approved :review. Shared setup for the
+ * Stage 2 :submit integration test.
+ *
+ * scaffoldStage2Project hand-sets recon/brainstorm/describe straight to 'approved'
+ * rather than running applyRecon, so state.deliverables.submission_requirements --
+ * the hard-requirement gate :submit's applySubmission checks -- is never seeded and
+ * stays `[]` through the whole scaffold chain. Seed it here, using the same helper
+ * applyRecon itself uses, so the Stage 2 milestone test exercises a real gate instead of
+ * one that is vacuously satisfied. Confined to this function so scaffoldStage2Project/
+ * scaffoldStage4Project -- shared by the Stage 1/M3/M4 integration tests -- are untouched.
+ */
+export async function scaffoldStage5Project(root, { exec = okExec } = {}) {
+  const result = await scaffoldStage4Project(root, { exec });
+  const review = await fx('h0-review-clean.json');
+  await applyReview(root, review, {});
+  await approve(root, 'review');
+
+  const recon = await fx('h0-recon.json');
+  const state = await readState(root);
+  await writeState(root, {
+    ...state,
+    deliverables: { ...state.deliverables, submission_requirements: buildSubmissionDeliverables(recon) },
+  });
+
+  return result;
 }

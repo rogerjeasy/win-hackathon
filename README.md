@@ -3,11 +3,11 @@
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
-![node:test](https://img.shields.io/badge/node%3Atest-811%20passing-3C873A)
+![node:test](https://img.shields.io/badge/node%3Atest-905%20passing-3C873A)
 ![dependencies](https://img.shields.io/badge/dependencies-0-4C1)
 ![build step](https://img.shields.io/badge/build%20step-none-4C1)
 ![CI](https://img.shields.io/badge/CI-Node%2020%20%7C%2022%20%7C%2024-2088FF?logo=githubactions&logoColor=white)
-![Markdown](https://img.shields.io/badge/Markdown-14%20commands%20%C2%B7%206%20agents%20%C2%B7%2019%20skills-000000?logo=markdown&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-17%20commands%20%C2%B7%208%20agents%20%C2%B7%2023%20skills-000000?logo=markdown&logoColor=white)
 ![JSON](https://img.shields.io/badge/JSON-schema--validated-lightgrey?logo=json&logoColor=white)
 ![Bash](https://img.shields.io/badge/Bash-1%20wrapper-4EAA25?logo=gnubash&logoColor=white)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
@@ -18,21 +18,24 @@ agents, skills, and hooks.
 
 ## Status
 
-**M4 (Build & ship) complete.** A Devpost URL goes in; by the end of this milestone every
-must-have feature is implemented test-first (via `superpowers:subagent-driven-development`,
-one feature's `tasks.md` at a time), sponsor-tech compliance is checked after each one with
-`file:line` evidence, and the application is actually deployed — every URL `curl`-verified,
-never just claimed. On top of M1's spine, M2's front half, and M3's design half, this adds
-the `/win-hackathon:build`, `:check`, `:ship`, and `:pivot` commands, state schema v4, two
-agents (`compliance-checker`, `deploy-engineer`), and four skills (`deploy-targets`,
-`containerization`, `cicd-github-actions`, `iac-terraform`). `npm test` (`node --test`) runs the suite: **812
-tests, 0 failures, 1 cleanly skipped** (the Docker Compose milestone check, which needs
-Docker and this machine has none), green on Node 20, 22, and 24.
+**M5 (Close) complete — all eleven phases now implemented end to end.** A Devpost URL goes
+in; by the end of this milestone the project has passed an architecture-and-code review
+gated on zero blocking findings, and a validated submission — judge-facing README, demo
+runbook, Devpost form draft, video script, and screenshot shot-list — comes out, gated on
+that clean review plus every hard submission requirement `done` or `skipped`. On top of
+M1's spine, M2's front half, M3's design half, and M4's build/ship half, this adds the
+`/win-hackathon:review`, `:submit`, and `:log` commands, state schema v5, two agents
+(`quality-reviewer`, `submission-writer`), and four skills (`judge-ready-readme`,
+`demo-runbook`, `devpost-submission`, `demo-video-script`). `npm test` (`node --test`) runs
+the suite: **906 tests, 905 pass, 0 failures, 1 cleanly skipped** (the Docker Compose
+milestone check, which needs Docker and this machine has none), green on Node 20, 22, and
+24.
 
 The full design lives in [`docs/design/win-hackathon-plugin.md`](docs/design/win-hackathon-plugin.md),
 with the front half specified in [`docs/design/m2-front-half.md`](docs/design/m2-front-half.md),
-the design half in [`docs/design/m3-design.md`](docs/design/m3-design.md), and the build/ship
-half in [`docs/design/m4-design.md`](docs/design/m4-design.md).
+the design half in [`docs/design/m3-design.md`](docs/design/m3-design.md), the build/ship
+half in [`docs/design/m4-design.md`](docs/design/m4-design.md), and the close half in
+[`docs/design/m5-design.md`](docs/design/m5-design.md).
 [`docs/design/project-idea.md`](docs/design/project-idea.md) is the original sketch it supersedes,
 kept for lineage.
 
@@ -45,7 +48,7 @@ M2 onward:
 | M2 — Front half | `:recon`, `:brainstorm`, `:describe` + ideation and scoring skills | **Done** — usable end to end |
 | M3 — Design | `:stack`, `:architect`, `:requirements`, `:spec` + design and engineering skills | **Done** — covers everything up to writing code |
 | M4 — Build & ship | `:build`, `:ship`, `:check`, `:pivot` + deploy skills | **Done** — a real deployed, sponsor-tech-compliant app comes out |
-| M5 — Close | `:review`, `:submit`, `:log` + submission skills | Complete |
+| M5 — Close | `:review`, `:submit`, `:log` + submission skills | **Done** — a reviewed, judge-ready submission comes out |
 
 ## The workflow
 
@@ -54,8 +57,8 @@ Eleven gated phases. Nothing advances without explicit approval.
 `:recon` → `:brainstorm` → `:describe` → `:stack` → `:architect` → `:requirements` →
 `:spec` → `:build` → `:ship` → `:review` → `:submit`
 
-The first nine are implemented; the rest land in M5. You never need to remember that
-order — `:next` resolves it from on-disk state.
+All eleven are implemented. You never need to remember that order — `:next` resolves it
+from on-disk state.
 
 ## Install
 
@@ -85,12 +88,16 @@ The git root is the plugin root deliberately: `/plugin marketplace add` expects
 | `/win-hackathon:check` | Audits required/forbidden sponsor technology with `file:line` evidence — never a manifest guess. Safe to run any time; does not gate. |
 | `/win-hackathon:ship` | Picks a deploy target, writes Dockerfiles/Terraform/CI, actually deploys, and `curl`-verifies every URL before the gate. |
 | `/win-hackathon:pivot` | Deadline triage — proposes a demoable core, ranked safest-to-cut-first, protecting any feature that solely claims a judging criterion. Requires explicit approval. |
+| `/win-hackathon:review` | Runs `/code-review` and dispatches `quality-reviewer`, merges both into a validated `review.json`. Refuses to reach the gate while any finding is `blocking`; `should-fix`/`post-hackathon` findings never block. |
+| `/win-hackathon:submit` | Re-runs `:check`, then dispatches `submission-writer` for a validated `submission.json` feeding all five judge-facing surfaces. Refuses the gate unless the review is clean and every hard submission requirement is `done` or `skipped`. |
+| `/win-hackathon:log <text>` | Appends a timestamped entry to `challenges.md` — the manual path; agents write this file automatically too. |
 
-Each command ends at an approval gate and stops — `:check` and `:pivot` are the two
-exceptions: `:check` is a repeatable audit with no gate of its own, and `:pivot`'s only
-gate is the approval it asks for directly in Step 2.
+Each command ends at an approval gate and stops — `:check`, `:pivot`, and `:log` are the
+exceptions: `:check` is a repeatable audit with no gate of its own, `:pivot`'s only gate is
+the approval it asks for directly in Step 2, and `:log` is a running log with no judgment
+to gate.
 
-## What M1–M4 produce
+## What M1–M5 produce
 
 Working documents land in `.hackathon/`; judge-facing ones land in `docs/` and the repo
 root later in the workflow.
@@ -106,12 +113,15 @@ root later in the workflow.
 | `:spec` | `specs/NNNN-<slug>/{requirements,design,tasks}.md` per must-have feature (the Kiro triad), plus `openspec/changes/<slug>/proposal.md` when the `@fission-ai/openspec` CLI is reachable |
 | `:build` | Application source code, one must-have feature at a time — progress is read back from `[x]` checkboxes in that feature's own `tasks.md`, not tracked a second way in `state.json` |
 | `:ship` | `deploy.json` — per-service target, Dockerfile, verified URL and verification method, plus the `infra/`/`.github/workflows/` files `deploy-engineer` writes alongside it |
+| `:review` | `review.json`, `review.md` — merged `/code-review` + `quality-reviewer` findings, classified `blocking`/`should-fix`/`post-hackathon` |
+| `:submit` | `submission.json` feeding five surfaces: `README.md`, `docs/DEMO_RUNBOOK.md`, `.hackathon/submission.md`, `.hackathon/video-script.md`, `.hackathon/screenshots.md` |
 
 **Every judgment phase validates before it writes.** Each of `:recon`, `:brainstorm`, `:stack`,
-`:architect`, `:requirements`, and `:ship` emits a JSON payload that must pass a schema first;
-every rendered surface — markdown, diagrams, the Kiro triad, `deploy.json` — comes from that
-payload, so nothing downstream can drift from the source. Rules the schemas enforce because
-they lose hackathons outright:
+`:architect`, `:requirements`, `:ship`, `:review`, and `:submit` emits a JSON payload that
+must pass a schema first; every rendered surface — markdown, diagrams, the Kiro triad,
+`deploy.json`, the five submission surfaces — comes from that payload, so nothing
+downstream can drift from the source. Rules the schemas enforce because they lose
+hackathons outright:
 
 - Every date carries an explicit UTC offset. A floating `2026-06-29T17:00:00` is rejected.
 - A disqualified idea is never scored — a number invites falling in love with an idea that
@@ -121,6 +131,11 @@ they lose hackathons outright:
 - A service marked `verified: true` in `deploy.json` must carry a real `verified_at` and
   `verification_method` — `:ship` does not gate on a deploy until every service it could
   verify has actually been `curl`-ed, not just configured.
+- `:review` cannot reach `awaiting_approval` while any finding is `blocking` — mechanically
+  enforced, not left as a reading of `review.md`.
+- `:submit` cannot reach `awaiting_approval` unless `project.review.clean` is `true` and
+  every hard `submission_requirements` item is `done` or `skipped` — a `skipped` item still
+  requires its own `decisions.md` entry, the same trail `:pivot` leaves for a cut feature.
 
 ## Dependencies
 
