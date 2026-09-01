@@ -3,7 +3,7 @@
 [![test](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/rogerjeasy/win-hackathon/actions/workflows/test.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2020-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ESM-F7DF1E?logo=javascript&logoColor=black)
-![node:test](https://img.shields.io/badge/node%3Atest-905%20passing-3C873A)
+![node:test](https://img.shields.io/badge/node%3Atest-920%20passing-3C873A)
 ![dependencies](https://img.shields.io/badge/dependencies-0-4C1)
 ![build step](https://img.shields.io/badge/build%20step-none-4C1)
 ![CI](https://img.shields.io/badge/CI-Node%2020%20%7C%2022%20%7C%2024-2088FF?logo=githubactions&logoColor=white)
@@ -27,7 +27,7 @@ M1's spine, M2's front half, M3's design half, and M4's build/ship half, this ad
 `/win-hackathon:review`, `:submit`, and `:log` commands, state schema v5, two agents
 (`quality-reviewer`, `submission-writer`), and four skills (`judge-ready-readme`,
 `demo-runbook`, `devpost-submission`, `demo-video-script`). `npm test` (`node --test`) runs
-the suite: **906 tests, 905 pass, 0 failures, 1 cleanly skipped** (the Docker Compose
+the suite: **921 tests, 920 pass, 0 failures, 1 cleanly skipped** (the Docker Compose
 milestone check, which needs Docker and this machine has none), green on Node 20, 22, and
 24.
 
