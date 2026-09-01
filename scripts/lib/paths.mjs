@@ -79,3 +79,9 @@ export const REVIEW_FILE = 'review.json';
 export function reviewPath(root) {
   return path.join(root, HACKATHON_DIR, REVIEW_FILE);
 }
+
+export const SUBMISSION_FILE = 'submission.json';
+
+export function submissionPath(root) {
+  return path.join(root, HACKATHON_DIR, SUBMISSION_FILE);
+}
