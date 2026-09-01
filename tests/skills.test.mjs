@@ -447,37 +447,88 @@ test('the M5 submission skills exist', async () => {
   }
 });
 
-test('judge-ready-readme places the thesis quote before any badges/results table', async () => {
+test('judge-ready-readme places the thesis quote as the second ordering step, before any optional section', async () => {
   const content = await readSkill('judge-ready-readme');
-  assert.match(content, /first (screen|blockquote|prose)/i);
-  assert.match(content, /\bKarma\b/);
-  assert.match(content, /\bKintwadi\b/);
+  const orderStart = content.indexOf('## Order, top to bottom');
+  const optionalStart = content.indexOf('## Optional sections');
+  assert.ok(orderStart !== -1 && optionalStart > orderStart,
+    'the Order section must exist, before the Optional sections heading');
+  const order = content.slice(orderStart, optionalStart);
+  const quoteIdx = order.indexOf('tech-thesis quote');
+  const whatItIsIdx = order.indexOf('What it is');
+  assert.ok(quoteIdx !== -1, 'the Order section must instruct where the tech-thesis quote goes');
+  assert.ok(whatItIsIdx !== -1 && quoteIdx < whatItIsIdx,
+    'the thesis quote must be placed before "What it is" -- the second ordering step, right after the live demo link');
+  const quoteInstruction = order.slice(quoteIdx, whatItIsIdx);
+  assert.match(quoteInstruction, /before any badges|results table/i,
+    'the instruction itself must state the quote precedes any badges/results table');
+  assert.match(quoteInstruction, /\bKarma\b/, 'the instruction must cite its real evidence project');
+  assert.match(quoteInstruction, /\bKintwadi\b/, 'the instruction must cite its real evidence project');
 });
 
 test('judge-ready-readme treats the Hackathon Disclosure section as optional, not universal', async () => {
   const content = await readSkill('judge-ready-readme');
-  assert.match(content, /Hackathon Disclosure/);
-  assert.match(content, /optional|not universal|when/i);
+  const start = content.indexOf('## Optional sections');
+  const end = content.indexOf('## What not to do');
+  assert.ok(start !== -1 && end > start, 'the Optional sections heading must exist, before What not to do');
+  const section = content.slice(start, end);
+  assert.match(section, /Hackathon Disclosure/);
+  // The real wording, scoped to this section only -- an unscoped /when/i (the previous
+  // form of this assertion) matches almost any English prose and proves nothing.
+  assert.match(section, /Optional,\s+not\s+universal/,
+    'the Optional sections must state this exact rule for Hackathon Disclosure, not just mention "optional" or "when" somewhere');
 });
 
-test('demo-runbook names the Judge Quick-Start section exactly, and the golden-run/reset fallback', async () => {
+test('demo-runbook names the Judge Quick-Start section exactly, and it precedes the golden-run/reset fallback', async () => {
   const content = await readSkill('demo-runbook');
-  assert.match(content, /Judge Quick-Start \(no account required\)/);
-  assert.match(content, /golden.run|reset fallback/i);
+  const quickStartIdx = content.indexOf('## Judge Quick-Start (no account required)');
+  const goldenRunIdx = content.indexOf('## Golden-run / reset fallback');
+  assert.ok(quickStartIdx !== -1,
+    'the heading must appear verbatim -- it is load-bearing for a judge grep-skimming for it');
+  assert.ok(goldenRunIdx !== -1, 'the golden-run/reset fallback section must exist');
+  assert.ok(quickStartIdx < goldenRunIdx,
+    'Judge Quick-Start must be the very first section, before the golden-run/reset fallback');
 });
 
 test('devpost-submission is organized by the platform\'s own form steps, with the requirements tracker', async () => {
   const content = await readSkill('devpost-submission');
-  assert.match(content, /form step/i);
-  assert.match(content, /requirements tracker/i);
-  assert.match(content, /verbatim/i);
+  const bodyStart = content.indexOf('\n---', 4) + 4;
+  const body = content.slice(bodyStart);
+
+  const formStepsStart = body.indexOf('## Organize by the platform');
+  const pasteReadyStart = body.indexOf('## Paste-ready');
+  const challengesStart = body.indexOf('## Challenges we ran into, verbatim');
+  const trackerStart = body.indexOf('## Requirements tracker');
+  assert.ok(formStepsStart !== -1 && pasteReadyStart > formStepsStart, 'the form-steps section must exist, first');
+  assert.match(body.slice(formStepsStart, pasteReadyStart), /form step/i,
+    'the form-steps section itself must say "form step"');
+
+  assert.ok(challengesStart !== -1 && trackerStart > challengesStart,
+    'the challenges section must exist, before the requirements tracker');
+  assert.match(body.slice(challengesStart, trackerStart), /verbatim/i,
+    'the challenges section itself must require assembling the field verbatim, not paraphrased');
+
+  assert.ok(trackerStart !== -1, 'the requirements tracker must have its own section');
+  assert.match(body.slice(trackerStart), /requirements tracker/i,
+    'the requirements-tracker section itself must be named that, not just mentioned in the frontmatter');
 });
 
 test('demo-video-script states the sub-three-minute structure and the per-shot timing budget', async () => {
   const content = await readSkill('demo-video-script');
-  assert.match(content, /hook/i);
-  assert.match(content, /180|three minutes/i);
-  assert.match(content, /timing budget|seconds/i);
+  const structureStart = content.indexOf('## Structure');
+  const budgetStart = content.indexOf('## Every shot gets a timing budget, summing to the cap');
+  const checklistStart = content.indexOf('## Check the platform');
+  assert.ok(structureStart !== -1 && budgetStart > structureStart,
+    'the Structure section must exist, before the timing-budget section');
+  assert.match(content.slice(structureStart, budgetStart), /hook/i,
+    'the Structure section itself must name the hook beat');
+
+  assert.ok(budgetStart !== -1 && checklistStart > budgetStart,
+    'the timing-budget section must exist, before the checklist section');
+  const budgetSection = content.slice(budgetStart, checklistStart);
+  assert.match(budgetSection, /180|three minutes/i, 'the timing-budget section itself must state the cap');
+  assert.match(budgetSection, /timing budget|seconds/i,
+    'the timing-budget section itself must call out the per-shot timing budget');
 });
 
 test('all four submission skills have frontmatter and non-trivial content', async () => {
