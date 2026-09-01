@@ -5,6 +5,7 @@
 **Amended:** 2026-08-22 — §3, §4, §8, §10, §12, §15 revised after reviewing twelve winning Devpost submissions and the two reference repositories. Detail in `m2-front-half.md`.
 **Amended:** 2026-08-24 — §2, §3, §4, §8, §9, §10, §13, §14 and Appendix A revised for M3 — the design and requirements phases, three diagram formats replacing a promised PNG export, and a validated payload behind every rendered surface. Detail in `m3-design.md`.
 **Amended:** 2026-08-31 — §4, §8, §9, §10, §11, §13, §14 revised for M4 — `:build`, `:ship`, `:check`, `:pivot`, state schema v4, the `deploy.json` contract, two new agents, four deploy skills, and the plugin's last three hooks. Detail in `m4-design.md`.
+**Amended:** 2026-09-01 — §4, §8, §10, §14 revised for M5 — `:review`, `:submit`, `:log`, state schema v5, the `review.json`/`submission.json` contracts, two new agents, four submission skills. Detail in `m5-design.md`.
 **Author:** Roger Jeasy Bavibidila
 **Supersedes:** `project-idea.md`
 
@@ -129,7 +130,7 @@ infra/                       Terraform
 
 ```jsonc
 {
-  "schema_version": 3,
+  "schema_version": 5,
   "plugin_version": "0.1.0",
 
   // A digest only. The full extraction lives in .hackathon/recon.json — state.json is
@@ -148,7 +149,8 @@ infra/                       Terraform
     "tiebreak": "listed_order",
     "bonus_points_available": 0.6,
     "selected_track": null,
-    "recon_ref": ".hackathon/recon.json"
+    "recon_ref": ".hackathon/recon.json",
+    "started_at": "2026-08-21T14:00:00Z"   // added v4 — preserved across :recon re-runs
   },
 
   "project": {
@@ -163,7 +165,11 @@ infra/                       Terraform
       "ref": ".hackathon/stack.json"
     },
     "architecture_ref": ".hackathon/architecture.json",
-    "requirements_ref": ".hackathon/requirements.json"
+    "requirements_ref": ".hackathon/requirements.json",
+    "cut_features": [],                                          // added v4, by :pivot
+    "deploy": { "primary_url": null, "ref": null },                // added v4, by :ship
+    "review": { "clean": null, "ref": null },                      // added v5, by :review
+    "submission": { "requirements_complete": false, "ref": null }  // added v5, by :submit
   },
 
   "phases": {
@@ -184,7 +190,8 @@ infra/                       Terraform
   "budget": {
     "total_hours": 48,
     "spent_hours": 11.5,
-    "phase_budget": { "brainstorm": 2, "architect": 4, "build": 24, "ship": 4, "submit": 3 }
+    "phase_budget": { "brainstorm": 2, "architect": 4, "build": 24, "ship": 4, "submit": 3 },
+    "last_commit": null   // added v4
   },
 
   // Seeded at :recon (submission requirements) and :describe (bonus content), rendered by
@@ -204,6 +211,8 @@ infra/                       Terraform
 - `schema_version` gates migrations. On mismatch, `:init` migrates and backs up first.
 - **v1 → v2** adds `deliverables` and reshapes `hackathon` into a digest with `recon_ref`. The migration is additive and idempotent. Full M2 schemas live in `m2-front-half.md`.
 - **v2 → v3** validates `project` for the first time (it was previously defaulted to `null` and never checked) and adds `project.stack.repo_shape`, `project.architecture_ref` and `project.requirements_ref`. Full M3 schemas live in `m3-design.md`.
+- **v3 → v4** adds `hackathon.started_at`, `project.cut_features`, `project.deploy`, and `budget.last_commit`. Also the first version where `compliance` and `budget` are validated — every v3 state that was legal already satisfies the new checks, so no reshaping happens, only new fields. Full M4 schemas live in `m4-design.md`.
+- **v4 → v5** adds `project.review` and `project.submission`. Additive only — every v4 state that was legal stays legal; these two fields are simply absent until `:review` or `:submit` runs once. Full M5 schemas live in `m5-design.md`.
 
 ---
 
@@ -411,20 +420,23 @@ reachable.
 
 #### `:review`
 
-- **Dispatches:** `quality-reviewer` for architecture-level findings — boundary violations, invariants asserted in `AGENTS.md` but not enforced in code, unmanaged failure modes, security posture.
 - **Delegates code-level review to the existing `/code-review` skill** rather than reimplementing it.
-- Writes `review.md` classified as **blocking / should-fix / post-hackathon**, ordered by judge visibility. Under deadline pressure, only blocking items are mandatory.
+- **Dispatches:** `quality-reviewer` for architecture-level findings — boundary violations, invariants asserted in `AGENTS.md` but not enforced in code, unmanaged failure modes, security posture.
+- **Merges both passes into one validated `review.json`** — `REV-` ids assigned in pass order (code-review first, then quality-reviewer) — then renders `review.md`, classified **blocking / should-fix / post-hackathon**, ordered by judge visibility.
+- **Gate requires zero blocking findings, mechanically enforced.** Any `blocking` finding keeps `phases.review` at `in_progress` with a `resume_note` listing the blocking ids; only a re-run that finds none reaches `awaiting_approval`. `should-fix`/`post-hackathon` findings never block — "under deadline pressure, only blocking items are mandatory" is enforced structurally here, not left as a reading of `review.md`.
 
 #### `:submit`
 
+- **Gate on entry:** `project.review.clean` must be `true` — `:submit` refuses to assemble a submission around known-blocking findings.
+- **Re-runs `:check`** first — a required-tech regression introduced after `:ship` is caught here, not discovered by a judge.
 - **Dispatches:** `submission-writer`.
-- **Produces:**
+- **Emits a validated `submission.json` feeding five surfaces:**
   - `README.md` as a judge landing page — **live demo link first**, then what it is, why this technology, features, security model, tech stack, running locally, deploying, tests, demo-data note. This is the structure that won.
   - `docs/DEMO_RUNBOOK.md` — prerequisites, **Judge Quick-Start (no account required)**, full manual walkthrough, reset procedure, expected duration.
   - `.hackathon/submission.md` — drafted Devpost fields: inspiration, what it does, how we built it, **challenges we ran into** (assembled from `challenges.md` — the payoff for Rule 2), accomplishments, what we learned, what's next.
   - Demo video script with shot list and timings.
   - Screenshot shot-list mapped to judging criteria.
-- Runs a final `:check` and refuses to declare completion while any required submission element is missing.
+- **Gate requires `project.review.clean` and every hard `submission_requirements` item `done`/`skipped`.** A `skipped` item still needs its own `decisions.md` entry — silence is not an acceptable reason to drop a hard requirement.
 
 ### Utility commands
 
@@ -664,7 +676,7 @@ Too large for a single pass. Five milestones; the plugin is genuinely useful fro
 | **M2 — Front half** | `:recon`, `:brainstorm` (+ 4 generators, scorer), `:describe`, state schema v2, and five skills. Specified in `m2-front-half.md` | **Yes** — replaces the manual ideation loop end to end |
 | **M3 — Design** | `:stack`, `:architect`, `:requirements`, `:spec`, design + engineering skills, `security-invariants`, `framework-drift-guard` | **Yes** — covers everything up to writing code |
 | **M4 — Build & ship** | `:build`, `:ship`, `:check`, `:pivot`, deploy skills, `deploy-engineer`, `compliance-checker`, remaining hooks | **Yes** — full pipeline to a live URL |
-| **M5 — Close** | `:review`, `:submit`, `:log`, submission skills, `quality-reviewer`, `submission-writer` | Complete |
+| **M5 — Close** | `:review`, `:submit`, `:log`, submission skills, `quality-reviewer`, `submission-writer` | **Yes** — a reviewed, judge-ready submission comes out; all eleven phases now run end to end |
 
 **Validation:** each milestone is exercised against a real archived Devpost hackathon, and M4–M5 are validated by reproducing a `kintwadi`- or `karma`-shaped project from a clean directory.
 
@@ -679,6 +691,14 @@ three hooks. Same review-boundary-not-scope-cut treatment as M3, plus one furthe
 didn't have: a whole-stage checkpoint review after Stage 1 (not just per-task review),
 which found and fixed three cross-task bugs invisible to any single task's own reviewer —
 worth repeating at M5. **M4 is done and merged to `main`** as of 2026-08-31.
+
+**M5 delivers in two stages, specified in `m5-design.md`.** Stage 1 ships `:review` and
+`:log`, the `quality-reviewer` agent, and state v5's `project.review` field. Stage 2 ships
+`:submit`, the `submission-writer` agent, the four submission skills, and state v5's
+`project.submission` field — the same `v4 → v5` migration Stage 1 opened. Same
+review-boundary-not-scope-cut treatment as M3/M4, including a Stage 1 whole-branch
+checkpoint review. **Both stages have landed — M5 is done, and with it the whole
+five-milestone table above.**
 
 ---
 
