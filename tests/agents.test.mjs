@@ -214,3 +214,34 @@ test('quality-reviewer states the same three-bucket classification rule the desi
   assert.match(content, /post-hackathon/);
   assert.match(content, /judge_visible/);
 });
+
+// Completes the pair Task 4's "the Stage 1 M5 agent exists" test left half-open --
+// both M5 agents are now on disk.
+test('both M5 agents exist', async () => {
+  const files = await agentFiles();
+  for (const f of ['quality-reviewer.md', 'submission-writer.md']) {
+    assert.ok(files.includes(f), `missing agents/${f}`);
+  }
+});
+
+test('submission-writer is Opus with Read/Grep/Glob/Bash/Write, matching the parent design\'s model table', async () => {
+  const content = await readAgent('submission-writer.md');
+  const fm = content.slice(4, content.indexOf('\n---', 4));
+  assert.match(fm, /model:\s*opus/);
+  for (const tool of ['Read', 'Grep', 'Glob', 'Bash', 'Write']) {
+    assert.match(fm, new RegExp(`tools:.*${tool}`));
+  }
+});
+
+test('submission-writer is told to explore the built app, not just read specs', async () => {
+  const content = await readAgent('submission-writer.md');
+  assert.match(content, /explore|walk through|actually run/i);
+  assert.match(content, /built application|running application/i);
+});
+
+test('submission-writer loads all four submission skills before writing anything', async () => {
+  const content = await readAgent('submission-writer.md');
+  for (const skill of ['judge-ready-readme', 'demo-runbook', 'devpost-submission', 'demo-video-script']) {
+    assert.ok(content.includes(skill), `submission-writer.md must load the ${skill} skill`);
+  }
+});
