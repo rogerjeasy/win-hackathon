@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { readFile, access, copyFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
@@ -1134,6 +1134,46 @@ test('the heredoc form commands/log.md uses leaves backticks and $() in the entr
     const content = await readFile(path.join(dir, '.hackathon', 'challenges.md'), 'utf8');
     assert.ok(content.includes(`\`touch ${injected1}\``), 'backticks must survive completely literally');
     assert.ok(content.includes(`$(touch ${injected2})`), '$(...) must survive completely literally');
+  });
+});
+
+// Regression test for the final whole-branch review's stdin-timeout fix: log.mjs <root>
+// with no positional <text...> args used to block forever on `for await (const chunk of
+// process.stdin)` when stdin is a non-TTY pipe that nothing ever writes to or closes --
+// exactly the shape of a bare programmatic invocation (CI, another script, an agent's
+// Bash-tool call without a heredoc). It must instead race the stdin read against a short
+// timeout and fail fast with USAGE + exit 2, not hang. This spawns a real subprocess and
+// deliberately never writes to or closes its stdin, then asserts on exit code, stderr, and
+// elapsed time within a bound of our own that's comfortably larger than the ~200ms race but
+// far below node:test's own (unlimited-by-default) per-test timeout, so a hang would show up
+// as a genuine test failure rather than an eventual framework-level kill.
+test('log.mjs <root> with no positional args and an open, never-written stdin fails fast with USAGE instead of hanging', async () => {
+  await withTmpDir(async (dir) => {
+    const start = Date.now();
+    const child = spawn('node', [path.join(scripts, 'log.mjs'), dir], { stdio: ['pipe', 'pipe', 'pipe'] });
+    child.stdin.on('error', () => {}); // swallow EPIPE from the child exiting with stdin still open
+    child.on('error', () => {});
+
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+
+    const BOUND_MS = 5000; // >> the ~200ms stdin race, << node:test's own default (no timeout / far larger)
+    const exitCode = await new Promise((resolve, reject) => {
+      const bound = setTimeout(() => {
+        child.kill('SIGKILL');
+        reject(new Error(`log.mjs did not exit within ${BOUND_MS}ms -- looks like a hang, not a fast failure`));
+      }, BOUND_MS);
+      bound.unref();
+      child.on('exit', (code) => {
+        clearTimeout(bound);
+        resolve(code);
+      });
+    });
+    const elapsed = Date.now() - start;
+
+    assert.equal(exitCode, 2);
+    assert.match(stderr, /usage: log\.mjs <project-root> <text\.\.\.>/);
+    assert.ok(elapsed < BOUND_MS, `expected a fast failure well under ${BOUND_MS}ms, took ${elapsed}ms`);
   });
 });
 
