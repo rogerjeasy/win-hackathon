@@ -134,8 +134,9 @@ hackathons outright:
 - `:review` cannot reach `awaiting_approval` while any finding is `blocking` — mechanically
   enforced, not left as a reading of `review.md`.
 - `:submit` cannot reach `awaiting_approval` unless `project.review.clean` is `true` and
-  every hard `submission_requirements` item is `done` or `skipped` — a `skipped` item still
-  requires its own `decisions.md` entry, the same trail `:pivot` leaves for a cut feature.
+  every hard `submission_requirements` item is `done` or `skipped`. (`/win-hackathon:submit`
+  additionally asks, as a process convention rather than a schema check, that a `skipped`
+  item get its own `decisions.md` entry — the same trail `:pivot` leaves for a cut feature.)
 
 ## Dependencies
 
