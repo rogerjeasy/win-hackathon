@@ -5,9 +5,9 @@
 import { appendFile, mkdir, access } from 'node:fs/promises';
 import path from 'node:path';
 import { HACKATHON_DIR } from './paths.mjs';
+import { CHALLENGES_HEADER } from './init-plan.mjs';
 
 const CHALLENGES_REL = `${HACKATHON_DIR}/challenges.md`;
-const HEADER = '# Challenges\n\nIssues hit during the build, newest last.\n';
 
 export async function appendChallenge(root, text, { now = new Date() } = {}) {
   const trimmed = (text ?? '').trim();
@@ -23,6 +23,6 @@ export async function appendChallenge(root, text, { now = new Date() } = {}) {
   }
 
   const entry = `\n## ${now.toISOString()} — ${trimmed}\n`;
-  await appendFile(target, exists ? entry : `${HEADER}${entry}`, 'utf8');
+  await appendFile(target, exists ? entry : `${CHALLENGES_HEADER}${entry}`, 'utf8');
   return CHALLENGES_REL;
 }
