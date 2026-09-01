@@ -13,39 +13,26 @@
 ![Bash](https://img.shields.io/badge/Bash-1%20wrapper-4EAA25?logo=gnubash&logoColor=white)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 
-A Claude Code plugin that encodes an end-to-end hackathon workflow — from reading the
-Devpost rules to submitting a deployed, documented, judge-ready project — as commands,
-agents, skills, and hooks.
+A Claude Code plugin that runs the entire hackathon lifecycle as one guided, gated
+workflow: reading the Devpost rules, generating and scoring ideas against the real
+rubric, choosing a stack and architecture, writing specs, building test-driven,
+deploying, reviewing, and submitting — as slash commands, subagents, skills, and hooks.
 
-## Status
+## Overview
 
-**v1.0.0 — complete. All five milestones are shipped and all eleven phases run end to
-end**, with no further milestones planned. A Devpost URL goes in; a reviewed, deployed,
-judge-ready submission — README, demo runbook, Devpost form draft, video script, and
-screenshot shot-list — comes out, gated on a clean architecture-and-code review (zero
-blocking findings) plus every hard submission requirement `done` or `skipped`. `npm test`
-(`node --test`) runs the suite: **921 tests, 920 pass, 0 failures, 1 cleanly skipped** (the
-Docker Compose milestone check, which needs Docker and this machine has none), green on
-Node 20, 22, and 24. See [`CHANGELOG.md`](CHANGELOG.md) for what shipped in this release.
+A Devpost URL goes in. Eleven gated phases later, a reviewed, deployed, judge-ready
+submission comes out: a judge-facing README, demo runbook, Devpost form draft, video
+script, and screenshot shot-list — gated on a clean architecture-and-code review (zero
+blocking findings) plus every hard submission requirement `done` or `skipped`.
 
-The full design lives in [`docs/design/win-hackathon-plugin.md`](docs/design/win-hackathon-plugin.md),
-with the front half specified in [`docs/design/m2-front-half.md`](docs/design/m2-front-half.md),
-the design half in [`docs/design/m3-design.md`](docs/design/m3-design.md), the build/ship
-half in [`docs/design/m4-design.md`](docs/design/m4-design.md), and the close half in
-[`docs/design/m5-design.md`](docs/design/m5-design.md).
-[`docs/design/project-idea.md`](docs/design/project-idea.md) is the original sketch it supersedes,
-kept for lineage.
+Every judgment phase emits a schema-validated JSON payload before it writes anything, and
+every rendered surface — markdown, diagrams, the Kiro spec triad, Terraform/CI config, the
+five submission surfaces — is generated from that one payload, so nothing downstream can
+drift from the source of truth.
 
-Implementation is staged across five milestones; the plugin becomes genuinely usable from
-M2 onward:
-
-| Milestone | Contents | Usable after? |
-|---|---|---|
-| M1 — Spine | manifest, state schema, environment detection, `:init`, `:next`, `:status`, SessionStart hook | **Done** — infrastructure only, no phase commands yet |
-| M2 — Front half | `:recon`, `:brainstorm`, `:describe` + ideation and scoring skills | **Done** — usable end to end |
-| M3 — Design | `:stack`, `:architect`, `:requirements`, `:spec` + design and engineering skills | **Done** — covers everything up to writing code |
-| M4 — Build & ship | `:build`, `:ship`, `:check`, `:pivot` + deploy skills | **Done** — a real deployed, sponsor-tech-compliant app comes out |
-| M5 — Close | `:review`, `:submit`, `:log` + submission skills | **Done** — a reviewed, judge-ready submission comes out |
+The full design lives in
+[`docs/design/win-hackathon-plugin.md`](docs/design/win-hackathon-plugin.md); see
+[`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 ## The workflow
 
@@ -54,8 +41,7 @@ Eleven gated phases. Nothing advances without explicit approval.
 `:recon` → `:brainstorm` → `:describe` → `:stack` → `:architect` → `:requirements` →
 `:spec` → `:build` → `:ship` → `:review` → `:submit`
 
-All eleven are implemented. You never need to remember that order — `:next` resolves it
-from on-disk state.
+You never need to remember that order — `:next` resolves it from on-disk state.
 
 ## Install
 
@@ -94,7 +80,7 @@ exceptions: `:check` is a repeatable audit with no gate of its own, `:pivot`'s o
 the approval it asks for directly in Step 2, and `:log` is a running log with no judgment
 to gate.
 
-## What M1–M5 produce
+## What each phase produces
 
 Working documents land in `.hackathon/`; judge-facing ones land in `docs/` and the repo
 root later in the workflow.
